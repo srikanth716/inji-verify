@@ -2,8 +2,8 @@ import React, {useEffect} from 'react';
 import PageTemplate from "../components/PageTemplate";
 import {useLocation, useNavigate} from "react-router-dom";
 import {useAppDispatch} from "../redux/hooks";
-import {verificationInit} from "../redux/features/verification/verification.slice";
-import {raiseAlert} from "../redux/features/alerts/alerts.slice";
+import {verificationInit} from "../redux/features/verification/verificationSlice";
+import {raiseAlert} from "../redux/features/alerts/alertsSlice";
 import {OvpErrors, Pages} from "../utils/config";
 
 function OvpRedirect(props: any) {

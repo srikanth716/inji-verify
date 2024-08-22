@@ -4,9 +4,9 @@ import Loader from "../../commons/Loader";
 import QrScanner from "./QrScanner";
 import StyledButton from "./commons/StyledButton";
 import {useAppDispatch} from "../../../redux/hooks";
-import {goHomeScreen} from "../../../redux/features/verification/verification.slice";
+import {goHomeScreen} from "../../../redux/features/verification/verificationSlice";
 import {VerificationSteps} from "../../../utils/config";
-import {useVerificationFlowSelector} from "../../../redux/features/verification/verification.selector";
+import {useVerificationFlowSelector} from "../../../redux/features/verification/verificationSelector";
 
 const Verification = () => {
     const dispatch = useAppDispatch();

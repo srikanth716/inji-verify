@@ -1,5 +1,5 @@
 import React from 'react';
-import {useVerificationFlowSelector} from "../../../redux/features/verification/verification.selector";
+import {useVerificationFlowSelector} from "../../../redux/features/verification/verificationSelector";
 import {VerificationStepsContent} from "../../../utils/config";
 import {convertToId} from "../../../utils/misc";
 

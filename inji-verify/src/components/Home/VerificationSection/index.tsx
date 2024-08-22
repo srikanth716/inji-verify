@@ -3,7 +3,7 @@ import ScanQrCode from "./ScanQrCode";
 import Verification from "./Verification";
 import Result from "./Result";
 import {VerificationSteps} from "../../../utils/config";
-import {useVerificationFlowSelector} from "../../../redux/features/verification/verification.selector";
+import {useVerificationFlowSelector} from "../../../redux/features/verification/verificationSelector";
 
 const DisplayActiveStep = () => {
     const {activeScreen, method} = useVerificationFlowSelector(state => ({activeScreen: state.activeScreen, qrData: state.qrReadResult?.qrData, method: state.method}));

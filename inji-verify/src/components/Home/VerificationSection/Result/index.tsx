@@ -1,7 +1,7 @@
 import React from 'react';
 import ResultSummary from "./ResultSummary";
 import VcDisplayCard from "./VcDisplayCard";
-import {useVerificationFlowSelector} from "../../../../redux/features/verification/verification.selector";
+import {useVerificationFlowSelector} from "../../../../redux/features/verification/verificationSelector";
 import {VcStatus} from "../../../../types/data-types";
 
 const getVcStatusValue = (vcStatus?: VcStatus): "SUCCESS" | "INVALID" | "EXPIRED" => {

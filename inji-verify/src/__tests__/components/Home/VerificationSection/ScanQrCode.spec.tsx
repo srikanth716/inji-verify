@@ -1,7 +1,7 @@
 import React from 'react';
 import {render, screen} from "@testing-library/react";
 import ScanQrCode from "../../../../components/Home/VerificationSection/ScanQrCode";
-import {useVerificationFlowSelector} from "../../../../redux/features/verification/verification.selector";
+import {useVerificationFlowSelector} from "../../../../redux/features/verification/verificationSelector";
 
 jest.mock("../../../../redux/hooks", () => ({
     useAppDispatch: jest.fn(),

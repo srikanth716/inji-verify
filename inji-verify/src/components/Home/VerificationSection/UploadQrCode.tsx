@@ -2,10 +2,10 @@ import {scanFilesForQr} from "../../../utils/qr-utils";
 import {AlertMessages, SupportedFileTypes, UploadFileSizeLimits} from "../../../utils/config";
 import {ReactComponent as UploadIcon} from "../../../assets/upload-icon.svg";
 import {useAppDispatch} from "../../../redux/hooks";
-import {goHomeScreen, qrReadInit, verificationInit} from "../../../redux/features/verification/verification.slice";
-import {raiseAlert} from "../../../redux/features/alerts/alerts.slice";
+import {goHomeScreen, qrReadInit, verificationInit} from "../../../redux/features/verification/verificationSlice";
+import {raiseAlert} from "../../../redux/features/alerts/alertsSlice";
 import {checkInternetStatus, getFileExtension} from "../../../utils/misc";
-import {updateInternetConnectionStatus} from "../../../redux/features/application-state/application-state.slice";
+import {updateInternetConnectionStatus} from "../../../redux/features/application-state/applicationSlice";
 import {AlertInfo} from "../../../types/data-types";
 import {Dispatch} from "redux";
 
