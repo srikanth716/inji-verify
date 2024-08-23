@@ -24,7 +24,7 @@ function DesktopStepper() {
                                 >
                                     {index + 1}
                                 </div>
-                                <div id={convertToId(step.label)} className={`ml-[10px] text-[16px]  font-bold ${isStepCompleted(index) ? "text-black" : "text-[#868686]"}`}>{step.label}</div>
+                                <div id={convertToId(step.label)+"lg"} className={`ml-[10px] text-[16px]  font-bold ${isStepCompleted(index) ? "text-black" : "text-[#868686]"}`}>{step.label}</div>
                             </div>
                             <div className={"grid items-start"}>
                                 <div className={"grid items-center m-0"}>

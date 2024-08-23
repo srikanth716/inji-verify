@@ -44,7 +44,7 @@ function MobileStepper(props: any) {
                 <p id={convertToId(heading)} className="font-bold my-1">
                     {heading}
                 </p>
-                <p id={`${convertToId(heading)}-description`} className="text-[#535353] text-[14px]">
+                <p id={`${convertToId(description)}-description`} className="text-[#535353] text-[14px]">
                     {description}
                 </p>
             </div>
