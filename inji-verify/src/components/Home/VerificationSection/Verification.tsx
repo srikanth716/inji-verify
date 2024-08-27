@@ -2,12 +2,12 @@ import React from "react";
 import scanQr from "../../../assets/scanner-ouline.svg";
 import Loader from "../../commons/Loader";
 import QrScanner from "./QrScanner";
-import StyledButton from "./commons/StyledButton";
 import { useAppDispatch } from "../../../redux/hooks";
 import { goHomeScreen } from "../../../redux/features/verification/verificationSlice";
 import { VerificationSteps } from "../../../utils/config";
 import { useVerificationFlowSelector } from "../../../redux/features/verification/verificationSelector";
 import { terminateScanning } from "../../../utils/qr-utils";
+import Button from "./commons/Button";
 
 const Verification = () => {
   const dispatch = useAppDispatch();
@@ -31,16 +31,15 @@ const Verification = () => {
         )}
       </div>
       <div className="col-span-12">
-        <StyledButton
+        <Button
           id="verification-back-button"
+          title="Back"
           className="w-[100%] lg:w-[350px] max-w-[280px] lg:max-w-none mt-[18px]"
           onClick={() => {
             terminateScanning();
             dispatch(goHomeScreen({}));
           }}
-        >
-          Back
-        </StyledButton>
+        />
       </div>
     </div>
   );

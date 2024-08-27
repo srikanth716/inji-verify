@@ -1,13 +1,10 @@
-import React from 'react';
-import {render, screen} from "@testing-library/react";
-import StyledButton from "../../../../../components/Home/VerificationSection/commons/StyledButton";
+import React from "react";
+import { render, screen } from "@testing-library/react";
+import Button from "../../../../../components/Home/VerificationSection/commons/Button";
 
-describe("Styled Button", () => {
-    test("Test rendering", () => {
-        render(<StyledButton>
-            A Styled Button
-        </StyledButton>)
-        expect(screen.getByText("A Styled Button")).toBeInTheDocument()
-    })
-})
-
+describe("Custom Button", () => {
+  test("Test rendering", () => {
+    render(<Button title="A Custom Button" id={""} />);
+    expect(screen.getByText("A Custom Button")).toBeInTheDocument();
+  });
+});

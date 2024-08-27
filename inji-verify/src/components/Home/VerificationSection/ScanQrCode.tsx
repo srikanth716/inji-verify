@@ -2,25 +2,26 @@ import React from "react";
 import scanQr from "../../../assets/scanner-ouline.svg";
 import qrIcon from "../../../assets/qr-code-icon.svg";
 import { ReactComponent as TabScanFillIcon } from "../../../assets/tab-scan-fill.svg";
-import StyledButton from "./commons/StyledButton";
+import Button from "./commons/Button";
 import { UploadQrCode } from "./UploadQrCode";
 import { useAppDispatch } from "../../../redux/hooks";
 import { qrReadInit } from "../../../redux/features/verification/verificationSlice";
 import { useVerificationFlowSelector } from "../../../redux/features/verification/verificationSelector";
 import { checkInternetStatus } from "../../../utils/misc";
 import { updateInternetConnectionStatus } from "../../../redux/features/application-state/applicationSlice";
-import {VpVerification} from "./VpVerification";
+import { VpVerification } from "./VpVerification";
 
 const Scan = () => {
   const dispatch = useAppDispatch();
   return (
     <>
-      <StyledButton
+      <Button
         id="scan-button"
-        icon={<TabScanFillIcon className="fill-inherit" />}
-        className="mx-0 my-1.5 py-3 text-center inline-flex absolute top-[160px] left-[33px] w-[205px] lg:w-[223px] lg:left-[63px] lg:top-[231px] fill-[#ff7f00] hover:fill-white"
+        title="Scan"
         fill={false}
-        onClick={async (event) => {
+        iconLeft={<TabScanFillIcon className="fill-inherit" />}
+        className="mx-0 my-1.5 py-3 text-center inline-flex absolute top-[160px] left-[33px] w-[205px] lg:w-[223px] lg:left-[63px] lg:top-[231px] fill-[#ff7f00] hover:fill-white"
+        onClick={async () => {
           dispatch(
             updateInternetConnectionStatus({
               internetConnectionStatus: "LOADING",
@@ -33,17 +34,8 @@ const Scan = () => {
             })
           );
           if (isOnline) {
-            document.getElementById("trigger-scan")?.click();
+            dispatch(qrReadInit({ method: "SCAN" }));
           }
-        }}
-      >
-        Scan
-      </StyledButton>
-      <button
-        id="trigger-scan"
-        className="hidden"
-        onClick={() => {
-          dispatch(qrReadInit({ method: "SCAN" }));
         }}
       />
     </>
@@ -74,6 +66,23 @@ const ScanQrCode = () => {
   return (
     <div className="flex flex-col pt-0 pb-[100px] lg:py-[42px] px-0 lg:px-[104px] text-center content-center justify-center">
       <div className="xs:col-end-13">
+        {method === "VP_VERIFICATION" && (
+          <div className="grid text-center content-center justify-center">
+            <select
+              id="CredentialTypeSelector"
+              defaultValue="Select Credential Type"
+              className="w-[300px] border border-gray-300 rounded-md p-2"
+              onChange={(e) => console.log(e.target.value)}
+            >
+              <option value="Select Credential Type" disabled>
+                Select Credential Type
+              </option>
+              <option value="insurance">Insurance Credential </option>
+              <option value="nationalID">National Identity</option>
+              <option value="driving">Driving License</option>
+            </select>
+          </div>
+        )}
         <div
           className={`relative grid content-center justify-center w-[275px] lg:w-[350px] aspect-square my-1.5 mx-auto bg-cover`}
           style={{ backgroundImage: `url(${scanQr})` }}
