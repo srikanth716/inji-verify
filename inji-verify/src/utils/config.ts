@@ -71,6 +71,10 @@ export const VerificationStepsContent: any = {
   ],
   VP_VERIFICATION: [
     {
+      label:"Select Credential Type",
+      description: "Select appropriate Credential type you want to verify and Generate QR code.",
+    },
+    {
       label: "Scan QR Code",
       description: "Please scan the QR code with your Wallet app to proceed with verification.",
     },
@@ -165,3 +169,5 @@ export const OvpQrHeader = window._env_.OVP_QR_HEADER;
 
 export const GENERATE_NONCE = 'GENERATE_NONCE';
 export const SET_NONCE = 'SET_NONCE';
+
+export const VerifiableCredentialTypes = ["Insurance Credential","National Identity","Driving License"]

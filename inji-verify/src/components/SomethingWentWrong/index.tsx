@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../../redux/hooks";
 import { updateInternetConnectionStatus } from "../../redux/features/application-state/applicationSlice";
-import Button from "../Home/VerificationSection/commons/Button";
+import Button from "../commons/Button";
 
 function SomethingWentWrong(props: any) {
   const navigate = useNavigate();

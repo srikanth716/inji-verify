@@ -7,7 +7,7 @@ import { goHomeScreen } from "../../../redux/features/verification/verificationS
 import { VerificationSteps } from "../../../utils/config";
 import { useVerificationFlowSelector } from "../../../redux/features/verification/verificationSelector";
 import { terminateScanning } from "../../../utils/qr-utils";
-import Button from "./commons/Button";
+import Button from "../../commons/Button";
 
 const Verification = () => {
   const dispatch = useAppDispatch();

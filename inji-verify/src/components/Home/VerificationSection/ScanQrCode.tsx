@@ -2,7 +2,7 @@ import React from "react";
 import scanQr from "../../../assets/scanner-ouline.svg";
 import qrIcon from "../../../assets/qr-code-icon.svg";
 import { ReactComponent as TabScanFillIcon } from "../../../assets/tab-scan-fill.svg";
-import Button from "./commons/Button";
+import Button from "../../commons/Button";
 import { UploadQrCode } from "./UploadQrCode";
 import { useAppDispatch } from "../../../redux/hooks";
 import { qrReadInit } from "../../../redux/features/verification/verificationSlice";
@@ -10,6 +10,7 @@ import { useVerificationFlowSelector } from "../../../redux/features/verificatio
 import { checkInternetStatus } from "../../../utils/misc";
 import { updateInternetConnectionStatus } from "../../../redux/features/application-state/applicationSlice";
 import { VpVerification } from "./VpVerification";
+import { VerifiableCredentialTypes } from "../../../utils/config";
 
 const Scan = () => {
   const dispatch = useAppDispatch();
@@ -77,9 +78,9 @@ const ScanQrCode = () => {
               <option value="Select Credential Type" disabled>
                 Select Credential Type
               </option>
-              <option value="insurance">Insurance Credential </option>
-              <option value="nationalID">National Identity</option>
-              <option value="driving">Driving License</option>
+              {VerifiableCredentialTypes.map((type) => (
+                <option value={type}>{type}</option>
+              ))}
             </select>
           </div>
         )}

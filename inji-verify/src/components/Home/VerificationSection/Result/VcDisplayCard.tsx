@@ -7,7 +7,7 @@ import {
 import { ReactComponent as DocumentIcon } from "../../../../assets/document.svg";
 import { useAppDispatch } from "../../../../redux/hooks";
 import { goHomeScreen } from "../../../../redux/features/verification/verificationSlice";
-import Button from "../commons/Button";
+import Button from "../../../commons/Button";
 
 function VcDisplayCard({ vc }: { vc: any }) {
   const dispatch = useAppDispatch();

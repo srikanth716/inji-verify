@@ -1,7 +1,7 @@
 import * as React from "react";
 import { ReactComponent as NoPhotographyIcon } from "../../../assets/no-photography-icon.svg";
 import { CSSProperties } from "react";
-import Button from "./commons/Button";
+import Button from "../../commons/Button";
 
 const style: CSSProperties = {
   position: "absolute",

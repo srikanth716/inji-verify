@@ -1,6 +1,6 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import Button from "../../../../../components/Home/VerificationSection/commons/Button";
+import Button from "../../../../../components/commons/Button";
 
 describe("Custom Button", () => {
   test("Test rendering", () => {
