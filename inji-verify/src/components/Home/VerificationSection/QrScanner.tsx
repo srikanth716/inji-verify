@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import CameraAccessDenied from "./CameraAccessDenied";
 import { ScanSessionExpiryTime } from "../../../utils/config";
 import { useAppDispatch } from "../../../redux/hooks";
@@ -18,13 +18,22 @@ function QrScanner() {
 
   const scannerRef = useRef<HTMLDivElement>(null);
 
-  const onSuccess = (decodedText: any) => {
-    dispatch(
-      verificationInit({
-        qrReadResult: { qrData: decodedText, status: "SUCCESS" },
-        flow: "SCAN",
-      })
-    );
+  const onSuccess = useCallback(
+    (decodedText: any) => {
+      dispatch(
+        verificationInit({
+          qrReadResult: { qrData: decodedText, status: "SUCCESS" },
+          flow: "SCAN",
+        })
+      );
+      clearTimeout(timer);
+    },
+    [dispatch]
+  );
+
+  const onError = (e: any) => {
+    console.error("Error occurred:", e);
+    setIsCameraBlocked(true);
     clearTimeout(timer);
   };
 
@@ -41,12 +50,12 @@ function QrScanner() {
       );
       terminateScanning();
     }, ScanSessionExpiryTime);
-    initiateQrScanning(timer, onSuccess);
+    initiateQrScanning(onSuccess, onError);
     return () => {
       console.log("Clearing timeout");
       clearTimeout(timer);
     };
-  }, [dispatch]);
+  }, [dispatch, onSuccess]);
 
   useEffect(() => {
     // Disable inbuilt border around the video

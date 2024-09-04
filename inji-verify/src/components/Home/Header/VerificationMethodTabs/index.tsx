@@ -7,6 +7,7 @@ import { raiseAlert } from "../../../../redux/features/alerts/alertsSlice";
 import { AlertMessages } from "../../../../utils/config";
 import { MdArrowForwardIos } from "react-icons/md";
 import { MdArrowBackIos } from "react-icons/md";
+import { terminateScanning } from '../../../../utils/qr-utils';
 
 const Tab = ({
   id,
@@ -42,16 +43,15 @@ const Tab = ({
 };
 
 function VerificationMethodTabs(props: any) {
-  const dispatch = useAppDispatch();
-  const method = useVerificationFlowSelector((state) => state.method);
-  function switchToVerificationMethod(method: VerificationMethod) {
-    dispatch(goHomeScreen({ method }));
-  }
-  function showAlert() {
-    dispatch(
-      raiseAlert({ ...AlertMessages.verificationMethodComingSoon, open: true })
-    );
-  }
+    const dispatch = useAppDispatch();
+    const method = useVerificationFlowSelector(state => state.method);
+    
+    function switchToVerificationMethod(method: VerificationMethod) {
+        terminateScanning()
+        dispatch(goHomeScreen({method}))
+    }
+
+    function showAlert() {dispatch(raiseAlert({...AlertMessages.verificationMethodComingSoon, open: true}))}
 
   const carouselRef: any = useRef<HTMLDivElement>();
 
