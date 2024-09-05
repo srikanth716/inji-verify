@@ -8,6 +8,16 @@ import { VerificationSteps } from "../../../utils/config";
 import { useVerificationFlowSelector } from "../../../redux/features/verification/verificationSelector";
 import { terminateScanning } from "../../../utils/qr-utils";
 import Button from "../../commons/Button";
+import QRCode from "react-qr-code";
+
+const Qrcode = () => {
+  const qrCodeData = useVerificationFlowSelector((state) => state.qrCodeData);
+  return (
+    <div className="relative h-[250px] w-[250px] lg:h-[316px] lg:w-[316px] rounded-lg flex items-center justify-center">
+      <QRCode size={300} value={qrCodeData} />
+    </div>
+  );
+};
 
 const Verification = () => {
   const dispatch = useAppDispatch();
@@ -26,6 +36,8 @@ const Verification = () => {
       >
         {activeScreen === VerificationSteps[method].Verifying ? (
           <Loader />
+        ) : method === "VP_VERIFICATION" ? (
+          <Qrcode />
         ) : (
           <QrScanner />
         )}

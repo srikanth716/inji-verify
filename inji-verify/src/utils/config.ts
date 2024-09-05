@@ -29,8 +29,9 @@ export const VerificationSteps: any = {
   },
   VP_VERIFICATION: {
     QrCodePrompt: 1,
-    Verifying: 2,
-    DisplayResult: 3,
+    DisplayQrCode:2,
+    Verifying: 3,
+    DisplayResult: 4,
   },
 };
 
@@ -71,12 +72,14 @@ export const VerificationStepsContent: any = {
   ],
   VP_VERIFICATION: [
     {
-      label:"Select Credential Type",
-      description: "Select appropriate Credential type you want to verify and Generate QR code.",
+      label: "Select Credential Type",
+      description:
+        "Select appropriate Credential type you want to verify and Generate QR code.",
     },
     {
       label: "Scan QR Code",
-      description: "Please scan the QR code with your Wallet app to proceed with verification.",
+      description:
+        "Please scan the QR code with your Wallet app to proceed with verification.",
     },
     {
       label: "Verify document",
@@ -123,6 +126,7 @@ export const AlertMessages = {
     severity: "error",
   } as AlertInfo,
   pageNotFound: { message: "Page Not Found!!", severity: "error" } as AlertInfo,
+  vcTypeNotSelected: { message: "Please select vc type!!", severity: "error" } as AlertInfo,
 };
 
 // TODO: Update the error messages for the following
@@ -167,7 +171,11 @@ export const InternetConnectivityCheckTimeout = isNaN(
 export const OvpClientId = window._env_.OVP_CLIENT_ID;
 export const OvpQrHeader = window._env_.OVP_QR_HEADER;
 
-export const GENERATE_NONCE = 'GENERATE_NONCE';
-export const SET_NONCE = 'SET_NONCE';
+export const GENERATE_NONCE = "GENERATE_NONCE";
+export const SET_NONCE = "SET_NONCE";
 
-export const VerifiableCredentialTypes = ["Insurance Credential","National Identity","Driving License"]
+export const VerifiableCredentialTypes = [
+  { label: "Insurance Credential", value: "Insurance Credential" },
+  { label: "National Identity", value: "National Identity" },
+  { label: "Driving License", value: "Driving License" },
+];

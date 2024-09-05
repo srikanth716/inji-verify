@@ -1,6 +1,8 @@
-import { call, put, takeLatest } from "redux-saga/effects";
+import { all, call, put, takeLatest } from "redux-saga/effects";
 import {
+  generateQrCode,
   goHomeScreen,
+  SetAuthorizationResponse,
   verificationComplete,
   verificationInit,
 } from "./verificationSlice";
@@ -10,11 +12,13 @@ import { decodeQrData } from "../../../utils/qr-utils";
 import { verify } from "../../../utils/verification-utils";
 import { VcStatus } from "../../../types/data-types";
 import { select } from "redux-saga-test-plan/matchers";
-import { updateInternetConnectionStatus } from "../application-state/applicationSlice";
+import { updateInternetConnectionStatus } from "../application/applicationSlice";
 import {
   extractRedirectUrlFromQrData,
   initiateOvpFlow,
 } from "../../../utils/ovp-utils";
+import { API_URLS } from "../../../services/api";
+import { request } from "../../../services/request";
 
 function* handleVerification(data: string | object) {
   try {
@@ -90,10 +94,40 @@ function* verifyVC(vc: any) {
   }
 }
 
+interface authorizationResponse {
+  data: string;
+}
+
+function* getQrcode(data: string[]) {
+  // const selectedTypes = data;
+  try {
+    const response: authorizationResponse = yield request(
+      API_URLS.getQrCode.method,
+      API_URLS.getQrCode.buildURL()
+    );
+    yield put(
+      SetAuthorizationResponse({
+        AuthorizationResponse: response.data,
+        method: "VP_VERIFICATION",
+      })
+    );
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 function* verificationSaga() {
-  yield takeLatest(verificationInit, function* ({ payload }) {
-    yield call(handleVerification, payload.qrReadResult?.qrData ?? payload.ovp);
-  });
+  yield all([
+    takeLatest(verificationInit, function* ({ payload }) {
+      yield call(
+        handleVerification,
+        payload.qrReadResult?.qrData ?? payload.ovp
+      );
+    }),
+    takeLatest(generateQrCode, function* ({ payload }) {
+      yield call(getQrcode, payload.selectedTypes);
+    }),
+  ]);
 }
 
 export default verificationSaga;

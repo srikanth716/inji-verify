@@ -1,6 +1,6 @@
 import React, {useEffect} from 'react';
 import LoaderWithBackdrop from "../commons/LoaderWithBackdrop";
-import {useApplicationSelector} from "../../redux/features/application-state/applicationSelector";
+import {useApplicationSelector} from "../../redux/features/application/applicationSelector";
 import {useNavigate} from "react-router-dom";
 
 function CheckingForInternetConnectivity(props: any) {

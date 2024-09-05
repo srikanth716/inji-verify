@@ -5,7 +5,7 @@ import {useAppDispatch} from "../../../redux/hooks";
 import {goHomeScreen, qrReadInit, verificationInit} from "../../../redux/features/verification/verificationSlice";
 import {raiseAlert} from "../../../redux/features/alerts/alertsSlice";
 import {checkInternetStatus, getFileExtension} from "../../../utils/misc";
-import {updateInternetConnectionStatus} from "../../../redux/features/application-state/applicationSlice";
+import {updateInternetConnectionStatus} from "../../../redux/features/application/applicationSlice";
 import {AlertInfo} from "../../../types/data-types";
 import {Dispatch} from "redux";
 

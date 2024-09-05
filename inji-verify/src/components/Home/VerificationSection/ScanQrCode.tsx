@@ -5,12 +5,16 @@ import { ReactComponent as TabScanFillIcon } from "../../../assets/tab-scan-fill
 import Button from "../../commons/Button";
 import { UploadQrCode } from "./UploadQrCode";
 import { useAppDispatch } from "../../../redux/hooks";
-import { qrReadInit } from "../../../redux/features/verification/verificationSlice";
+import {
+  qrReadInit,
+  setSelectedVcTypes,
+} from "../../../redux/features/verification/verificationSlice";
 import { useVerificationFlowSelector } from "../../../redux/features/verification/verificationSelector";
 import { checkInternetStatus } from "../../../utils/misc";
-import { updateInternetConnectionStatus } from "../../../redux/features/application-state/applicationSlice";
+import { updateInternetConnectionStatus } from "../../../redux/features/application/applicationSlice";
 import { VpVerification } from "./VpVerification";
 import { VerifiableCredentialTypes } from "../../../utils/config";
+import Select from "react-select";
 
 const Scan = () => {
   const dispatch = useAppDispatch();
@@ -63,25 +67,25 @@ const display = (tab: String) => {
 };
 const ScanQrCode = () => {
   const method = useVerificationFlowSelector((state) => state.method);
+  const dispatch = useAppDispatch();
   console.log({ method });
   return (
     <div className="flex flex-col pt-0 pb-[100px] lg:py-[42px] px-0 lg:px-[104px] text-center content-center justify-center">
       <div className="xs:col-end-13">
         {method === "VP_VERIFICATION" && (
           <div className="grid text-center content-center justify-center">
-            <select
+            <Select
+              options={VerifiableCredentialTypes}
+              isMulti
               id="CredentialTypeSelector"
-              defaultValue="Select Credential Type"
-              className="w-[300px] border border-gray-300 rounded-md p-2"
-              onChange={(e) => console.log(e.target.value)}
-            >
-              <option value="Select Credential Type" disabled>
-                Select Credential Type
-              </option>
-              {VerifiableCredentialTypes.map((type) => (
-                <option value={type}>{type}</option>
-              ))}
-            </select>
+              placeholder="Select Credential Type"
+              className="w-[300px] rounded-md"
+              onChange={async(selected: any) => {
+                let types: string[] = [];
+                await selected.map((eachType: any) => types.push(eachType.value));
+                dispatch(setSelectedVcTypes({ selectedCredentialTypes: types }));
+              }}
+            />
           </div>
         )}
         <div

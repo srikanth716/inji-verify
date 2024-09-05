@@ -11,8 +11,9 @@ const DisplayActiveStep = () => {
     switch (activeScreen) {
         case VerificationSteps[method].QrCodePrompt:
             return (<ScanQrCode/>);
-        case VerificationSteps[method].ActivateCamera:
         case VerificationSteps[method].Verifying:
+        case VerificationSteps[method].ActivateCamera:
+        case VerificationSteps[method].DisplayQrCode:
             return (<Verification/>);
         case VerificationSteps[method].DisplayResult:
             return (<Result/>);

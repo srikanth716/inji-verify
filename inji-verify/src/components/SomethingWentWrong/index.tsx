@@ -1,7 +1,7 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAppDispatch } from "../../redux/hooks";
-import { updateInternetConnectionStatus } from "../../redux/features/application-state/applicationSlice";
+import { updateInternetConnectionStatus } from "../../redux/features/application/applicationSlice";
 import Button from "../commons/Button";
 
 function SomethingWentWrong(props: any) {

@@ -65,7 +65,8 @@ export type VerificationState = {
   verificationResult?: VerificationResult;
   alert?: AlertInfo;
   ovp?: OvpFlowData;
-  nonce?: String;
+  selectedCredentialTypes?: string[];
+  qrCodeData?: string | null;
 };
 
 export type QrReadResult = {
@@ -84,4 +85,15 @@ export type VerificationTrigger = {};
 export type VerificationResult = {
   vc?: any;
   vcStatus?: VcStatus;
+};
+
+export type HTTP_METHOD = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+
+type Api_Params = {
+  method: HTTP_METHOD; // Define the HTTP methods
+  buildURL: (param?: string) => `/${string}`; // Define the buildURL function signature
+};
+
+export type ApiUrls = {
+  getQrCode: Api_Params;
 };
