@@ -1,9 +1,11 @@
 package io.inji.verify.config;
 
-import com.nimbusds.jose.shaded.gson.Gson;
-import io.mosip.vercred.vcverifier.CredentialsVerifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+
+import com.nimbusds.jose.shaded.gson.Gson;
+
+import io.mosip.vercred.vcverifier.CredentialsVerifier;
 
 @Configuration
 public class AppConfig {
@@ -13,7 +15,7 @@ public class AppConfig {
     }
 
     @Bean
-    public Gson gson() {
+    public Gson Gson() {
         return new Gson();
     }
 }

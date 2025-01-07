@@ -1,15 +1,12 @@
 package io.inji.verify.dto.presentation;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
-@NoArgsConstructor
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 @AllArgsConstructor
-@Builder
+@Getter
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class SubmissionRequirementDto {
     String name;

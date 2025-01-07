@@ -1,18 +1,16 @@
 package io.inji.verify.dto.presentation;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.jose.shaded.gson.annotations.SerializedName;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import java.util.List;
 
-@Data
-@NoArgsConstructor
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 @AllArgsConstructor
-@Builder
+@Getter
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class VPDefinitionResponseDto {
     String id;

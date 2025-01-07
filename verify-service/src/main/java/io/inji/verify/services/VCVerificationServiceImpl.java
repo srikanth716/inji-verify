@@ -1,5 +1,8 @@
 package io.inji.verify.services;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
 import io.inji.verify.dto.verification.VCVerificationStatusDto;
 import io.inji.verify.enums.VerificationStatus;
 import io.inji.verify.spi.VCVerificationService;
@@ -7,10 +10,10 @@ import io.mosip.vercred.vcverifier.CredentialsVerifier;
 import io.mosip.vercred.vcverifier.constants.CredentialFormat;
 import io.mosip.vercred.vcverifier.constants.CredentialValidatorConstants;
 import io.mosip.vercred.vcverifier.data.VerificationResult;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 public class VCVerificationServiceImpl implements VCVerificationService {
     @Autowired
     CredentialsVerifier credentialsVerifier;
@@ -18,6 +21,7 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     @Override
     public VCVerificationStatusDto verify(String vc) {
         VerificationResult verificationResult = credentialsVerifier.verify(vc, CredentialFormat.LDP_VC);
+        log.info("VC verification result:: " + verificationResult);
         if (verificationResult.getVerificationStatus()) {
             if (verificationResult.getVerificationErrorCode().equals(CredentialValidatorConstants.ERROR_CODE_VC_EXPIRED))
                 return new VCVerificationStatusDto(VerificationStatus.EXPIRED);

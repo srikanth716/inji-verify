@@ -3,15 +3,12 @@ package io.inji.verify.dto.submission;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.jose.shaded.gson.annotations.SerializedName;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
-@NoArgsConstructor
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 @AllArgsConstructor
-@Builder
+@Getter
 public class DescriptorMapDto {
     String id;
     String format;
