@@ -5,16 +5,16 @@ import java.time.Instant;
 import org.springframework.cache.annotation.Cacheable;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-
 import io.inji.verify.dto.presentation.VPDefinitionResponseDto;
 import io.inji.verify.shared.Constants;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.time.Instant;
+
 @Getter
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Cacheable
 public class AuthorizationRequestResponseDto {
 
     private final String responseType = Constants.RESPONSE_TYPE;

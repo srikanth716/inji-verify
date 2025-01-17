@@ -12,4 +12,4 @@ public class VPResultDto {
     String transactionId;
     boolean verified;
     JSONObject claims;
-}
+}   

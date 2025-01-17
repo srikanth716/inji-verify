@@ -1,15 +1,7 @@
 package io.inji.verify.models;
 
-import java.io.Serializable;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
-import jakarta.persistence.Cacheable;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,7 +13,7 @@ import lombok.Setter;
 @Entity
 @AllArgsConstructor
 @NoArgsConstructor(force = true)
-@Cacheable
+@Table(name = "AuthorizationRequestCreateResponse")
 public class AuthorizationRequestCreateResponse implements Serializable {
     @Id
     private final String requestId;
