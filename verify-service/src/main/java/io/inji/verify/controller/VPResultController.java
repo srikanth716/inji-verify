@@ -1,9 +1,13 @@
 package io.inji.verify.controller;
 
+import java.util.Optional;
+
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.dto.submission.VPTokenResultDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.VPSubmissionNotFoundException;
+import io.inji.verify.exception.VPSubmissionWalletError;
+import io.inji.verify.services.VCSubmissionService;
 import io.inji.verify.services.VerifiablePresentationRequestService;
 import io.inji.verify.services.VerifiablePresentationSubmissionService;
 import lombok.extern.slf4j.Slf4j;
@@ -19,11 +23,13 @@ import java.util.List;
 @Slf4j
 public class VPResultController {
     final VerifiablePresentationRequestService verifiablePresentationRequestService;
+    final VCSubmissionService vcSubmissionService;
 
     final VerifiablePresentationSubmissionService verifiablePresentationSubmissionService;
 
-    public VPResultController(VerifiablePresentationRequestService verifiablePresentationRequestService, VerifiablePresentationSubmissionService verifiablePresentationSubmissionService) {
+    public VPResultController(VerifiablePresentationRequestService verifiablePresentationRequestService, VCSubmissionService vcSubmissionService, VerifiablePresentationSubmissionService verifiablePresentationSubmissionService) {
         this.verifiablePresentationRequestService = verifiablePresentationRequestService;
+        this.vcSubmissionService = vcSubmissionService;
         this.verifiablePresentationSubmissionService = verifiablePresentationSubmissionService;
     }
 
@@ -33,13 +39,20 @@ public class VPResultController {
 
         if (!requestIds.isEmpty()) {
             try {
+                log.info("Fetching VP result for transactionId: {}", transactionId);
                 VPTokenResultDto result = verifiablePresentationSubmissionService.getVPResult(requestIds, transactionId);
                 return ResponseEntity.status(HttpStatus.OK).body(result);
             } catch (VPSubmissionNotFoundException e) {
                 log.error(e.getMessage());
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorDto(ErrorCode.NO_VP_SUBMISSION));
+            } catch (VPSubmissionWalletError e) {
+                log.error("Received wallet error for transactionId: {} - {} - {}", e.getErrorCode(), e.getErrorDescription(), transactionId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorDto(e.getErrorCode(), e.getErrorDescription()));
             }
+        } else {
+            return Optional.ofNullable(vcSubmissionService.getVcWithVerification(transactionId))
+                    .map(vc -> ResponseEntity.status(HttpStatus.OK).body((Object) vc))
+                    .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorDto(ErrorCode.INVALID_TRANSACTION_ID)));
         }
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorDto(ErrorCode.INVALID_TRANSACTION_ID));
     }
 }

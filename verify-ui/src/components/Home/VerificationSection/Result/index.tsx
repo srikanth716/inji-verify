@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ResultSummary from "./ResultSummary";
 import { useVerificationFlowSelector } from "../../../../redux/features/verification/verification.selector";
 import DisplayVcDetailsModal from "./DisplayVcDetailsModal";
@@ -6,18 +6,71 @@ import DisplayVcDetailView from "./DisplayVcDetailView";
 import { Button } from "../commons/Button";
 import { useTranslation } from "react-i18next";
 import { useAppDispatch } from "../../../../redux/hooks";
-import { acceptedFileTypes, handleFileUpload } from "../../../../utils/fileUploadUtils";
+import {
+  goToHomeScreen,
+  qrReadInit,
+} from "../../../../redux/features/verification/verification.slice";
+import { decodeSdJwtToken } from "../../../../utils/decodeSdJwt";
+import { AnyVc, LdpVc, SdJwtVc } from "../../../../types/data-types";
+import { resetVpRequest } from "../../../../redux/features/verify/vpVerificationState";
+import { DisplayTimeout } from "../../../../utils/config";
 
 const Result = () => {
   const { vc, vcStatus } = useVerificationFlowSelector((state) => state.verificationResult ?? { vc: null, vcStatus: null });
+  const { method } = useVerificationFlowSelector((state) => ({ method: state.method }));
   const [isModalOpen, setModalOpen] = useState(false);
-  const credentialType: string = vc.type[1];
-  const {t} = useTranslation();
+  const [claims, setClaims] = useState<AnyVc | null>(null);
+  const [credentialType, setCredentialType] = useState<string>("");
+  const { t } = useTranslation();
   const dispatch = useAppDispatch();
-  const handleUploadQrCode = () => {
-    document.getElementById("verify-another-qrcode")?.click();
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const handleVerifyAnotherQrCode = () => {
+    if (method === "SCAN") {
+      dispatch(qrReadInit({ method: "SCAN" }));
+    } else {
+      dispatch(goToHomeScreen({}));
+      setTimeout(() => {
+        document.getElementById("upload-qr")?.click();
+      }, 50);
+    }
   };
-  // validate vc and show success/failure component
+  
+  useEffect(() => {
+    const fetchDecodedClaims = async () => {
+      if (typeof vc === "string") {
+        const claims = await decodeSdJwtToken(vc);
+        setClaims(claims as SdJwtVc);
+        setCredentialType(claims.regularClaims.vct);
+      } else {
+        setClaims(vc as LdpVc);
+        const typeEntry = vc.type[1];
+        if (typeof typeEntry === "string") {
+          setCredentialType(typeEntry);
+        } else if (typeof typeEntry === "object" && "_value" in typeEntry) {
+          setCredentialType(typeEntry._value);
+        }
+      }
+    };
+    fetchDecodedClaims();
+  }, [vc]);
+
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    clearTimer();
+    timerRef.current = setTimeout(() => {
+      dispatch(resetVpRequest());
+    }, DisplayTimeout);
+
+    return () => clearTimer();
+  }, [dispatch]);
+
   return (
     <div id="result-section" className="relative mb-[100px]">
       <div className={`text-whiteText`}>
@@ -25,35 +78,30 @@ const Result = () => {
       </div>
       <div>
         <div className={`h-[3px] border-b-2 border-b-transparent`} />
-        <DisplayVcDetailView
-          vc={vc}
-          onExpand={() => setModalOpen(true)}
-          className={`h-auto rounded-t-0 rounded-b-lg overflow-y-auto mt-[-30px]`}
-        />
+        {claims && (
+          <DisplayVcDetailView
+            vc={claims}
+            onExpand={() => setModalOpen(true)}
+            className={`h-auto rounded-t-0 rounded-b-lg overflow-y-auto mt-[-30px]`}
+          />
+        )}
         <div className="grid content-center justify-center">
           <Button
-            id="verify-another-qr-code-button"
             title={t("Common:Button.verifyAnotherQrCode")}
-            onClick={handleUploadQrCode}
+            onClick={handleVerifyAnotherQrCode}
             className="mx-auto mt-6 mb-20 lg:mb-6 lg:w-[339px]"
-          />
-          <input
-            type="file"
-            id="verify-another-qrcode"
-            name="upload-qr"
-            accept={acceptedFileTypes}
-            className="mx-auto my-2 hidden h-0"
-            onChange={(e) => handleFileUpload(e, dispatch)}
           />
         </div>
       </div>
-      <DisplayVcDetailsModal
-        isOpen={isModalOpen}
-        onClose={() => setModalOpen(false)}
-        vc={vc}
-        status={vcStatus}
-        vcType={credentialType}
-      />
+      {claims && (
+        <DisplayVcDetailsModal
+          isOpen={isModalOpen}
+          onClose={() => setModalOpen(false)}
+          vc={claims}
+          status={vcStatus}
+          vcType={credentialType}
+        />
+      )}
     </div>
   );
 };

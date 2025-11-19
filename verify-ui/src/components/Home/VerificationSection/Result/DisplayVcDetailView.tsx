@@ -1,31 +1,34 @@
 import React from "react";
-import {
-  convertToId,
-  convertToTitleCase,
-  getDisplayValue,
-  saveData,
-} from "../../../../utils/misc";
+import { saveData } from "../../../../utils/misc";
 import {
   DocumentIcon,
+  SharableLink,
   VectorDownload,
   VectorExpand,
 } from "../../../../utils/theme-utils";
 import ActionButton from "../commons/ActionButton";
 import { useTranslation } from "react-i18next";
 import { getDetailsOrder } from "../../../../utils/commonUtils";
-import { VC } from "../../../../types/data-types";
+import { isRTL } from "../../../../utils/i18n";
+import { AnyVc } from "../../../../types/data-types";
+import VcDetailsGrid from "./VcDetailsGrid";
 
 function DisplayVcDetailView({
   vc,
   onExpand,
   className,
 }: {
-  vc: VC;
+  vc: AnyVc;
   onExpand: any;
   className?: string;
 }) {
-  const { t } = useTranslation("Verify");
-  const orderedDetails = getDetailsOrder(vc);
+  const { t, i18n } = useTranslation("Verify");
+  
+  const orderedDetails = vc && getDetailsOrder(vc);
+  const isRtl = isRTL(i18n.language);
+  const positionLeft = "left-[250px] lg:left-[328px] lg:hover:left-[215px]";
+  const positionRight = "right-[250px] lg:right-[328px] lg:hover:right-[215px]";
+  const buttonPosition = isRtl ? positionRight : positionLeft;
 
   return (
     <div>
@@ -34,62 +37,27 @@ function DisplayVcDetailView({
       >
         {vc ? (
           <div className="relative">
-            <div className="grid relative">
-              {orderedDetails.map((label, index) => {
-                const faceIndex = orderedDetails.findIndex( (item) => item.key === "face" );
-                const isEven = (index - (faceIndex !== -1 ? 1 : 0)) % 2 === 0;
-                return label.key === "face" ? (
-                  <>
-                    <img
-                      src={label.value}
-                      alt="face"
-                      style={{
-                        width: 80,
-                        height: 80,
-                        borderRadius: 10,
-                        marginTop: 10,
-                      }}
-                    />
-                  </>
-                ) : (
-                  <div
-                    className={`py-2.5 px-1 xs:col-end-13 ${
-                      isEven
-                        ? "lg:col-start-1 lg:col-end-6"
-                        : "lg:col-start-8 lg:col-end-13"
-                    }`}
-                    key={label.key}
-                  >
-                    <p
-                      id={convertToId(label.key)}
-                      className="font-normal text-verySmallTextSize break-all text-[#666666]"
-                    >
-                      {convertToTitleCase(label.key)}
-                    </p>
-                    <p
-                      id={`${convertToId(label.key)}-value`}
-                      className="font-bold text-smallTextSize break-all"
-                    >
-                      {getDisplayValue(label.value)}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-
+            <VcDetailsGrid
+              orderedDetails={orderedDetails}
+              vc={vc}
+            />
             <div className="absolute inset-x-0 bottom-0 flex justify-end lg:justify-start px-4">
               <ActionButton
                 label={t("expand")}
                 onClick={onExpand}
                 icon={<VectorExpand />}
-                positionClasses="hidden lg:flex left-[250px] lg:left-[328px] lg:hover:left-[241px] bottom-[60px]"
+                positionClasses={`hidden lg:flex ${buttonPosition} bottom-[60px]`}
               />
               <ActionButton
                 label={t("download")}
                 onClick={() => saveData(vc)}
                 icon={<VectorDownload />}
-                positionClasses="left-[250px] lg:left-[328px] lg:hover:left-[241px] bottom-[10px]"
+                positionClasses={`${buttonPosition} bottom-[10px]`}
               />
+            </div>
+            <div className="flex gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-gray-700 mb-3 w-[240px] lg:w-[320px]">
+              <SharableLink />
+              <span className="text-verySmallTextSize">{t("IconToolTip")}</span>
             </div>
           </div>
         ) : (

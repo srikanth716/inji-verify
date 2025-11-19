@@ -13,6 +13,7 @@ import org.apache.log4j.Logger;
 import org.testng.TestNG;
 
 import io.mosip.testrig.apirig.injiverify.utils.InjiVerifyConfigManager;
+import io.mosip.testrig.apirig.injiverify.utils.InjiVerifyUtil;
 import io.mosip.testrig.apirig.testrunner.BaseTestCase;
 import io.mosip.testrig.apirig.testrunner.ExtractResource;
 import io.mosip.testrig.apirig.testrunner.HealthChecker;

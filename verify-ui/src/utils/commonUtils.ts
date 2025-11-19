@@ -1,42 +1,50 @@
-import { claim, credentialSubject, VCWrapper, QrData, VcStatus } from "../types/data-types";
-import { InsuranceCredentialRenderOrder, farmerLandCredentialRenderOrder, farmerCredentialRenderOrder, MosipVerifiableCredentialRenderOrder } from "./config";
+import { claim, credentialSubject, LdpVc, VcStatus } from "../types/data-types";
+import { EXCLUDE_KEYS_SD_JWT_VC, getVCRenderOrders } from "./config";
 
-export const getPresentationDefinition = (data: QrData) => {
-  const params = new URLSearchParams();
-  params.set("client_id", data.authorizationDetails.clientId);
-  params.set("response_type", data.authorizationDetails.responseType);
-  params.set("response_mode", "direct_post");
-  params.set("nonce", data.authorizationDetails.nonce);
-  params.set("state", data.requestId);
-  params.set(
-    "response_uri",
-    window.location.origin + window._env_.VERIFY_SERVICE_API_URL + data.authorizationDetails.responseUri
-  );
-  if (data.authorizationDetails.presentationDefinitionUri) {
-    params.set(
-      "presentation_definition_uri",
-      window.location.origin + window._env_.VERIFY_SERVICE_API_URL + data.authorizationDetails.presentationDefinitionUri
-    );
-  } else {
-    params.set(
-      "presentation_definition",
-      JSON.stringify(data.authorizationDetails.presentationDefinition)
-    );
+const getValue = (credentialElement: any): string | undefined => {
+  if (credentialElement === null || credentialElement === undefined) {
+    return undefined;
   }
-  params.set(
-    "client_metadata",
-    JSON.stringify({ client_name: window.location.origin, vp_formats: {} })
-  );
-  return params.toString();
+
+  if (typeof credentialElement === "boolean") {
+    return credentialElement ? "true" : "false";
+  }
+
+  if (Array.isArray(credentialElement)) {
+    const engEntry = credentialElement.find((el) => el.language === "eng");
+    return engEntry ? engEntry.value : getValue(credentialElement[1]);
+  }
+
+  if (typeof credentialElement === "object") {
+    if ("value" in credentialElement) {
+      return getValue(credentialElement.value);
+    }
+
+    for (const key of Object.keys(credentialElement)) {
+      const nestedValue = getValue(credentialElement[key]);
+      if (nestedValue !== undefined) return nestedValue;
+    }
+  }
+
+  return String(credentialElement);
 };
 
 export const getDetailsOrder = (vc: any) => {
-  const type = vc.type[1];
-  const credential = vc.credentialSubject;
+  if (!vc || (typeof vc === "object" && Object.keys(vc).length === 0)) {
+    return [];
+  }
+
+  const credential =
+    vc?.regularClaims && vc?.disclosedClaims
+      ? { ...vc.regularClaims, ...vc.disclosedClaims }
+      : vc?.credentialSubject ?? vc;
+
+  const type = vc?.regularClaims && vc?.disclosedClaims ? "SdJwtVC" : vc?.type?.[1];
+
   switch (type) {
     case "InsuranceCredential":
     case "LifeInsuranceCredential":
-      return InsuranceCredentialRenderOrder.map((key) => {
+      return getVCRenderOrders().InsuranceCredentialRenderOrder.map((key:any) => {
         if (key in credential) {
           return {
             key,
@@ -46,7 +54,7 @@ export const getDetailsOrder = (vc: any) => {
         return { key, value: "N/A" };
       });
     case "farmer":
-      return farmerLandCredentialRenderOrder.flatMap((key) => {
+      return getVCRenderOrders().farmerLandCredentialRenderOrder.flatMap((key: any) => {
         if (typeof key === "string") {
           return {
             key,
@@ -58,7 +66,7 @@ export const getDetailsOrder = (vc: any) => {
             farmKey in credential &&
             typeof credential[farmKey] === "object"
           ) {
-            return farmOrder.map((farmField) => ({
+            return (farmOrder as string[]).map((farmField: any) => ({
               key: farmField,
               value: credential[farmKey][farmField] || "N/A",
             }));
@@ -68,7 +76,7 @@ export const getDetailsOrder = (vc: any) => {
         return { key, value: "N/A" };
       });
     case "FarmerCredential":
-      return farmerCredentialRenderOrder.map((key) => {
+      return getVCRenderOrders().farmerCredentialRenderOrder.map((key:any) => {
         if (key in credential) {
           return { key, value: credential[key as keyof credentialSubject] || "N/A" };
         }
@@ -76,16 +84,39 @@ export const getDetailsOrder = (vc: any) => {
       });
     case "MOSIPVerifiableCredential":
     case "MockVerifiableCredential":
-      return MosipVerifiableCredentialRenderOrder.map((key) => {
+      return getVCRenderOrders().MosipVerifiableCredentialRenderOrder.map((key: any) => {
         if (key in credential) {
           
           if(typeof(credential[key])=="object"){
-            return { key, value: credential[key as keyof credentialSubject][0].value || "N/A" };
+            return { key, value: getValue(credential[key]) } ;
           }
           return { key, value: credential[key as keyof credentialSubject] || "N/A" };
         }
         return { key, value: "N/A" };
       });
+    case "IncomeTaxAccountCredential":
+      return getVCRenderOrders().IncomeTaxAccountCredentialRenderOrder.map(
+        (key: any) => {
+          if (key in credential) {
+            return {
+              key,
+              value: credential[key as keyof credentialSubject] || "N/A",
+            };
+          }
+          return { key, value: "N/A" };
+        }
+      );
+    case "SdJwtVC":
+      return Object.keys(credential)
+        .filter(
+          (key) =>
+            key !== "id" &&
+            credential[key] !== null &&
+            credential[key] !== undefined &&
+            credential[key] !== "" &&
+            !EXCLUDE_KEYS_SD_JWT_VC.includes(key.toLowerCase())
+        )
+        .map((key) => ({ key, value: getValue(credential[key]) }));
     default:
       return Object.keys(credential)
         .filter((key) =>
@@ -94,26 +125,60 @@ export const getDetailsOrder = (vc: any) => {
             credential[key] !== undefined &&
             credential[key] !== ""
         )
-        .map((key) => ({ key, value: credential[key] }));
+        .map((key) => ({ key, value: getValue(credential[key]) }));
   }
 };
 
 export const calculateVerifiedClaims = (
   selectedClaims: claim[],
-  verificationSubmissionResult: { vc: VCWrapper; vcStatus: VcStatus }[]
+  verificationSubmissionResult: { vc: LdpVc | object; vcStatus: VcStatus }[]
 ) => {
   return verificationSubmissionResult.filter((vc) =>
-    selectedClaims.some((claim) => claim.type === vc.vc.credentialConfigurationId)
+    selectedClaims.some((claim) => getCredentialType(vc.vc) === claim.type)
   );
 };
 
 export const calculateUnverifiedClaims = (
-  selectedClaims: claim[],
-  verificationSubmissionResult: { vc: VCWrapper; vcStatus: VcStatus }[]
-) => {
-  return selectedClaims.filter((claim) =>
-    !verificationSubmissionResult.some(
-      (vc) => vc.vc.credentialConfigurationId === claim.type
-    )
-  );
+  originalSelectedClaims: claim[],
+  verificationSubmissionResult: { vc: LdpVc | object; vcStatus: VcStatus }[]
+): claim[] => {
+  return originalSelectedClaims.filter((claim) => {
+    return !verificationSubmissionResult.some(
+      (vcResult) => getCredentialType(vcResult.vc) === claim.type
+    );
+  });
+};
+
+const extractType = (type: any): string | undefined => {
+  if (!type) return undefined;
+  if (typeof type === "string")
+    return type !== "VerifiableCredential" ? type : undefined;
+  if (typeof type === "object" && "_value" in type) {
+    return type._value !== "VerifiableCredential" ? type._value : undefined;
+  }
+  return String(type);
+};
+
+export const getCredentialType = (credential: any): string => {
+  const sdType = credential?.regularClaims?.type || credential?.regularClaims?.vct;
+  if (sdType) {
+    if (Array.isArray(sdType)) {
+      for (const type of sdType) {
+        const credentialType = extractType(type);
+        if (credentialType) return credentialType;
+      }
+    } else {
+      const credentialType = extractType(sdType);
+      if (credentialType) return credentialType;
+    }
+  }
+
+  if (Array.isArray(credential?.type)) {
+    for (const type of credential.type) {
+      const credentialType = extractType(type);
+      if (credentialType) return credentialType;
+    }
+  }
+
+  return "verifiableCredential";
 };
