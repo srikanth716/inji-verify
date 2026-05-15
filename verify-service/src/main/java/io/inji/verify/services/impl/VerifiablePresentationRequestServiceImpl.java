@@ -2,6 +2,7 @@ package io.inji.verify.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JOSEObjectType;
@@ -20,6 +21,7 @@ import io.inji.verify.dto.client.ClientMetadataDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.enums.VPRequestStatus;
+import io.inji.verify.exception.DcqlQueryMissingException;
 import io.inji.verify.exception.JWTCreationException;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.models.AuthorizationRequestCreateResponse;
@@ -39,12 +41,11 @@ import org.springframework.web.context.request.async.DeferredResult;
 import java.text.ParseException;
 import java.time.Instant;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.HashMap;
+import java.util.NoSuchElementException;
 import java.util.Date;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-
 import org.springframework.beans.factory.annotation.Value;
 import static io.inji.verify.shared.Constants.VP_FORMATS_SUPPORTED;
 
@@ -65,7 +66,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     @Value("${inji.did.verify.public.key.uri}")
     String verifyPublicKeyURI;
 
-    ConcurrentHashMap<String, DeferredResult<VPRequestStatusDto>> vpRequestStatusListeners = new ConcurrentHashMap<>();
+    HashMap<String, DeferredResult<VPRequestStatusDto>> vpRequestStatusListeners = new HashMap<>();
 
     public VerifiablePresentationRequestServiceImpl(AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository, VPSubmissionRepository vpSubmissionRepository, KeyManagementService<OctetKeyPair> keyManagementService) {
         this.authorizationRequestCreateResponseRepository = authorizationRequestCreateResponseRepository;
@@ -80,11 +81,19 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         String requestId = Utils.generateID(Constants.REQUEST_ID_PREFIX);
         long expiresAt = Instant.now().plusSeconds(Constants.DEFAULT_EXPIRY).toEpochMilli();
         String nonce = vpRequestCreate.getNonce() != null ? vpRequestCreate.getNonce() : SecurityUtils.generateNonce();
-        String responseUri = verifyServiceBaseUrl + Constants.VP_RESPONSE_SUBMISSION_URI;
+        String responseUri = verifyServiceBaseUrl + Constants.RESPONSE_SUBMISSION_URI_ROOT + Constants.RESPONSE_SUBMISSION_URI;
         boolean acceptVPWithoutHolderProof = vpRequestCreate.isAcceptVPWithoutHolderProof();
         boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
+        JsonNode dcqlQuery = vpRequestCreate.getDcqlQuery();
 
-        AuthorizationRequestResponseDto authorizationRequestResponseDto = new AuthorizationRequestResponseDto(vpRequestCreate.getClientId(), vpRequestCreate.getPresentationDefinition(), nonce, responseUri, acceptVPWithoutHolderProof, responseCodeValidationRequired);
+        AuthorizationRequestResponseDto authorizationRequestResponseDto = new AuthorizationRequestResponseDto(
+                vpRequestCreate.getClientId(),
+                dcqlQuery,
+                nonce,
+                responseUri,
+                acceptVPWithoutHolderProof,
+                responseCodeValidationRequired
+        );
 
         AuthorizationRequestCreateResponse authorizationRequestCreateResponse = new AuthorizationRequestCreateResponse(requestId, transactionId, authorizationRequestResponseDto, expiresAt);
         authorizationRequestCreateResponseRepository.save(authorizationRequestCreateResponse);
@@ -162,17 +171,6 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                     }
 
                     result.onTimeout(() -> result.setResult(getCurrentRequestStatus(requestId)));
-                    // cleanup on timeout
-                    result.onTimeout(() -> {
-                        vpRequestStatusListeners.remove(requestId);
-                        result.setResult(getCurrentRequestStatus(requestId));
-                    });
-
-                    // cleanup on completion
-                    result.onCompletion(() ->
-                            vpRequestStatusListeners.remove(requestId)
-                    );
-                    
                     registerVpRequestStatusListener(requestId, result);
                     return result;
                 })
@@ -188,9 +186,16 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         return authorizationRequestCreateResponseRepository
                 .findById(requestId)
                 .map(authorizationRequestCreateResponse -> {
-                    String verifierDid = authorizationRequestCreateResponse.getAuthorizationDetails().getClientId();
+                    AuthorizationRequestResponseDto details = authorizationRequestCreateResponse.getAuthorizationDetails();
+                    if (details == null
+                            || details.getDcqlQuery() == null
+                            || details.getDcqlQuery().isNull()) {
+                        throw new DcqlQueryMissingException(
+                                "dcql_query is required to issue an authorization request JWT for requestId=" + requestId);
+                    }
+                    String verifierDid = details.getClientId();
                     String state = authorizationRequestCreateResponse.getRequestId();
-                    return createAndSignAuthorizationRequestJwt(verifierDid, authorizationRequestCreateResponse.getAuthorizationDetails(), state);
+                    return createAndSignAuthorizationRequestJwt(verifierDid, details, state);
                 })
                 .orElseThrow(VPRequestNotFoundException::new);
     }
@@ -199,7 +204,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
         try {
 
-            JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+            JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                     .issuer(verifierDid)
                     .issueTime(Date.from(Instant.now()))
                     .claim("client_id", verifierDid)
@@ -208,13 +213,22 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                     .claim("response_mode", Constants.RESPONSE_MODE)
                     .claim("nonce", authorizationRequest.getNonce())
                     .claim("state", state)
-                    .claim("response_uri", authorizationRequest.getResponseUri())
-                    .claim("client_metadata", new ClientMetadataDto(verifierDid,VP_FORMATS_SUPPORTED))
-                    .build();
-            if (authorizationRequest.getPresentationDefinition() != null) {
-                String presentationDefinitionJson = new ObjectMapper().writeValueAsString(authorizationRequest.getPresentationDefinition());
+                    .claim("response_uri", authorizationRequest.getResponseUri());
+
+            if (verifierDid != null && verifierDid.startsWith("decentralized_identifier:")) {
+                claimsBuilder.claim(
+                        "client_metadata",
+                        new ClientMetadataDto(verifierDid, VP_FORMATS_SUPPORTED)
+                );
+            }
+
+            JWTClaimsSet claimsSet = claimsBuilder.build();
+
+            // DCQL-only: never emit presentation_definition / presentation_definition_uri claims (spec).
+            if (authorizationRequest.getDcqlQuery() != null) {
+                String dcqlQueryJson = new ObjectMapper().writeValueAsString(authorizationRequest.getDcqlQuery());
                 claimsSet = new JWTClaimsSet.Builder(claimsSet)
-                        .claim("presentation_definition", JSONObjectUtils.parse(presentationDefinitionJson))
+                        .claim("dcql_query", JSONObjectUtils.parse(dcqlQueryJson))
                         .build();
             }
 

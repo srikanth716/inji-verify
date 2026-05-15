@@ -6,6 +6,7 @@ import {
 import { vcSubmissionBody, VCVerificationV2Request, VCVerificationV2Response} from "../components/qrcode-verification/QRCodeVerification.types";
 import { QrData } from "../types/OVPSchemeQrData";
 import { isCWT } from "./cborUtils";
+import { buildDcqlQueryFromPresentationDefinition } from "./dcqlQuery";
 
 const generateNonce = (): string => {
   return btoa(Date.now().toString());
@@ -79,19 +80,17 @@ export const vcSubmission = async (
 export const vpRequest = async (
   url: string,
   clientId: string,
+  presentationDefinition: PresentationDefinition,
   txnId?: string,
-  presentationDefinition?: PresentationDefinition,
   acceptVPWithoutHolderProof?: boolean
 ) => {
   const requestBody: VPRequestBody = {
     clientId: clientId,
     nonce: generateNonce(),
-    presentationDefinition: presentationDefinition!,
-    acceptVPWithoutHolderProof: acceptVPWithoutHolderProof
+    dcqlQuery: buildDcqlQueryFromPresentationDefinition(presentationDefinition),
   };
 
   if (txnId) requestBody.transactionId = txnId;
-
   const requestOptions = {
     method: "POST",
     headers: {
@@ -143,22 +142,23 @@ const isAppError = (error: unknown): error is AppError => (
 
 export const vpSessionRequest = async (
   url: string,
+  presentationDefinition: PresentationDefinition,
   clientId: string,
   txnId?: string,
-  presentationDefinition?: PresentationDefinition,
   acceptVPWithoutHolderProof?: boolean,
   responseCodeValidationRequired?: boolean
 ) => {
   const requestBody: VPRequestBody = {
     clientId: clientId,
     nonce: generateNonce(),
-    presentationDefinition :presentationDefinition!,
-    acceptVPWithoutHolderProof: acceptVPWithoutHolderProof,
+    dcqlQuery: buildDcqlQueryFromPresentationDefinition(presentationDefinition),
   };
-
   if (txnId) requestBody.transactionId = txnId;
   if (responseCodeValidationRequired) {
     requestBody.responseCodeValidationRequired = true;
+  }
+  if (acceptVPWithoutHolderProof) {
+    requestBody.acceptVPWithoutHolderProof = true;
   }
 
   try {

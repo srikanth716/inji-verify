@@ -28,8 +28,8 @@ export interface VPRequestBody {
   clientId: string;
   nonce: string;
   transactionId?: string;
-  presentationDefinition: PresentationDefinition;
   acceptVPWithoutHolderProof?: boolean;
+  dcqlQuery: unknown;
   /**
    * When true, the verifier backend will generate a short-lived single-use `response_code`
    * and return it via redirect for same-device web-wallet flows.
@@ -61,7 +61,17 @@ interface InputDescriptor {
       proof_type: string[];
     };
   };
-  constraints?: {};
+  constraints: {
+    fields: [
+      {
+        path: string[];
+        filter: {
+          type: string;
+          pattern: string;
+        };
+      }
+    ]
+  };
 }
 
 export interface PresentationDefinition {
@@ -77,9 +87,10 @@ export interface PresentationDefinition {
 
 export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
   /**
-   * The presentation definition object used for verification.
+   * Presentation Exchange definition used to build a DCQL query for OpenID4VP 1.0.
    */
   presentationDefinition: PresentationDefinition;
+
   /**
    React element that triggers the verification process (e.g., a button).
    If not provided, the component may automatically start the process.
