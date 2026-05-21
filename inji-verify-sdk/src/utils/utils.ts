@@ -65,18 +65,15 @@ export const summariseVCResult = (
 
     if (response.statusCheck?.length) {
         for (const status of response.statusCheck) {
-            if (status.error) {
-                throw new Error(
-                    status.error.errorMessage || "Status check error occurred"
-                );
+            if (status.purpose === "revocation") {
+                if (status.error) {
+                    return "INVALID";
+                }
+                const isRevoked =
+                    status.valid === false &&
+                    status.error == null;
+                if (isRevoked) return "REVOKED";
             }
-
-            const isRevoked =
-                status.purpose === "revocation" &&
-                !status.valid &&
-                status.error == null;
-
-            if (isRevoked) return "REVOKED";
         }
     }
 
