@@ -128,14 +128,14 @@ describe("VpVerification Component", () => {
             type: "vpVerification/verificationSubmissionComplete"}));
     });
 
-    const defaultDcqlQuery = {
-        id: "test-dcql-query",
+    const defaultPresentationDefinition = {
+        id: "c4822b58-7fb4-454e-b827-f8758fe27f9a",
         purpose: "Test verification",
-        input_descriptors: [],
+        input_descriptors: [] as { id: string }[],
     };
 
     const mockState = (overrides: Record<string, unknown> = {}) => {
-        const { dcqlQuery: dcqlQueryOverride, ...restOverrides } = overrides;
+        const { presentationDefinition: presentationDefinitionOverride, ...restOverrides } = overrides;
         (useVerifyFlowSelector as any).mockImplementation((selector: any) =>
             selector({
                 isLoading: false,
@@ -144,7 +144,7 @@ describe("VpVerification Component", () => {
                 originalSelectedCredentials: [],
                 verificationSubmissionResult: [],
                 unVerifiedCredentials: [],
-                dcqlQuery: dcqlQueryOverride ?? defaultDcqlQuery,
+                presentationDefinition: presentationDefinitionOverride ?? defaultPresentationDefinition,
                 activeScreen: 1,
                 isShowResult: false,
                 flowType: "crossDevice",
