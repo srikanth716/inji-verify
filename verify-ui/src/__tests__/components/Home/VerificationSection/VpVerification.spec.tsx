@@ -128,7 +128,14 @@ describe("VpVerification Component", () => {
             type: "vpVerification/verificationSubmissionComplete"}));
     });
 
-    const mockState = (overrides = {}) => {
+    const defaultDcqlQuery = {
+        id: "test-dcql-query",
+        purpose: "Test verification",
+        input_descriptors: [],
+    };
+
+    const mockState = (overrides: Record<string, unknown> = {}) => {
+        const { dcqlQuery: dcqlQueryOverride, ...restOverrides } = overrides;
         (useVerifyFlowSelector as any).mockImplementation((selector: any) =>
             selector({
                 isLoading: false,
@@ -137,14 +144,14 @@ describe("VpVerification Component", () => {
                 originalSelectedCredentials: [],
                 verificationSubmissionResult: [],
                 unVerifiedCredentials: [],
-                dcqlQuery: { input_descriptors: [] },
+                dcqlQuery: dcqlQueryOverride ?? defaultDcqlQuery,
                 activeScreen: 1,
                 isShowResult: false,
                 flowType: "crossDevice",
                 SelectWalletPanel: false,
                 selectedWalletBaseUrl: undefined,
                 sdkInstanceKey: "key",
-                ...overrides,
+                ...restOverrides,
             })
         );
     };
