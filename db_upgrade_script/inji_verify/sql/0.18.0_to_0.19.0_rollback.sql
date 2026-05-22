@@ -14,5 +14,18 @@
 -- SECTION 1: Update vp_submission table
 -- -------------------------------------------------------------------------------------------------
 -- Drop primary key constraint on request_id column
-ALTER TABLE vp_submission
-DROP CONSTRAINT IF EXISTS pk_vp_submission_request_id;  
+ALTER TABLE verify.vp_submission
+DROP CONSTRAINT IF EXISTS pk_vp_submission_request_id;
+
+-- -------------------------------------------------------------------------------------------------
+-- SECTION 2: Restore presentation_definition table
+-- -------------------------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS verify.presentation_definition(
+    id character varying(36) NOT NULL,
+    input_descriptors jsonb NOT NULL,
+    name character varying(500),
+    purpose character varying(500),
+    vp_format text,
+    submission_requirements text,
+    CONSTRAINT presentation_definition_pkey PRIMARY KEY (id)
+);

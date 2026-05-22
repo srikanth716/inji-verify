@@ -35,8 +35,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   triggerElement,
   verifyServiceUrl,
   protocol,
-  presentationDefinitionId,
-  presentationDefinition,
+  dcqlQuery,
   transactionId,
   onVPReceived,
   onVPProcessed,
@@ -102,7 +101,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     clearSessionData();
   }, []);
 
-  const getPresentationDefinitionParams = useCallback(
+  const getDcqlQueryParams = useCallback(
     (data: QrData) => {
       const params = new URLSearchParams();
       params.set("client_id", clientId);
@@ -114,15 +113,10 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         params.set("response_type", data.authorizationDetails.responseType);
         params.set("nonce", data.authorizationDetails.nonce);
         params.set("response_uri", data.authorizationDetails.responseUri);
-        if (data.authorizationDetails.presentationDefinitionUri) {
+        if (data.authorizationDetails.dcqlQuery) {
           params.set(
-            "presentation_definition_uri",
-            data.authorizationDetails.presentationDefinitionUri
-          );
-        } else {
-          params.set(
-            "presentation_definition",
-            JSON.stringify(data.authorizationDetails.presentationDefinition)
+            "dcql_query",
+            JSON.stringify(data.authorizationDetails.dcqlQuery)
           );
         }
         if(clientId.startsWith("decentralized_identifier:")) {
@@ -255,8 +249,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         verifyServiceUrl,
         clientId,
         transactionId ?? undefined,
-        presentationDefinitionId,
-        presentationDefinition,
+        dcqlQuery,
         acceptVPWithoutHolderProof,
         responseCodeValidationRequired,
       );
@@ -269,7 +262,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
       if (isCrossDeviceFlow) {
         fetchVPStatus(data.requestId);
       }
-      return getPresentationDefinitionParams(data);
+      return getDcqlQueryParams(data);
     } catch (error) {
       onError(error as AppError);
       resetState();
@@ -277,9 +270,8 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   }, [
     verifyServiceUrl,
     transactionId,
-    presentationDefinitionId,
-    presentationDefinition,
-    getPresentationDefinitionParams,
+    dcqlQuery,
+    getDcqlQueryParams,
     onError,
     clientId
   ]);
@@ -362,15 +354,8 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!presentationDefinitionId && !presentationDefinition) {
-      throw new Error(
-        "Either presentationDefinitionId or presentationDefinition must be provided, but not both"
-      );
-    }
-    if (presentationDefinitionId && presentationDefinition) {
-      throw new Error(
-        "Both presentationDefinitionId and presentationDefinition cannot be provided simultaneously"
-      );
+    if (!dcqlQuery) {
+      throw new Error("dcqlQuery must be provided");
     }
     if (!onVPReceived && !onVPProcessed) {
       throw new Error(
@@ -394,8 +379,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     onQrCodeExpired,
     onVPProcessed,
     onVPReceived,
-    presentationDefinition,
-    presentationDefinitionId,
+    dcqlQuery,
     triggerElement,
   ]);
 

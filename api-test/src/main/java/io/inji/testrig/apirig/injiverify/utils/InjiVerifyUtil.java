@@ -89,9 +89,14 @@ public class InjiVerifyUtil extends AdminTestUtil {
 			return jsonString;
 		}
 
+		if (jsonString.contains("$DCQLQUERYID$")) {
+			jsonString = replaceKeywordWithValue(jsonString, "$DCQLQUERYID$",
+					InjiVerifyConfigManager.getproperty(InjiVerifyConstants.DCQL_QUERY_ID));
+		}
+
 		if (jsonString.contains("$PRESENTATIONDEFINITIONID$")) {
 			jsonString = replaceKeywordWithValue(jsonString, "$PRESENTATIONDEFINITIONID$",
-					InjiVerifyConfigManager.getproperty(InjiVerifyConstants.PRESENTATION_DEFINITION_ID));
+					InjiVerifyConfigManager.getproperty(InjiVerifyConstants.DCQL_QUERY_ID));
 		}
 
 		if (jsonString.contains("$INJIVERIFYBASEURL$")) {

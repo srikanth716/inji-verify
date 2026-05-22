@@ -3,16 +3,14 @@ package io.inji.verify.services;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
-import io.inji.verify.exception.PresentationDefinitionNotFoundException;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.models.AuthorizationRequestCreateResponse;
-import jakarta.validation.constraints.NotNull;
 import org.springframework.web.context.request.async.DeferredResult;
 
 import java.util.List;
 
 public interface VerifiablePresentationRequestService {
-    VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate) throws PresentationDefinitionNotFoundException;
+    VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate);
 
     VPRequestStatusDto getCurrentRequestStatus(String requestId);
 
@@ -20,9 +18,9 @@ public interface VerifiablePresentationRequestService {
 
     AuthorizationRequestCreateResponse getLatestAuthorizationRequestFor(String transactionId);
 
-    void invokeVpRequestStatusListener(@NotNull String state);
+    void invokeVpRequestStatusListener(String requestId);
 
-    DeferredResult<VPRequestStatusDto> getStatus(@NotNull String requestId);
+    DeferredResult<VPRequestStatusDto> getStatus(String requestId);
 
     String getVPRequestJwt(String requestId) throws VPRequestNotFoundException;
 }

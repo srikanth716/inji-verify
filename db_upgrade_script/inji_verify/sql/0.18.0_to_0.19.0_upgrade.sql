@@ -13,6 +13,11 @@
 -- SECTION 1: Update vp_submission table
 -- -------------------------------------------------------------------------------------------------
 -- Add primary key constraint on request_id column
-ALTER TABLE vp_submission
+ALTER TABLE verify.vp_submission
 ADD CONSTRAINT pk_vp_submission_request_id
 PRIMARY KEY (request_id);
+
+-- -------------------------------------------------------------------------------------------------
+-- SECTION 2: Remove presentation_definition table
+-- -------------------------------------------------------------------------------------------------
+DROP TABLE IF EXISTS verify.presentation_definition;

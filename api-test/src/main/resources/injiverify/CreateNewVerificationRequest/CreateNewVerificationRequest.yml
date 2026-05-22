@@ -55,9 +55,9 @@ CreateNewVerificationRequest:
     "id": "$PRESENTATIONDEFINITIONID$"
 }'
 
-  Injiverify_CreateNewVerificationRequest_Random_PresentationDefinitionId_Neg:
+  Injiverify_CreateNewVerificationRequest_Random_DcqlQueryId_Neg:
       endPoint: /v1/verify/vp-request
-      description: Creating a new verification request with random value for presentation definition id
+      description: Creating a new verification request with random value for dcql query id
       uniqueIdentifier: TC_InjiVerify_CreateNewVerificationRequest_04
       role: noauth
       restMethod: post
@@ -108,9 +108,9 @@ CreateNewVerificationRequest:
       "responseCode": "400"
 }'
 
-  Injiverify_CreateNewVerificationRequest_Empty_PresentationDefinitionId_Neg:
+  Injiverify_CreateNewVerificationRequest_Empty_DcqlQuery_Neg:
       endPoint: /v1/verify/vp-request
-      description: Creating a new verification request with empty presentation definition id
+      description: Creating a new verification request with empty dcql query
       uniqueIdentifier: TC_InjiVerify_CreateNewVerificationRequest_07
       role: noauth
       restMethod: post
@@ -125,9 +125,9 @@ CreateNewVerificationRequest:
       "responseCode": "400"
 }'
 
-  Injiverify_CreateNewVerificationRequest_Without_PresentationDefinitionId_Neg:
+  Injiverify_CreateNewVerificationRequest_Without_DcqlQuery_Neg:
       endPoint: /v1/verify/vp-request
-      description: Creating a new verification request without presentation definition id
+      description: Creating a new verification request without dcql query
       uniqueIdentifier: TC_InjiVerify_CreateNewVerificationRequest_08
       role: noauth
       restMethod: post

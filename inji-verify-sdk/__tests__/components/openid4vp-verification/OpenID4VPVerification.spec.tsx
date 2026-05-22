@@ -23,8 +23,7 @@ const mockFetchError = (message = "Failed to fetch") => {
 describe("OpenID4VPVerification UI Tests", () => {
   const verifyServiceUrl = "https://example.com/verify";
   const protocol = "testopenid4vp://";
-  const presentationDefinitionId = "pd-id-123";
-  const presentationDefinition = { input_descriptors: [{ id: "id-1" }] };
+  const dcqlQuery = { purpose: "test", input_descriptors: [{ id: "id-1" }] };
   const onVPReceived = jest.fn();
   const onVPProcessed = jest.fn();
   const onQrCodeExpired = jest.fn();
@@ -85,7 +84,7 @@ describe("OpenID4VPVerification UI Tests", () => {
 
   it("should render the trigger element", () => {
     renderComponent({
-      presentationDefinitionId,
+      dcqlQuery,
       onVPReceived,
       onQrCodeExpired,
       onError,
@@ -115,7 +114,7 @@ describe("OpenID4VPVerification UI Tests", () => {
     global.fetch = fetchMock;
 
     renderComponent({
-      presentationDefinitionId,
+      dcqlQuery,
       onVPReceived,
       onQrCodeExpired,
       onError,
@@ -137,7 +136,7 @@ describe("OpenID4VPVerification UI Tests", () => {
     mockFetchError("Failed to create request");
 
     renderComponent({
-      presentationDefinitionId,
+      dcqlQuery,
       onVPReceived,
       onQrCodeExpired,
       onError,
@@ -181,7 +180,7 @@ describe("OpenID4VPVerification UI Tests", () => {
     global.fetch = fetchMock;
 
     renderComponent({
-      presentationDefinitionId,
+      dcqlQuery,
       clientId: "test-client",
       isSameDeviceFlowEnabled: false,
       onVPReceived,
@@ -228,7 +227,7 @@ describe("OpenID4VPVerification UI Tests", () => {
     const onError = jest.fn();
 
     renderComponent({
-      presentationDefinitionId,
+      dcqlQuery,
       onVPReceived,
       onQrCodeExpired,
       onError,
@@ -278,7 +277,7 @@ describe("OpenID4VPVerification UI Tests", () => {
                     verifyServiceUrl="https://example.com/verify"
                     clientId="test-client"
                     protocol="testopenid4vp://"
-                    presentationDefinitionId="test-pd"
+                    dcqlQuery={{ input_descriptors: [{ id: "id-1" }], purpose: "test" }}
                     onVPReceived={jest.fn()}
                     onVPProcessed={jest.fn()}
                     onQrCodeExpired={jest.fn()}
@@ -295,7 +294,7 @@ describe("OpenID4VPVerification UI Tests", () => {
         });
     });
 
-    it("should handle VP result with presentationDefinition and summariseResults=true", async () => {
+    it("should handle VP result with dcqlQuery and summariseResults=true", async () => {
         const mockTransactionId = "mock-txn-id";
         const mockRequestId = "mock-req-id";
 
@@ -342,7 +341,7 @@ describe("OpenID4VPVerification UI Tests", () => {
                 verifyServiceUrl="https://example.com/verify"
                 clientId="test-client"
                 protocol="testopenid4vp://"
-                presentationDefinition={{
+                dcqlQuery={{
                     purpose: "test",
                     input_descriptors: [{ id: "email_input" }],
                 }}
@@ -387,10 +386,9 @@ describe("OpenID4VPVerification UI Tests", () => {
         );
     });
 
-  it("should generate QR code using presentationDefinitionUri", async () => {
+  it("should generate QR code using dcqlQuery", async () => {
     const mockTransactionId = "txn789";
     const mockRequestId = "req789";
-    const presentationDefinitionUri = "https://example.com/pd-uri.json";
   
     global.fetch = jest
       .fn()
@@ -412,7 +410,7 @@ describe("OpenID4VPVerification UI Tests", () => {
         verifyServiceUrl="https://example.com"
         clientId="test-client"
         protocol="testopenid4vp://"
-        presentationDefinition={presentationDefinition}
+        dcqlQuery={dcqlQuery}
         isSameDeviceFlowEnabled={false}
         onVPProcessed={onVPProcessed}
         onQrCodeExpired={jest.fn()}

@@ -137,7 +137,7 @@ describe("VpVerification Component", () => {
                 originalSelectedCredentials: [],
                 verificationSubmissionResult: [],
                 unVerifiedCredentials: [],
-                presentationDefinition: { input_descriptors: [] },
+                dcqlQuery: { input_descriptors: [] },
                 activeScreen: 1,
                 isShowResult: false,
                 flowType: "crossDevice",

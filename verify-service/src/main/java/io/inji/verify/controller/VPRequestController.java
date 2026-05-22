@@ -19,7 +19,6 @@ import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
-import io.inji.verify.exception.PresentationDefinitionNotFoundException;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.services.VerifiablePresentationRequestService;
 import jakarta.validation.Valid;
@@ -65,32 +64,27 @@ public class VPRequestController {
 
     @NotNull
     private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie) {
-        if (vpRequestCreate.getPresentationDefinitionId() == null && vpRequestCreate.getPresentationDefinition() == null){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(ErrorCode.BOTH_ID_AND_PD_CANNOT_BE_NULL));
+        if (vpRequestCreate.getDcqlQuery() == null || vpRequestCreate.getDcqlQuery().isNull()) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(ErrorCode.DCQL_QUERY_CANNOT_BE_NULL));
         }
-        try {
-            VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate);
+        VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate);
 
-            if (createCookie) {
-                String transactionId = authorizationRequestResponse.getTransactionId();
-                String cookieValue = Base64.getEncoder().encodeToString(transactionId.getBytes(StandardCharsets.UTF_8));
-                ResponseCookie cookie = ResponseCookie.from(COOKIE_NAME, cookieValue)
-                        .httpOnly(true)
-                        .secure(cookieIsSecure)
-                        .path(cookiePath)
-                        .sameSite(cookieSameSite)
-                        .maxAge(Duration.ofMinutes(cookieDurationInMinute))
-                        .build();
-                return ResponseEntity.status(HttpStatus.CREATED)
-                        .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                        .body(authorizationRequestResponse);
-            }
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(authorizationRequestResponse);
-        } catch (PresentationDefinitionNotFoundException e) {
-            log.error(e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorDto(ErrorCode.NO_PRESENTATION_DEFINITION));
+        if (createCookie) {
+            String transactionId = authorizationRequestResponse.getTransactionId();
+            String cookieValue = Base64.getEncoder().encodeToString(transactionId.getBytes(StandardCharsets.UTF_8));
+            ResponseCookie cookie = ResponseCookie.from(COOKIE_NAME, cookieValue)
+                    .httpOnly(true)
+                    .secure(cookieIsSecure)
+                    .path(cookiePath)
+                    .sameSite(cookieSameSite)
+                    .maxAge(Duration.ofMinutes(cookieDurationInMinute))
+                    .build();
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                    .body(authorizationRequestResponse);
         }
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(authorizationRequestResponse);
     }
 
     @GetMapping(path = "/vp-request/{requestId}/status")

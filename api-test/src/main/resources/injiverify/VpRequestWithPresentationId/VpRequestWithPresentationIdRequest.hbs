@@ -1,5 +1,19 @@
 {
   "clientId": "{{clientId}}",
   "nonce": "{{nonce}}",
-  "presentationDefinitionId": "{{presentationDefinitionId}}"
+  "dcqlQuery": {
+    "credentials": [
+      {
+        "id": "id card credential",
+        "format": {
+          "ldp_vc": {
+            "proof_type": ["Ed25519Signature2020"]
+          }
+        },
+        "meta": {
+          "type": ["InsuranceCredential"]
+        }
+      }
+    ]
+  }
 }

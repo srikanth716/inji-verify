@@ -1,6 +1,6 @@
 import {
     AppError,
-    PresentationDefinition,
+    DcqlQuery,
     VPRequestBody, VPVerificationRequest,
 } from "../components/openid4vp-verification/OpenID4VPVerification.types";
 import { vcSubmissionBody, VCVerificationV2Request, VCVerificationV2Response} from "../components/qrcode-verification/QRCodeVerification.types";
@@ -80,8 +80,7 @@ export const vpRequest = async (
   url: string,
   clientId: string,
   txnId?: string,
-  presentationDefinitionId?: string,
-  presentationDefinition?: PresentationDefinition,
+  dcqlQuery?: DcqlQuery,
   acceptVPWithoutHolderProof?: boolean
 ) => {
   const requestBody: VPRequestBody = {
@@ -91,10 +90,7 @@ export const vpRequest = async (
   };
 
   if (txnId) requestBody.transactionId = txnId;
-  if (presentationDefinitionId)
-    requestBody.presentationDefinitionId = presentationDefinitionId;
-  if (presentationDefinition)
-    requestBody.presentationDefinition = presentationDefinition;
+  if (dcqlQuery) requestBody.dcqlQuery = dcqlQuery;
 
   const requestOptions = {
     method: "POST",
@@ -149,8 +145,7 @@ export const vpSessionRequest = async (
   url: string,
   clientId: string,
   txnId?: string,
-  presentationDefinitionId?: string,
-  presentationDefinition?: PresentationDefinition,
+  dcqlQuery?: DcqlQuery,
   acceptVPWithoutHolderProof?: boolean,
   responseCodeValidationRequired?: boolean
 ) => {
@@ -161,10 +156,7 @@ export const vpSessionRequest = async (
   };
 
   if (txnId) requestBody.transactionId = txnId;
-  if (presentationDefinitionId)
-    requestBody.presentationDefinitionId = presentationDefinitionId;
-  if (presentationDefinition)
-    requestBody.presentationDefinition = presentationDefinition;
+  if (dcqlQuery) requestBody.dcqlQuery = dcqlQuery;
   if (responseCodeValidationRequired) {
     requestBody.responseCodeValidationRequired = true;
   }

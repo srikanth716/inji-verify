@@ -380,15 +380,13 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
     }
   };
 
-  const createVPRequest = async (presentationDefinition: any) => {
+  const createVPRequest = async (dcqlQuery: any) => {
     try {
-      let presentationDefinitionId;
       const data: QrData = await vpSessionRequest(
         verifyServiceUrl,
         clientId,
         transactionId ?? undefined,
-        presentationDefinitionId,
-        presentationDefinition,
+        dcqlQuery,
         true, // acceptVPWithoutHolderProof is set to true for DataShare VCs
         true // responseCodeValidationRequired is set to true for DataShare VCs
       );
@@ -400,9 +398,9 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
     }
   };
 
-  const parsePresentationDefinition = (pdParams: string) => {
+  const parseDcqlQuery = (dcqlQueryParams: string) => {
     try {
-      const decoded = JSON.parse(pdParams);
+      const decoded = JSON.parse(dcqlQueryParams);
       const {inputDescriptors, ...rest} = decoded;
 
       if (inputDescriptors) return {
@@ -411,7 +409,7 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
       };
       return decoded;
     } catch (error) {
-      throw new Error("Failed to create VP request, due to invalid presentation definition");
+      throw new Error("Failed to create VP request, due to invalid DCQL query");
     }
   };
 
@@ -451,14 +449,13 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
         }
 
         const parsedUrl = new URL(redirectUrl);
-        const pdParams = parsedUrl.searchParams.get("presentation_definition");
+        const dcqlQueryParams = parsedUrl.searchParams.get("dcql_query")
+          ?? parsedUrl.searchParams.get("presentation_definition");
 
-        if (!pdParams) throw new Error("Missing presentation_definition in redirect URL");
+        if (!dcqlQueryParams) throw new Error("Missing dcql_query in redirect URL");
 
-        const presentationDefinition = parsePresentationDefinition(pdParams);
-        //call /v1/verify/vp-request endpoint to get the request_id and
-        // transaction_id to be sent to the redirectUrl
-        const response = await createVPRequest(presentationDefinition);
+        const dcqlQuery = parseDcqlQuery(dcqlQueryParams);
+        const response = await createVPRequest(dcqlQuery);
 
         if (!response) throw new Error("Unable to access the shared VC, due to failure in creating VP request");
 
