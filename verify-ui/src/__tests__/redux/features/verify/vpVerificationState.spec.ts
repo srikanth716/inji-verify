@@ -44,7 +44,7 @@ describe("vpVerification slice", () => {
             selectedCredentials: [],
             originalSelectedCredentials: [],
             unVerifiedCredentials: [],
-            dcqlQuery: {
+            presentationDefinition: {
                 id: "test",
                 input_descriptors: [{ id: "desc1" }, { id: "desc2" }],
             },
@@ -89,7 +89,7 @@ describe("vpVerification slice", () => {
             originalSelectedCredentials: [],
             verificationSubmissionResult: [],
             unVerifiedCredentials: [],
-            dcqlQuery: {
+            presentationDefinition: {
                 id: "test",
                 input_descriptors: [{ id: "desc1" }, { id: "desc2" }],
             },
@@ -135,7 +135,7 @@ describe("vpVerification slice", () => {
 
         const initialState = {
             ...vpVerificationReducer(undefined, { type: "@@INIT" }),
-            dcqlQuery: {
+            presentationDefinition: {
                 id: "test",
                 input_descriptors: [{ id: "desc1" }],
             },
@@ -193,7 +193,7 @@ describe("vpVerification slice", () => {
             unVerifiedCredentials: [],
             isPartiallyShared: false,
             flowType: "crossDevice",
-            dcqlQuery: {
+            presentationDefinition: {
                 id: "test",
                 input_descriptors: [{ id: "desc1" }],
             },

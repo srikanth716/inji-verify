@@ -128,15 +128,8 @@ describe("VpVerification Component", () => {
             type: "vpVerification/verificationSubmissionComplete"}));
     });
 
-    const defaultPresentationDefinition = {
-        id: "c4822b58-7fb4-454e-b827-f8758fe27f9a",
-        purpose: "Test verification",
-        input_descriptors: [] as { id: string }[],
-    };
-
-    const mockState = (overrides: Record<string, unknown> = {}) => {
-        const { presentationDefinition: presentationDefinitionOverride, ...restOverrides } = overrides;
-        (useVerifyFlowSelector as any).mockImplementation((selector: any) =>
+    const mockState = (overrides = {}) => {
+        (useVerifyFlowSelector as any).mockImplementation((selector: any)  =>
             selector({
                 isLoading: false,
                 sharingType: VCShareType.SINGLE,
@@ -144,14 +137,14 @@ describe("VpVerification Component", () => {
                 originalSelectedCredentials: [],
                 verificationSubmissionResult: [],
                 unVerifiedCredentials: [],
-                presentationDefinition: presentationDefinitionOverride ?? defaultPresentationDefinition,
+                presentationDefinition: { input_descriptors: [] },
                 activeScreen: 1,
                 isShowResult: false,
                 flowType: "crossDevice",
                 SelectWalletPanel: false,
                 selectedWalletBaseUrl: undefined,
                 sdkInstanceKey: "key",
-                ...restOverrides,
+                ...overrides,
             })
         );
     };
