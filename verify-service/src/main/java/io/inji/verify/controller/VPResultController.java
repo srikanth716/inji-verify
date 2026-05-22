@@ -144,12 +144,6 @@ public class VPResultController {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(ErrorCode.INVALID_VP_TOKEN));
     }
 
-    @ExceptionHandler(VPHolderBindingException.class)
-    public ResponseEntity<ErrorDto> invalidVpHolderBindingToken(VPHolderBindingException e) {
-        log.error(e.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(e.getErrorCode(), e.getErrorDescription()));
-    }
-
     @ExceptionHandler(ResponseCodeException.class)
     public ResponseEntity<ErrorDto> handleResponseCodeException(ResponseCodeException e) {
         log.error("Response Code Error: {}", e.getMessage());
@@ -167,5 +161,11 @@ public class VPResultController {
     public ResponseEntity<ErrorDto> handleMissingCookie(MissingRequestCookieException e) {
         log.warn("Required cookie is missing: {}", e.getCookieName());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorDto(ErrorCode.VP_SESSION_INVALID));
+    }
+
+    @ExceptionHandler(VPVerificationException.class)
+    public ResponseEntity<ErrorDto> handleVPVerificationException(VPVerificationException e) {
+        log.warn("VP verification failed: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorDto(ErrorCode.VP_VERIFICATION_FAILED));
     }
 }
