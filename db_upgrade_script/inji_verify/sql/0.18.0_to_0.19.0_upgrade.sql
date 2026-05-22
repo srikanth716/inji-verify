@@ -12,10 +12,23 @@
 -- -------------------------------------------------------------------------------------------------
 -- SECTION 1: Update vp_submission table
 -- -------------------------------------------------------------------------------------------------
--- Add primary key constraint on request_id column
-ALTER TABLE verify.vp_submission
-ADD CONSTRAINT pk_vp_submission_request_id
-PRIMARY KEY (request_id);
+-- Add primary key constraint on request_id column (idempotent)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint c
+        JOIN pg_namespace n ON n.oid = c.connamespace
+        JOIN pg_class t ON t.oid = c.conrelid
+        WHERE c.conname = 'pk_vp_submission_request_id'
+          AND n.nspname = 'verify'
+          AND t.relname = 'vp_submission'
+    ) THEN
+        ALTER TABLE verify.vp_submission
+        ADD CONSTRAINT pk_vp_submission_request_id
+        PRIMARY KEY (request_id);
+    END IF;
+END $$;
 
 -- -------------------------------------------------------------------------------------------------
 -- SECTION 2: Remove presentation_definition table

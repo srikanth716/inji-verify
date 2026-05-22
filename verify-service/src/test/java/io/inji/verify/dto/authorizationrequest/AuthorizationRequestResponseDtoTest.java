@@ -2,6 +2,7 @@ package io.inji.verify.dto.authorizationrequest;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.inji.verify.shared.Constants;
 import org.junit.jupiter.api.Test;
 
@@ -9,10 +10,12 @@ import java.time.Instant;
 
 public class AuthorizationRequestResponseDtoTest {
 
+    private static final ObjectMapper objectMapper = new ObjectMapper();
+
     @Test
-    public void ShouldTestConstructorSetsFieldsCorrectly() {
+    public void ShouldTestConstructorSetsFieldsCorrectly() throws Exception {
         String clientId = "testClientId";
-        String dcqlQuery = "{\"credentials\":[]}";
+        var dcqlQuery = objectMapper.readTree("{\"credentials\":[]}");
         String nonce = "testNonce";
         String responseUri = "testUri";
 

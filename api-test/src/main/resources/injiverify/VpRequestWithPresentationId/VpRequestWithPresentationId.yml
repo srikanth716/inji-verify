@@ -10,7 +10,8 @@ VpRequestWithPresentationId:
       outputTemplate: injiverify/responseCode
       input: '{
       "clientId": "did:web:mosip.github.io:inji-mock-services:openid4vp-service:docs",
-      "nonce": "MTc2Mzk1NTY5NDI5NQ=="
+      "nonce": "MTc2Mzk1NTY5NDI5NQ==",
+      "id": "$DCQLQUERYID$"
       }'
       output: '{
       "responseCode": "201"

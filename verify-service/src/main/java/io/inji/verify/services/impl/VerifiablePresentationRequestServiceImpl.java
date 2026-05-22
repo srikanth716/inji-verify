@@ -81,11 +81,9 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         String responseUri = verifyServiceBaseUrl + Constants.VP_RESPONSE_SUBMISSION_URI;
         boolean acceptVPWithoutHolderProof = vpRequestCreate.isAcceptVPWithoutHolderProof();
         boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
-        String dcqlQuery = vpRequestCreate.getDcqlQuery() != null ? vpRequestCreate.getDcqlQuery().toString() : null;
-
         AuthorizationRequestResponseDto authorizationRequestResponseDto = new AuthorizationRequestResponseDto(
                 vpRequestCreate.getClientId(),
-                dcqlQuery,
+                vpRequestCreate.getDcqlQuery(),
                 nonce,
                 responseUri,
                 acceptVPWithoutHolderProof,
@@ -216,7 +214,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                     .build();
             if (authorizationRequest.getDcqlQuery() != null) {
                 claimsSet = new JWTClaimsSet.Builder(claimsSet)
-                        .claim("dcql_query", JSONObjectUtils.parse(authorizationRequest.getDcqlQuery()))
+                        .claim("dcql_query", JSONObjectUtils.parse(authorizationRequest.getDcqlQuery().toString()))
                         .build();
             }
 

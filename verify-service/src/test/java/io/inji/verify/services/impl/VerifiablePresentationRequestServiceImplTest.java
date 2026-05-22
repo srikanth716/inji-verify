@@ -1,5 +1,6 @@
 package io.inji.verify.services.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.Curve;
@@ -155,8 +156,9 @@ class VerifiablePresentationRequestServiceImplTest {
     @Test
     void getVPRequestJwt_WithDcqlQuery_ReturnsJwt() throws Exception {
         String requestId = "reqWithDcqlQuery";
+        JsonNode dcqlQuery = objectMapper.readTree("{\"credentials\":[]}");
         AuthorizationRequestResponseDto authzDto =
-                new AuthorizationRequestResponseDto("did:example", "{\"credentials\":[]}", "nonce", "responseUri", false, false);
+                new AuthorizationRequestResponseDto("did:example", dcqlQuery, "nonce", "responseUri", false, false);
         AuthorizationRequestCreateResponse response = new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 1000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(response));
         OctetKeyPair mockOKP = new OctetKeyPairGenerator(Curve.Ed25519).generate();
