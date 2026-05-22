@@ -5,16 +5,17 @@ CreateNewVerificationRequest:
       uniqueIdentifier: TC_InjiVerify_CreateNewVerificationRequest_01
       role: noauth
       restMethod: post
-      checkOnlyStatusCodeInResponse: true
       inputTemplate: injiverify/CreateNewVerificationRequest/CreateNewVerificationRequest
-      outputTemplate: injiverify/responseCode
+      outputTemplate: injiverify/CreateNewVerificationRequest/CreateNewVerificationRequestResult
       input: '{
-      "clientId": "did:web:mosip.github.io:inji-mock-services:openid4vp-service:docs",
-      "nonce": "Mi0vDP17DlFcu/8m+OcP9A==",
-      "id": "$PRESENTATIONDEFINITIONID$"
+      "clientId":"client123",
+      "id":"$PRESENTATIONDEFINITIONID$"
       }'
       output: '{
-    "responseCode": "201"
+    "responseType": "vp_token",
+    "clientId": "client123",
+    "responseUri": "$INJIVERIFYBASEURL$/v1/verify/vp-submission/direct-post",
+    "id": "$PRESENTATIONDEFINITIONID$"
 }'
 
   Injiverify_CreateNewVerificationRequest_ForExpiry_All_Valid_Smoke_Sid:
@@ -55,9 +56,9 @@ CreateNewVerificationRequest:
     "id": "$PRESENTATIONDEFINITIONID$"
 }'
 
-  Injiverify_CreateNewVerificationRequest_Random_DcqlQueryId_Neg:
+  Injiverify_CreateNewVerificationRequest_Random_PresentationDefinitionId_Neg:
       endPoint: /v1/verify/vp-request
-      description: Creating a new verification request with random value for dcql query id
+      description: Creating a new verification request with random value for presentation definition id
       uniqueIdentifier: TC_InjiVerify_CreateNewVerificationRequest_04
       role: noauth
       restMethod: post
@@ -108,9 +109,9 @@ CreateNewVerificationRequest:
       "responseCode": "400"
 }'
 
-  Injiverify_CreateNewVerificationRequest_Empty_DcqlQuery_Neg:
+  Injiverify_CreateNewVerificationRequest_Empty_PresentationDefinitionId_Neg:
       endPoint: /v1/verify/vp-request
-      description: Creating a new verification request with empty dcql query
+      description: Creating a new verification request with empty presentation definition id
       uniqueIdentifier: TC_InjiVerify_CreateNewVerificationRequest_07
       role: noauth
       restMethod: post
@@ -125,9 +126,9 @@ CreateNewVerificationRequest:
       "responseCode": "400"
 }'
 
-  Injiverify_CreateNewVerificationRequest_Without_DcqlQuery_Neg:
+  Injiverify_CreateNewVerificationRequest_Without_PresentationDefinitionId_Neg:
       endPoint: /v1/verify/vp-request
-      description: Creating a new verification request without dcql query
+      description: Creating a new verification request without presentation definition id
       uniqueIdentifier: TC_InjiVerify_CreateNewVerificationRequest_08
       role: noauth
       restMethod: post
@@ -159,39 +160,4 @@ CreateNewVerificationRequest:
     "clientId": "client123",
     "responseUri": "$INJIVERIFYBASEURL$/v1/verify/vp-submission/direct-post",
     "id": "$PRESENTATIONDEFINITIONID$"
-}'
-  Injiverify_CreateNewVerificationRequest_All_ValidForECCR1_Smoke_Sid:
-      endPoint: /v1/verify/vp-request
-      description: Creating a new verification request for ECCR1
-      uniqueIdentifier: TC_InjiVerify_CreateNewVerificationRequest_10
-      role: noauth
-      restMethod: post
-      checkOnlyStatusCodeInResponse: true
-      inputTemplate: injiverify/CreateNewVerificationRequest/CreateNewVerificationRequestECCR1
-      outputTemplate: injiverify/responseCode
-      input: '{
-      "clientId": "did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IkI3X0dpOFRhc3JPQ3d3d2xUbnZqUEtXY0d0empKTndBZUlTcVBLYm1wYVEiLCJ5IjoiSkVwNjFlbmE5NlNzc2JGOVlSV0xoZG1HNEtqY0JhTExmTFNqR2E3eXAwSSIsInVzZSI6InNpZyJ9#0",
-      "nonce": "bGvxyRYPVQewlMOAaRvk0w==",
-      "id": "$PRESENTATIONDEFINITIONID$"
-      }'
-      output: '{
-    "responseCode": "201"
-}'
-
-  Injiverify_CreateNewVerificationRequest_All_ValidForECCK1_Smoke_Sid:
-      endPoint: /v1/verify/vp-request
-      description: Creating a new verification request for ECCK1
-      uniqueIdentifier: TC_InjiVerify_CreateNewVerificationRequest_11
-      role: noauth
-      restMethod: post
-      checkOnlyStatusCodeInResponse: true
-      inputTemplate: injiverify/CreateNewVerificationRequest/CreateNewVerificationRequestECCR1
-      outputTemplate: injiverify/responseCode
-      input: '{
-      "clientId": "did:jwk:eyJrdHkiOiJFQyIsImNydiI6InNlY3AyNTZrMSIsIngiOiJDRTRWQkRiUTBaODJ3Rnp4elNLN0lGcTF0Sl9ORVc5OTRrUkpicFVJU193IiwieSI6IlBNRUdJb3J2VlpLMnRZZlNRaVNYSlJscTlxWkhkdWZMWmtiZkNKdFBZWTQiLCJ1c2UiOiJzaWcifQ#0",
-      "nonce": "bGvxyRYPVQewlMOAaRvk0w==",
-      "id": "$PRESENTATIONDEFINITIONID$"
-      }'
-      output: '{
-    "responseCode": "201"
 }'
