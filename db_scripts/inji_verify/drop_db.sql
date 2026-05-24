@@ -1,1 +1,1 @@
-DROP DATABASE IF EXISTS inji_verify;
+DROP DATABASE IF EXISTS :mosipdbname;
