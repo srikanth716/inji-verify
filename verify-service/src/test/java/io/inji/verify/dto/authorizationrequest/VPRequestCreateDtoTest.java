@@ -14,7 +14,6 @@ public class VPRequestCreateDtoTest {
     public void testConstructor() {
         String clientId = "client123";
         String transactionId = "tx123";
-        String presentationDefinitionId = "pd123";
         String nonce = "nonce123";
         List<InputDescriptorDto> mockInputDescriptors = mock();
         List<SubmissionRequirementDto> mockSubmissionRequirements = mock();
@@ -23,12 +22,10 @@ public class VPRequestCreateDtoTest {
 
         VPRequestCreateDto vpRequestCreateDto =
                 new VPRequestCreateDto(clientId, transactionId,
-                        presentationDefinitionId, nonce,
-                        presentationDefinition, false, false);
+                        nonce, presentationDefinition, false, false);
 
         assertEquals(clientId, vpRequestCreateDto.getClientId());
         assertEquals(transactionId, vpRequestCreateDto.getTransactionId());
-        assertEquals(presentationDefinitionId, vpRequestCreateDto.getPresentationDefinitionId());
         assertEquals(nonce, vpRequestCreateDto.getNonce());
         assertEquals(presentationDefinition, vpRequestCreateDto.getPresentationDefinition());
         assertFalse(vpRequestCreateDto.isAcceptVPWithoutHolderProof());

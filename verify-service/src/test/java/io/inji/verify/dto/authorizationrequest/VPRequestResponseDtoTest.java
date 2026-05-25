@@ -12,7 +12,7 @@ public class VPRequestResponseDtoTest {
         String transactionId = "tx123";
         String requestId = "req123";
         AuthorizationRequestResponseDto authorizationDetails =
-                new AuthorizationRequestResponseDto("client123", "",
+                new AuthorizationRequestResponseDto("client123",
                         new VPDefinitionResponseDto("pd123", mock(),"name",
                                 "purpose",mock(), mock()), "nonce123","url", false, false);
         long expiresAt = 1687318740000L;

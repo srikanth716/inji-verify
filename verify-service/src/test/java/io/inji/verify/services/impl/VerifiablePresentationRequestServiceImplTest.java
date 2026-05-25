@@ -12,13 +12,10 @@ import io.inji.verify.dto.presentation.FormatDto;
 import io.inji.verify.dto.presentation.InputDescriptorDto;
 import io.inji.verify.dto.presentation.VPDefinitionResponseDto;
 import io.inji.verify.dto.presentation.SubmissionRequirementDto;
-import io.inji.verify.exception.PresentationDefinitionNotFoundException;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.repository.AuthorizationRequestCreateResponseRepository;
-import io.inji.verify.repository.PresentationDefinitionRepository;
 import io.inji.verify.enums.VPRequestStatus;
 import io.inji.verify.models.AuthorizationRequestCreateResponse;
-import io.inji.verify.models.PresentationDefinition;
 import io.inji.verify.repository.VPSubmissionRepository;
 import io.inji.verify.services.KeyManagementService;
 import io.inji.verify.shared.Constants;
@@ -40,23 +37,20 @@ class VerifiablePresentationRequestServiceImplTest {
 
     static VerifiablePresentationRequestServiceImpl service;
     static AuthorizationRequestCreateResponseRepository mockAuthorizationRequestCreateResponseRepository;
-    static PresentationDefinitionRepository mockPresentationDefinitionRepository;
     static VPSubmissionRepository mockVPSubmissionRepository;
     static KeyManagementService<OctetKeyPair> mockKeyManagementService;
 
     @BeforeAll
     public static void beforeAll() {
-        mockPresentationDefinitionRepository = mock(PresentationDefinitionRepository.class);
         mockAuthorizationRequestCreateResponseRepository = mock(AuthorizationRequestCreateResponseRepository.class);
         mockVPSubmissionRepository = mock(VPSubmissionRepository.class);
         mockKeyManagementService = mock(KeyManagementService.class);
-        service = new VerifiablePresentationRequestServiceImpl(mockPresentationDefinitionRepository, mockAuthorizationRequestCreateResponseRepository, mockVPSubmissionRepository, mockKeyManagementService);
+        service = new VerifiablePresentationRequestServiceImpl(mockAuthorizationRequestCreateResponseRepository, mockVPSubmissionRepository, mockKeyManagementService);
 
     }
 
     @Test
-    public void shouldCreateNewAuthorizationRequest() throws PresentationDefinitionNotFoundException {
-        when(mockPresentationDefinitionRepository.save(any(PresentationDefinition.class))).thenReturn(null);
+    public void shouldCreateNewAuthorizationRequest() {
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class))).thenReturn(null);
 
         List<InputDescriptorDto> mockInputDescriptorDtos = mock();
@@ -64,7 +58,7 @@ class VerifiablePresentationRequestServiceImplTest {
         FormatDto mockFormatDto = mock();
         VPDefinitionResponseDto mockPresentationDefinitionDto = new VPDefinitionResponseDto("test_id", mockInputDescriptorDtos, "", "", mockFormatDto, mockSubmissionRequirementDtos);
         VPRequestCreateDto vpRequestCreateDto = new VPRequestCreateDto(
-                "test_client_id", "test_transaction_id", null, "", mockPresentationDefinitionDto, false, false);
+                "test_client_id", "test_transaction_id", "", mockPresentationDefinitionDto, false, false);
 
         VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);
 
@@ -76,14 +70,14 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    public void shouldCreateAuthorizationRequestWithMissingTransactionId() throws PresentationDefinitionNotFoundException {
+    public void shouldCreateAuthorizationRequestWithMissingTransactionId() {
 
         List<InputDescriptorDto> mockInputDescriptorDtos = mock();
         List<SubmissionRequirementDto> mockSubmissionRequirementDtos = mock();
         FormatDto mockFormatDto = mock();
         VPDefinitionResponseDto mockPresentationDefinitionDto = new VPDefinitionResponseDto("test_id", mockInputDescriptorDtos, "", "", mockFormatDto, mockSubmissionRequirementDtos);
         VPRequestCreateDto vpRequestCreateDto = new VPRequestCreateDto(
-                "test_client_id", null, null, "", mockPresentationDefinitionDto, false, false);
+                "test_client_id", null, "", mockPresentationDefinitionDto, false, false);
 
         VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);
 
@@ -142,7 +136,7 @@ class VerifiablePresentationRequestServiceImplTest {
         String expectedJwtHeader = "eyJ0eXAiOiJvYXV0aC1hdXRoei1yZXErand0IiwiYWxnIjoiRWREU0EifQ.";
 
         AuthorizationRequestResponseDto authzDetailsDto =
-                new AuthorizationRequestResponseDto(verifierDid, null, null, null, null, false, false);
+                new AuthorizationRequestResponseDto(verifierDid, null, null, null, false, false);
 
         AuthorizationRequestCreateResponse authzResponse = new AuthorizationRequestCreateResponse(requestId, null, authzDetailsDto, 0L);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId))
@@ -168,25 +162,11 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void getVPRequestJwt_WithPresentationDefinitionUri_ReturnsJwt() throws Exception {
-        String requestId = "reqWithUri";
-        AuthorizationRequestResponseDto authzDto =
-                new AuthorizationRequestResponseDto("did:example", "presentationUri", null, "nonce", "responseUri", false, false);
-        AuthorizationRequestCreateResponse response = new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 1000);
-        when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(response));
-        OctetKeyPair mockOKP = new OctetKeyPairGenerator(Curve.Ed25519).generate();
-        when(mockKeyManagementService.getKeyPair()).thenReturn(mockOKP);
-
-        String jwt = service.getVPRequestJwt(requestId);
-        assertNotNull(jwt);
-    }
-
-    @Test
     void getVPRequestJwt_WithPresentationDefinition_ReturnsJwt() throws Exception {
         String requestId = "reqWithDefinition";
         VPDefinitionResponseDto vpDef = new VPDefinitionResponseDto("id", List.of(), "name", "purpose", null, List.of());
         AuthorizationRequestResponseDto authzDto =
-                new AuthorizationRequestResponseDto("did:example", null, vpDef, "nonce", "responseUri", false, false);
+                new AuthorizationRequestResponseDto("did:example", vpDef, "nonce", "responseUri", false, false);
         AuthorizationRequestCreateResponse response = new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 1000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(response));
         OctetKeyPair mockOKP = new OctetKeyPairGenerator(Curve.Ed25519).generate();
@@ -203,7 +183,7 @@ class VerifiablePresentationRequestServiceImplTest {
         AuthorizationRequestCreateResponse response =
                 new AuthorizationRequestCreateResponse(requestId, "tx",
                         new AuthorizationRequestResponseDto("did:example",
-                                null, null, "nonce", "responseUri", false, false), Instant.now().toEpochMilli() + 2000);
+                                null, "nonce", "responseUri", false, false), Instant.now().toEpochMilli() + 2000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(response));
 
         DeferredResult<VPRequestStatusDto> result = service.getStatus(requestId);
@@ -222,7 +202,7 @@ class VerifiablePresentationRequestServiceImplTest {
     void getVPRequestJwt_WithExpiredRequest_AllowsJwt() throws Exception {
         String requestId = "expiredReq";
         AuthorizationRequestResponseDto authzDto =
-                new AuthorizationRequestResponseDto("did:example", null, null
+                new AuthorizationRequestResponseDto("did:example", null
                         , "nonce", "responseUri", false, false);
         AuthorizationRequestCreateResponse expiredResponse =
                 new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() - 5000);
@@ -232,7 +212,7 @@ class VerifiablePresentationRequestServiceImplTest {
         when(mockKeyManagementService.getKeyPair()).thenReturn(mockOKP);
 
         String jwt = service.getVPRequestJwt(requestId);
-        assertNotNull(jwt); // ✅ no exception expected
+        assertNotNull(jwt);
     }
 
     @Test
@@ -265,8 +245,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    public void shouldCreateNewAuthorizationRequestWithResponseCodeValidationRequired() throws PresentationDefinitionNotFoundException {
-        when(mockPresentationDefinitionRepository.save(any(PresentationDefinition.class))).thenReturn(null);
+    public void shouldCreateNewAuthorizationRequestWithResponseCodeValidationRequired() {
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class))).thenReturn(null);
 
         List<InputDescriptorDto> mockInputDescriptorDtos = mock();
@@ -274,7 +253,7 @@ class VerifiablePresentationRequestServiceImplTest {
         FormatDto mockFormatDto = mock();
         VPDefinitionResponseDto mockPresentationDefinitionDto = new VPDefinitionResponseDto("test_id", mockInputDescriptorDtos, "", "", mockFormatDto, mockSubmissionRequirementDtos);
         VPRequestCreateDto vpRequestCreateDto = new VPRequestCreateDto(
-                "test_client_id", "test_transaction_id", null, "",
+                "test_client_id", "test_transaction_id", "",
                 mockPresentationDefinitionDto, false, true);
 
         VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);
@@ -288,8 +267,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    public void shouldCreateNewAuthorizationRequestWithPresentationFlowCrossDevice() throws PresentationDefinitionNotFoundException {
-        when(mockPresentationDefinitionRepository.save(any(PresentationDefinition.class))).thenReturn(null);
+    public void shouldCreateNewAuthorizationRequestWithPresentationFlowCrossDevice() {
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class))).thenReturn(null);
 
         List<InputDescriptorDto> mockInputDescriptorDtos = mock();
@@ -297,7 +275,7 @@ class VerifiablePresentationRequestServiceImplTest {
         FormatDto mockFormatDto = mock();
         VPDefinitionResponseDto mockPresentationDefinitionDto = new VPDefinitionResponseDto("test_id", mockInputDescriptorDtos, "", "", mockFormatDto, mockSubmissionRequirementDtos);
         VPRequestCreateDto vpRequestCreateDto = new VPRequestCreateDto(
-                "test_client_id", "test_transaction_id", null, "",
+                "test_client_id", "test_transaction_id", "",
                 mockPresentationDefinitionDto, false, false);
 
         VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);

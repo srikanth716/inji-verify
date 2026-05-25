@@ -16,3 +16,8 @@
 ALTER TABLE vp_submission
 ADD CONSTRAINT pk_vp_submission_request_id
 PRIMARY KEY (request_id);
+
+-- -------------------------------------------------------------------------------------------------
+-- SECTION 2: Drop presentation_definition table
+-- -------------------------------------------------------------------------------------------------
+DROP TABLE IF EXISTS presentation_definition;
