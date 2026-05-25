@@ -28,8 +28,7 @@ export interface VPRequestBody {
   clientId: string;
   nonce: string;
   transactionId?: string;
-  presentationDefinitionId?: string;
-  presentationDefinition?: PresentationDefinition;
+  presentationDefinition: PresentationDefinition;
   acceptVPWithoutHolderProof?: boolean;
   /**
    * When true, the verifier backend will generate a short-lived single-use `response_code`
@@ -39,21 +38,6 @@ export interface VPRequestBody {
    */
   responseCodeValidationRequired?: boolean;
 }
-
-type ExclusivePresentationDefinition =
-  /**
-   * ID of the presentation definition used for verification.
-   * Required for some verification flows.
-   */
-  | { presentationDefinitionId: string; presentationDefinition?: never }
-  /**
-   * The full presentation definition JSON string.
-   * If provided, it will be used instead of fetching from the backend.
-   */
-  | {
-      presentationDefinition?: PresentationDefinition;
-      presentationDefinitionId?: never;
-    };
 
 type ExclusiveCallbacks =
   /**
@@ -91,8 +75,11 @@ export interface PresentationDefinition {
   input_descriptors: InputDescriptor[];
 }
 
-export type OpenID4VPVerificationProps = ExclusivePresentationDefinition &
-  ExclusiveCallbacks & {
+export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
+  /**
+   * The presentation definition object used for verification.
+   */
+  presentationDefinition: PresentationDefinition;
   /**
    React element that triggers the verification process (e.g., a button).
    If not provided, the component may automatically start the process.
