@@ -15,7 +15,6 @@ public class VPRequestCreateDto {
     @NotBlank(message = "Client Id must not be empty")
     String clientId;
     String transactionId;
-    String presentationDefinitionId;
     String nonce;
     @Valid
     VPDefinitionResponseDto presentationDefinition;

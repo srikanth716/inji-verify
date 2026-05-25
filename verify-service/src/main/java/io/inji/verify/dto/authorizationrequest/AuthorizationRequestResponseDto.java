@@ -20,7 +20,6 @@ public class AuthorizationRequestResponseDto {
     private final String responseMode = Constants.RESPONSE_MODE;
     private final long issuedAt = Instant.now().toEpochMilli();
     private final String clientId;
-    private final String presentationDefinitionUri;
     private final VPDefinitionResponseDto presentationDefinition;
     private final String nonce;
     private final String responseUri;

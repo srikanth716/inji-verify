@@ -18,16 +18,13 @@ import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.client.ClientMetadataDto;
 import io.inji.verify.dto.core.ErrorDto;
-import io.inji.verify.dto.presentation.VPDefinitionResponseDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.enums.VPRequestStatus;
 import io.inji.verify.exception.JWTCreationException;
-import io.inji.verify.exception.PresentationDefinitionNotFoundException;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.models.AuthorizationRequestCreateResponse;
 import io.inji.verify.models.VPSubmission;
 import io.inji.verify.repository.AuthorizationRequestCreateResponseRepository;
-import io.inji.verify.repository.PresentationDefinitionRepository;
 import io.inji.verify.repository.VPSubmissionRepository;
 import io.inji.verify.services.KeyManagementService;
 import io.inji.verify.shared.Constants;
@@ -42,9 +39,8 @@ import org.springframework.web.context.request.async.DeferredResult;
 import java.text.ParseException;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
-import java.util.HashMap;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,7 +52,6 @@ import static io.inji.verify.shared.Constants.VP_FORMATS_SUPPORTED;
 @Slf4j
 public class VerifiablePresentationRequestServiceImpl implements VerifiablePresentationRequestService {
 
-    final PresentationDefinitionRepository presentationDefinitionRepository;
     final AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository;
     final VPSubmissionRepository vpSubmissionRepository;
     final KeyManagementService<OctetKeyPair> keyManagementService;
@@ -72,15 +67,14 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
     ConcurrentHashMap<String, DeferredResult<VPRequestStatusDto>> vpRequestStatusListeners = new ConcurrentHashMap<>();
 
-    public VerifiablePresentationRequestServiceImpl(PresentationDefinitionRepository presentationDefinitionRepository, AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository, VPSubmissionRepository vpSubmissionRepository, KeyManagementService<OctetKeyPair> keyManagementService) {
-        this.presentationDefinitionRepository = presentationDefinitionRepository;
+    public VerifiablePresentationRequestServiceImpl(AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository, VPSubmissionRepository vpSubmissionRepository, KeyManagementService<OctetKeyPair> keyManagementService) {
         this.authorizationRequestCreateResponseRepository = authorizationRequestCreateResponseRepository;
         this.vpSubmissionRepository = vpSubmissionRepository;
         this.keyManagementService = keyManagementService;
     }
 
     @Override
-    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate) throws PresentationDefinitionNotFoundException {
+    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate) {
         log.info("Creating authorization request");
         String transactionId = vpRequestCreate.getTransactionId() != null ? vpRequestCreate.getTransactionId() : Utils.generateID(Constants.TRANSACTION_ID_PREFIX);
         String requestId = Utils.generateID(Constants.REQUEST_ID_PREFIX);
@@ -90,14 +84,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         boolean acceptVPWithoutHolderProof = vpRequestCreate.isAcceptVPWithoutHolderProof();
         boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
 
-        AuthorizationRequestResponseDto authorizationRequestResponseDto = Optional.ofNullable(vpRequestCreate.getPresentationDefinitionId())
-                .map(presentationDefinitionId -> presentationDefinitionRepository.findById(presentationDefinitionId)
-                .map(presentationDefinition -> {
-                    VPDefinitionResponseDto vpDefinitionResponseDto = new VPDefinitionResponseDto(presentationDefinition.getId(), presentationDefinition.getInputDescriptors(), presentationDefinition.getName(), presentationDefinition.getPurpose(), presentationDefinition.getFormat(), presentationDefinition.getSubmissionRequirements());
-                    return new AuthorizationRequestResponseDto(vpRequestCreate.getClientId(), presentationDefinition.getURL(), vpDefinitionResponseDto, nonce, responseUri, acceptVPWithoutHolderProof, responseCodeValidationRequired);
-                })
-                .orElseThrow(PresentationDefinitionNotFoundException::new))
-                .orElseGet(() -> new AuthorizationRequestResponseDto(vpRequestCreate.getClientId(), null, vpRequestCreate.getPresentationDefinition(), nonce, responseUri, acceptVPWithoutHolderProof, responseCodeValidationRequired));
+        AuthorizationRequestResponseDto authorizationRequestResponseDto = new AuthorizationRequestResponseDto(vpRequestCreate.getClientId(), vpRequestCreate.getPresentationDefinition(), nonce, responseUri, acceptVPWithoutHolderProof, responseCodeValidationRequired);
 
         AuthorizationRequestCreateResponse authorizationRequestCreateResponse = new AuthorizationRequestCreateResponse(requestId, transactionId, authorizationRequestResponseDto, expiresAt);
         authorizationRequestCreateResponseRepository.save(authorizationRequestCreateResponse);
@@ -224,11 +211,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                     .claim("response_uri", authorizationRequest.getResponseUri())
                     .claim("client_metadata", new ClientMetadataDto(verifierDid,VP_FORMATS_SUPPORTED))
                     .build();
-            if (authorizationRequest.getPresentationDefinitionUri() != null) {
-                claimsSet = new JWTClaimsSet.Builder(claimsSet)
-                        .claim("presentation_definition_uri", authorizationRequest.getPresentationDefinitionUri())
-                        .build();
-            } else if (authorizationRequest.getPresentationDefinition() != null) {
+            if (authorizationRequest.getPresentationDefinition() != null) {
                 String presentationDefinitionJson = new ObjectMapper().writeValueAsString(authorizationRequest.getPresentationDefinition());
                 claimsSet = new JWTClaimsSet.Builder(claimsSet)
                         .claim("presentation_definition", JSONObjectUtils.parse(presentationDefinitionJson))
