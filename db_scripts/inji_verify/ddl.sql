@@ -1,4 +1,4 @@
-\c inji_verify
+\c :mosipdbname
 
 \ir ddl/verify-authorization_request_details.sql
 \ir ddl/verify-presentation_definition.sql

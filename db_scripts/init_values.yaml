@@ -4,7 +4,11 @@ dbUserPasswords:
 databases:
   inji_verify:
     enabled: true
-    host: "postgres-postgresql.postgres"
+    scriptsDir: inji_verify        # fixed - must match db_scripts/ folder in repo
+    dbName: inji_verify            # customize e.g. inji_verify02
+    dbUser: injiverifyuser         # customize e.g. injiverifyuser02
+    defaultDb: postgres
+    host: "postgres-postgresql"
     port: 5432
     su:
       user: postgres

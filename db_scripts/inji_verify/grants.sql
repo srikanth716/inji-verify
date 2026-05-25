@@ -3,19 +3,19 @@
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 -- -------------------------------------------------------------------------------------------------
 
-\c inji_verify
+\c :mosipdbname
 
 GRANT CONNECT
-   ON DATABASE inji_verify
-   TO verifyuser;
+   ON DATABASE :mosipdbname
+   TO :dbuname;
 
 GRANT USAGE
    ON SCHEMA verify
-   TO verifyuser;
+   TO :dbuname;
 
 GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES
       ON ALL TABLES IN SCHEMA verify
-          TO verifyuser;
+          TO :dbuname;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA verify
-	GRANT SELECT,INSERT,UPDATE,DELETE,REFERENCES ON TABLES TO verifyuser;
+	GRANT SELECT,INSERT,UPDATE,DELETE,REFERENCES ON TABLES TO :dbuname;
