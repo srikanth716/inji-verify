@@ -23,8 +23,7 @@ const mockFetchError = (message = "Failed to fetch") => {
 describe("OpenID4VPVerification UI Tests", () => {
   const verifyServiceUrl = "https://example.com/verify";
   const protocol = "testopenid4vp://";
-  const presentationDefinitionId = "pd-id-123";
-  const presentationDefinition = { input_descriptors: [{ id: "id-1" }] };
+  const presentationDefinition = { purpose: "test", input_descriptors: [{ id: "id-1" }] };
   const onVPReceived = jest.fn();
   const onVPProcessed = jest.fn();
   const onQrCodeExpired = jest.fn();
@@ -85,7 +84,7 @@ describe("OpenID4VPVerification UI Tests", () => {
 
   it("should render the trigger element", () => {
     renderComponent({
-      presentationDefinitionId,
+      presentationDefinition,
       onVPReceived,
       onQrCodeExpired,
       onError,
@@ -115,7 +114,7 @@ describe("OpenID4VPVerification UI Tests", () => {
     global.fetch = fetchMock;
 
     renderComponent({
-      presentationDefinitionId,
+      presentationDefinition,
       onVPReceived,
       onQrCodeExpired,
       onError,
@@ -137,11 +136,11 @@ describe("OpenID4VPVerification UI Tests", () => {
     mockFetchError("Failed to create request");
 
     renderComponent({
-      presentationDefinitionId,
+      presentationDefinition,
       onVPReceived,
       onQrCodeExpired,
       onError,
-      triggerElement, // ✅ Add this!
+      triggerElement,
     });
 
     // Wait for the button to render
@@ -181,7 +180,7 @@ describe("OpenID4VPVerification UI Tests", () => {
     global.fetch = fetchMock;
 
     renderComponent({
-      presentationDefinitionId,
+      presentationDefinition,
       clientId: "test-client",
       isSameDeviceFlowEnabled: false,
       onVPReceived,
@@ -228,7 +227,7 @@ describe("OpenID4VPVerification UI Tests", () => {
     const onError = jest.fn();
 
     renderComponent({
-      presentationDefinitionId,
+      presentationDefinition,
       onVPReceived,
       onQrCodeExpired,
       onError,
@@ -278,7 +277,7 @@ describe("OpenID4VPVerification UI Tests", () => {
                     verifyServiceUrl="https://example.com/verify"
                     clientId="test-client"
                     protocol="testopenid4vp://"
-                    presentationDefinitionId="test-pd"
+                    presentationDefinition={{ purpose: "test", input_descriptors: [{ id: "id-1" }] }}
                     onVPReceived={jest.fn()}
                     onVPProcessed={jest.fn()}
                     onQrCodeExpired={jest.fn()}

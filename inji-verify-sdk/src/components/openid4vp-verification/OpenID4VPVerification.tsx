@@ -35,7 +35,6 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   triggerElement,
   verifyServiceUrl,
   protocol,
-  presentationDefinitionId,
   presentationDefinition,
   transactionId,
   onVPReceived,
@@ -255,7 +254,6 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         verifyServiceUrl,
         clientId,
         transactionId ?? undefined,
-        presentationDefinitionId,
         presentationDefinition,
         acceptVPWithoutHolderProof,
         responseCodeValidationRequired,
@@ -277,7 +275,6 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   }, [
     verifyServiceUrl,
     transactionId,
-    presentationDefinitionId,
     presentationDefinition,
     getPresentationDefinitionParams,
     onError,
@@ -362,14 +359,9 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!presentationDefinitionId && !presentationDefinition) {
+    if (!presentationDefinition) {
       throw new Error(
-        "Either presentationDefinitionId or presentationDefinition must be provided, but not both"
-      );
-    }
-    if (presentationDefinitionId && presentationDefinition) {
-      throw new Error(
-        "Both presentationDefinitionId and presentationDefinition cannot be provided simultaneously"
+        "presentationDefinition must be provided"
       );
     }
     if (!onVPReceived && !onVPProcessed) {
@@ -395,7 +387,6 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     onVPProcessed,
     onVPReceived,
     presentationDefinition,
-    presentationDefinitionId,
     triggerElement,
   ]);
 

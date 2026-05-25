@@ -80,21 +80,17 @@ export const vpRequest = async (
   url: string,
   clientId: string,
   txnId?: string,
-  presentationDefinitionId?: string,
   presentationDefinition?: PresentationDefinition,
   acceptVPWithoutHolderProof?: boolean
 ) => {
   const requestBody: VPRequestBody = {
     clientId: clientId,
     nonce: generateNonce(),
+    presentationDefinition: presentationDefinition!,
     acceptVPWithoutHolderProof: acceptVPWithoutHolderProof
   };
 
   if (txnId) requestBody.transactionId = txnId;
-  if (presentationDefinitionId)
-    requestBody.presentationDefinitionId = presentationDefinitionId;
-  if (presentationDefinition)
-    requestBody.presentationDefinition = presentationDefinition;
 
   const requestOptions = {
     method: "POST",
@@ -149,7 +145,6 @@ export const vpSessionRequest = async (
   url: string,
   clientId: string,
   txnId?: string,
-  presentationDefinitionId?: string,
   presentationDefinition?: PresentationDefinition,
   acceptVPWithoutHolderProof?: boolean,
   responseCodeValidationRequired?: boolean
@@ -157,14 +152,11 @@ export const vpSessionRequest = async (
   const requestBody: VPRequestBody = {
     clientId: clientId,
     nonce: generateNonce(),
+    presentationDefinition :presentationDefinition!,
     acceptVPWithoutHolderProof: acceptVPWithoutHolderProof,
   };
 
   if (txnId) requestBody.transactionId = txnId;
-  if (presentationDefinitionId)
-    requestBody.presentationDefinitionId = presentationDefinitionId;
-  if (presentationDefinition)
-    requestBody.presentationDefinition = presentationDefinition;
   if (responseCodeValidationRequired) {
     requestBody.responseCodeValidationRequired = true;
   }
