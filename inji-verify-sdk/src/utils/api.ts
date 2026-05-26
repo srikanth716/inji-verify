@@ -1,27 +1,11 @@
 import {
     AppError,
-    PresentationDefinition,
+    DcqlQuery,
     VPRequestBody, VPVerificationRequest,
 } from "../components/openid4vp-verification/OpenID4VPVerification.types";
 import { vcSubmissionBody, VCVerificationV2Request, VCVerificationV2Response} from "../components/qrcode-verification/QRCodeVerification.types";
 import { QrData } from "../types/OVPSchemeQrData";
 import { isCWT } from "./cborUtils";
-import { buildDcqlQueryFromPresentationDefinition } from "./dcqlQuery";
-
-/** Presentation Exchange definition or an OpenID4VP 1.0 DCQL query object. */
-export type VpSessionQueryInput = PresentationDefinition | { credentials: unknown[] };
-
-const resolveDcqlQuery = (input: VpSessionQueryInput): unknown => {
-  if (
-    typeof input === "object" &&
-    input !== null &&
-    "credentials" in input &&
-    Array.isArray((input as { credentials: unknown[] }).credentials)
-  ) {
-    return input;
-  }
-  return buildDcqlQueryFromPresentationDefinition(input as PresentationDefinition);
-};
 
 const generateNonce = (): string => {
   return btoa(Date.now().toString());
@@ -95,14 +79,14 @@ export const vcSubmission = async (
 export const vpRequest = async (
   url: string,
   clientId: string,
-  presentationDefinition: PresentationDefinition,
+  dcqlQuery: DcqlQuery,
   txnId?: string,
   acceptVPWithoutHolderProof?: boolean
 ) => {
   const requestBody: VPRequestBody = {
     clientId: clientId,
     nonce: generateNonce(),
-    dcqlQuery: buildDcqlQueryFromPresentationDefinition(presentationDefinition),
+    dcqlQuery,
   };
 
   if (txnId) requestBody.transactionId = txnId;
@@ -160,7 +144,7 @@ const isAppError = (error: unknown): error is AppError => (
 
 export const vpSessionRequest = async (
   url: string,
-  queryInput: VpSessionQueryInput,
+  dcqlQuery: DcqlQuery,
   clientId: string,
   txnId?: string,
   acceptVPWithoutHolderProof?: boolean,
@@ -169,7 +153,7 @@ export const vpSessionRequest = async (
   const requestBody: VPRequestBody = {
     clientId: clientId,
     nonce: generateNonce(),
-    dcqlQuery: resolveDcqlQuery(queryInput),
+    dcqlQuery,
   };
   if (txnId) requestBody.transactionId = txnId;
   if (responseCodeValidationRequired) {

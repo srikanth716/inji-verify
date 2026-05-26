@@ -24,8 +24,8 @@ import {
     vcSubmission,
     vcVerificationV2,
     vpSessionResults,
-    VpSessionQueryInput,
 } from "../../utils/api";
+import type { DcqlQuery } from "../openid4vp-verification/OpenID4VPVerification.types";
 import {
     decodeQrData,
     extractRedirectUrlFromQrData,
@@ -382,11 +382,11 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
     }
   };
 
-  const createVPRequest = async (queryInput: VpSessionQueryInput) => {
+  const createVPRequest = async (dcqlQuery: DcqlQuery) => {
     try {
       const data: QrData = await vpSessionRequest(
         verifyServiceUrl,
-        queryInput,
+        dcqlQuery,
         clientId,
         transactionId ?? undefined,
         true, // acceptVPWithoutHolderProof is set to true for DataShare VCs
@@ -400,22 +400,7 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
     }
   };
 
-  const parsePresentationDefinition = (pdParams: string) => {
-    try {
-      const decoded = JSON.parse(pdParams);
-      const {inputDescriptors, ...rest} = decoded;
-
-      if (inputDescriptors) return {
-        ...rest,
-        input_descriptors: inputDescriptors
-      };
-      return decoded;
-    } catch (error) {
-      throw new Error("Failed to create VP request, due to invalid presentation definition");
-    }
-  };
-
-  const parseDcqlQuery = (dcqlParams: string) => {
+  const parseDcqlQuery = (dcqlParams: string): DcqlQuery => {
     try {
       const decoded = JSON.parse(dcqlParams);
       if (
@@ -425,7 +410,7 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
       ) {
         throw new Error("Invalid dcql_query structure");
       }
-      return decoded as { credentials: unknown[] };
+      return decoded as DcqlQuery;
     } catch {
       throw new Error("Failed to create VP request, due to invalid dcql_query");
     }
@@ -473,23 +458,14 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
 
         const parsedUrl = new URL(redirectUrl);
         const dcqlQueryParam = parsedUrl.searchParams.get("dcql_query");
-        const pdParams = parsedUrl.searchParams.get("presentation_definition");
 
-        if (!dcqlQueryParam && !pdParams) {
+        if (!dcqlQueryParam) {
           throw new Error(
-            "Missing dcql_query/presentation_definition in redirect URL"
+            "Missing dcql_query in redirect URL"
           );
         }
 
-        const presentationDefinition = pdParams
-          ? parsePresentationDefinition(pdParams)
-          : undefined;
-
-        const response = await createVPRequest(
-          dcqlQueryParam
-            ? parseDcqlQuery(dcqlQueryParam)
-            : (presentationDefinition as VpSessionQueryInput)
-        );
+        const response = await createVPRequest(parseDcqlQuery(dcqlQueryParam));
 
         if (!response) throw new Error("Unable to access the shared VC, due to failure in creating VP request");
 
