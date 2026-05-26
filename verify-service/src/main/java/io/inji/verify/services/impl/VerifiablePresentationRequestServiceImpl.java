@@ -204,8 +204,9 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
         try {
 
+            String issuer = verifierDid != null ? verifierDid.replaceFirst("^decentralized_identifier:", "") : verifierDid;
             JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
-                    .issuer(verifierDid)
+                    .issuer(issuer)
                     .issueTime(Date.from(Instant.now()))
                     .claim("client_id", verifierDid)
                     .jwtID(UUID.randomUUID().toString())
