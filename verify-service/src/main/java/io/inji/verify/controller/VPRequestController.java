@@ -109,7 +109,7 @@ public class VPRequestController {
 
             return ResponseEntity.status(HttpStatus.CREATED).body(authorizationRequestResponse);
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Error creating VP request: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorDto(ErrorCode.INTERNAL_SERVER_ERROR));
         }
     }
