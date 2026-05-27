@@ -23,7 +23,7 @@ import {
     vpSessionRequest,
     vcSubmission,
     vcVerificationV2,
-    vpSessionResults,
+    vpSessionResults
 } from "../../utils/api";
 import type { DcqlQuery } from "../openid4vp-verification/OpenID4VPVerification.types";
 import {
@@ -434,7 +434,6 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
     url.searchParams.set("response_uri", responseUri);
     url.searchParams.set("nonce", nonce);
     url.searchParams.set("dcql_query", JSON.stringify(dcqlQuery));
-    url.searchParams.delete("presentation_definition");
 
     return `${url.toString()}#`;
   };

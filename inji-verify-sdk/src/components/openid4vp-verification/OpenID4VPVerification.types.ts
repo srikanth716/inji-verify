@@ -30,12 +30,8 @@ export interface VpSummarisedVerificationResponse {
 export interface DcqlClaimQuery {
   /** Required if claim_sets is used. Used to reference the claim in claim_sets. */
   id?: string;
-  /**
-   * Path pointer to navigate the credential structure.
-   * - JSON credentials: strings = object keys, numbers = array indices, null = all elements.
-   * - ISO mdoc: exactly two strings [namespace, dataElementIdentifier].
-   */
-  path: (string | number | null)[];
+  /** Path pointer to navigate the credential structure (JSON pointer segments). */
+  path: string[];
   /** Array of allowed values. Claim is returned only if its value matches one of these. */
   values?: unknown[];
 }
@@ -44,7 +40,8 @@ export interface DcqlClaimQuery {
  * Trusted authority filter for credential issuers.
  */
 export interface DcqlTrustedAuthority {
-  type: "aki" | "etsi_tl" | "openid_federation";
+  /** Authority filter type (e.g. aki, etsi_tl, openid_federation; extensible per DCQL). */
+  type: string;
   values: string[];
 }
 
@@ -54,8 +51,6 @@ export interface DcqlTrustedAuthority {
 export interface DcqlCredentialMeta {
   /** SD-JWT VC: allowed credential type identifiers. */
   vct_values?: string[];
-  /** ISO mdoc: required document type. */
-  doctype_value?: string;
   /** W3C VC (JSON-LD): expanded type values. */
   type_values?: string[][];
 }
@@ -66,7 +61,7 @@ export interface DcqlCredentialMeta {
 export interface DcqlCredentialQuery {
   /** Unique identifier for this credential within the request and response. */
   id: string;
-  /** Credential format (e.g., "dc+sd-jwt", "vc+sd-jwt", "mso_mdoc"). */
+  /** Credential format (e.g., "dc+sd-jwt", "vc+sd-jwt"). */
   format: string;
   /** Whether multiple credentials of this type can be returned. Defaults to false. */
   multiple?: boolean;

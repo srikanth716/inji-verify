@@ -90,9 +90,7 @@ export const vpRequest = async (
   };
 
   if (txnId) requestBody.transactionId = txnId;
-  if (acceptVPWithoutHolderProof) {
-    requestBody.acceptVPWithoutHolderProof = true;
-  }
+  
   const requestOptions = {
     method: "POST",
     headers: {
