@@ -60,7 +60,7 @@ public class VPRequestControllerTest {
 
     @BeforeEach
     public void setUp() {
-        VPRequestController vpRequestController = new VPRequestController(verifiablePresentationRequestService, objectMapper);
+        VPRequestController vpRequestController = new VPRequestController(verifiablePresentationRequestService);
         mockMvc = MockMvcBuilders.standaloneSetup(vpRequestController).build();
     }
 
