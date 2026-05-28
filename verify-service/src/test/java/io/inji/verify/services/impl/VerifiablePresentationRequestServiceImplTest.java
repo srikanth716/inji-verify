@@ -47,7 +47,7 @@ class VerifiablePresentationRequestServiceImplTest {
 
     private static JsonNode minimalDcqlQuery() throws Exception {
         return OBJECT_MAPPER.readTree(
-                "{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\"}]}");
+                "{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"cred1\"]}}]}");
     }
 
     @BeforeAll

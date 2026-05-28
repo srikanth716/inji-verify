@@ -43,13 +43,13 @@ public class VPRequestControllerTest {
 
     private static String validVpRequestJson() {
         return "{\"clientId\":\"cId\",\"transactionId\":\"tId\",\"nonce\":\"nonce\","
-                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\"}]},"
+                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"cred1\"]}}]},"
                 + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
     }
 
     private static String validVpSessionRequestJson() {
         return "{\"clientId\":\"cId\",\"transactionId\":\"tId\",\"nonce\":\"nonce\","
-                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\"}]},"
+                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"cred1\"]}}]},"
                 + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":true}";
     }
 
@@ -192,13 +192,57 @@ public class VPRequestControllerTest {
     @Test
     void testCreateVPRequest_DcqlPlusLegacyPresentation_definition_Returns400Ambiguous() throws Exception {
         String body =
-                "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\"}]},"
+                "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"x\"]}}]},"
                         + "\"presentation_definition\":{\"id\":\"pd\"}}";
         mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(
                         content()
                                 .string(objectMapper.writeValueAsString(new ErrorDto(ErrorCode.AMBIGUOUS_QUERY))));
+
+        verify(verifiablePresentationRequestService, never()).createAuthorizationRequest(any());
+    }
+
+    @Test
+    void testCreateVPRequest_MissingMeta_Returns400() throws Exception {
+        String body =
+                "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\"}]},"
+                        + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
+        mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        content()
+                                .string(objectMapper.writeValueAsString(
+                                        new ErrorDto(ErrorCode.DCQL_META_REQUIRED))));
+
+        verify(verifiablePresentationRequestService, never()).createAuthorizationRequest(any());
+    }
+
+    @Test
+    void testCreateVPRequest_EmptyMeta_IsAccepted() throws Exception {
+        String body =
+                "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\",\"meta\":{}}]},"
+                        + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
+        when(verifiablePresentationRequestService.createAuthorizationRequest(any())).thenReturn(responseDto);
+
+        mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+
+        verify(verifiablePresentationRequestService, times(1)).createAuthorizationRequest(any());
+    }
+
+    @Test
+    void testCreateVPRequest_InvalidCredentialId_Returns400() throws Exception {
+        String body =
+                "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"bad id\",\"format\":\"dc+sd-jwt\",\"meta\":{}}]},"
+                        + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
+        mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        content()
+                                .string(objectMapper.writeValueAsString(
+                                        new ErrorDto(ErrorCode.DCQL_CREDENTIAL_ID_INVALID))));
 
         verify(verifiablePresentationRequestService, never()).createAuthorizationRequest(any());
     }

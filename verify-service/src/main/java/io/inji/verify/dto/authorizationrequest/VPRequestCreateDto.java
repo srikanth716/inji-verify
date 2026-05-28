@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.inji.verify.enums.ErrorCode;
+import io.inji.verify.validation.DcqlQueryValidator;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -74,54 +75,6 @@ public class VPRequestCreateDto {
     }
 
     public ErrorCode validateDcqlQuery() {
-        if (dcqlQuery == null || dcqlQuery.isNull()) {
-            return ErrorCode.DCQL_QUERY_REQUIRED;
-        }
-        if (!dcqlQuery.isObject()) {
-            return ErrorCode.DCQL_VALIDATION_ERROR;
-        }
-
-        JsonNode credentials = dcqlQuery.get("credentials");
-        if (credentials == null) {
-            return ErrorCode.DCQL_CREDENTIALS_REQUIRED;
-        }
-        if (!credentials.isArray() || credentials.isEmpty()) {
-            return ErrorCode.DCQL_CREDENTIALS_INVALID;
-        }
-
-        for (JsonNode credential : credentials) {
-            JsonNode id = credential.get("id");
-            if (id == null || !id.isTextual() || id.asText().isBlank()) {
-                return ErrorCode.DCQL_CREDENTIAL_ID_REQUIRED;
-            }
-
-            JsonNode format = credential.get("format");
-            if (format == null || !format.isTextual() || format.asText().isBlank()) {
-                return ErrorCode.DCQL_CREDENTIAL_FORMAT_REQUIRED;
-            }
-            if (!"dc+sd-jwt".equalsIgnoreCase(format.asText().trim())) {
-                return ErrorCode.DCQL_CREDENTIAL_FORMAT_UNSUPPORTED;
-            }
-
-            JsonNode claims = credential.get("claims");
-            if (claims != null) {
-                if (!claims.isArray()) {
-                    return ErrorCode.INVALID_CLAIMS_STRUCTURE;
-                }
-                for (JsonNode claim : claims) {
-                    JsonNode path = claim.get("path");
-                    if (path == null || !path.isArray() || path.isEmpty()) {
-                        return ErrorCode.INVALID_CLAIMS_STRUCTURE;
-                    }
-                    for (JsonNode pathElement : path) {
-                        if (!pathElement.isTextual() || pathElement.asText().isBlank()) {
-                            return ErrorCode.INVALID_CLAIMS_STRUCTURE;
-                        }
-                    }
-                }
-            }
-        }
-
-        return null;
+        return DcqlQueryValidator.validate(dcqlQuery);
     }
 }

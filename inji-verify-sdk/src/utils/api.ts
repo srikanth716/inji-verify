@@ -76,6 +76,13 @@ export const vcSubmission = async (
   }
 };
 
+const isAppError = (error: unknown): error is AppError => (
+  typeof error === 'object' &&
+  error !== null &&
+  'errorMessage' in error &&
+  typeof (error as Record<string, unknown>).errorMessage === 'string'
+);
+
 export const vpRequest = async (
   url: string,
   clientId: string,
@@ -101,11 +108,24 @@ export const vpRequest = async (
 
   try {
     const response = await fetch(url + "/v2/vp-request", requestOptions);
-    if (response.status !== 201) throw new Error("Failed to create VP request");
+    if (response.status !== 201) {
+      const errorData = await response.json().catch(() => ({}));
+      const error = errorData as Record<string, unknown>;
+      throw {
+        errorCode: error.errorCode as string | undefined,
+        errorMessage:
+          (error.errorMessage as string) ||
+          (error.error as string) ||
+          "Failed to create VP request",
+      } as AppError;
+    }
     const data: QrData = await response.json();
     return data;
   } catch (error) {
     console.error(error);
+    if (isAppError(error)) {
+      throw error;
+    }
     if (error instanceof Error) {
       throw Error(error.message);
     } else {
@@ -132,13 +152,6 @@ export const vpRequestStatus = async (url: string, reqId: string, abortSignal = 
     }
   }
 };
-
-const isAppError = (error: unknown): error is AppError => (
-  typeof error === 'object' &&
-  error !== null &&
-  'errorMessage' in error &&
-  typeof (error as Record<string, unknown>).errorMessage === 'string'
-);
 
 export const vpSessionRequest = async (
   url: string,
@@ -170,11 +183,24 @@ export const vpSessionRequest = async (
       credentials: "include",
       body: JSON.stringify(requestBody),
     });
-    if (response.status !== 201) throw new Error("Failed to create VP request");
+    if (response.status !== 201) {
+      const errorData = await response.json().catch(() => ({}));
+      const record = errorData as Record<string, unknown>;
+      throw {
+        errorCode: record.errorCode as string | undefined,
+        errorMessage:
+          (record.errorMessage as string) ||
+          (record.error as string) ||
+          "Failed to create VP request",
+      } as AppError;
+    }
     const data: QrData = await response.json();
     return data;
   } catch (error) {
     console.error(error);
+    if (isAppError(error)) {
+      throw error;
+    }
     if (error instanceof Error) {
       throw Error(error.message);
     } else {
