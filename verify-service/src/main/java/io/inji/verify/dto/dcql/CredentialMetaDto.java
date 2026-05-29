@@ -19,5 +19,5 @@ public class CredentialMetaDto {
     /**
      * W3C VC (JSON-LD): expanded type values.
      */
-    private List<String> type_values;
+    private List<String> typeValues;
 }
