@@ -1,5 +1,6 @@
 package io.inji.verify.dto.dcql;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -33,8 +34,10 @@ class CredentialSetQueryDtoTest {
     }
 
     @Test
-    void omittedRequired_defaultsToTrue() {
-        CredentialSetQueryDto credentialSet = new CredentialSetQueryDto(List.of(List.of("cred1")), true);
+    void omittedRequired_defaultsToTrue() throws Exception {
+        CredentialSetQueryDto credentialSet = new ObjectMapper().readValue(
+                "{\"options\":[[\"cred1\"]]}",
+                CredentialSetQueryDto.class);
 
         assertTrue(credentialSet.isRequired());
     }

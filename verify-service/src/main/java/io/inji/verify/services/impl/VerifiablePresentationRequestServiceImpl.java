@@ -234,7 +234,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
             // DCQL-only: never emit presentation_definition / presentation_definition_uri claims (spec).
             if (authorizationRequest.getDcqlQuery() != null) {
-                String dcqlQueryJson = new ObjectMapper().writeValueAsString(authorizationRequest.getDcqlQuery());
+                String dcqlQueryJson = objectMapper.writeValueAsString(authorizationRequest.getDcqlQuery());
                 claimsSet = new JWTClaimsSet.Builder(claimsSet)
                         .claim("dcql_query", JSONObjectUtils.parse(dcqlQueryJson))
                         .build();

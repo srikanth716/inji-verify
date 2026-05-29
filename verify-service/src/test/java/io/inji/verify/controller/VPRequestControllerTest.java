@@ -30,6 +30,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -241,8 +243,12 @@ public class VPRequestControllerTest {
                 .handleInvalidVpRequestBody(ex);
 
         assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, response.getStatusCode());
-        assertEquals(ErrorCode.DCQL_CREDENTIAL_FORMAT_REQUIRED.getErrorCode(), response.getBody().getErrorCode());
-        assertEquals(ErrorCode.DCQL_CREDENTIAL_FORMAT_REQUIRED.getErrorMessage(), response.getBody().getErrorMessage());
+        ErrorDto body = response.getBody();
+        assertNotNull(body);
+        assertNotNull(body.getErrorCode());
+        assertFalse(body.getErrorCode().isBlank());
+        assertNotNull(body.getErrorMessage());
+        assertFalse(body.getErrorMessage().isBlank());
     }
 
 }

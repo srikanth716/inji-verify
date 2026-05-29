@@ -20,5 +20,5 @@ public class ClaimQueryDto {
     @NotEmpty(message = "DCQL_CLAIM_PATH_INVALID")
     private List<@NotBlank(message = "DCQL_CLAIM_PATH_INVALID") String> path;
 
-    private boolean values;
+    private List<Object> values;
 }
