@@ -7,7 +7,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -36,7 +35,6 @@ import static io.inji.verify.shared.Constants.VP_REQUEST_URI;
 
 @RestController
 @Slf4j
-@CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "Content-Type", allowCredentials = "true")
 public class VPRequestController {
 
     @Value("${inji.verify.cookie-duration-in-minute:#{5}}")
