@@ -20,7 +20,7 @@ import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.DcqlQueryMissingException;
 import io.inji.verify.exception.VPRequestNotFoundException;
-import io.inji.verify.validation.VPRequestCreateValidator;
+import io.inji.verify.validation.DcqlQueryValidator;
 import io.inji.verify.services.VerifiablePresentationRequestService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -65,9 +65,9 @@ public class VPRequestController {
 
     @NotNull
     private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie) {
-        ErrorCode validationError = VPRequestCreateValidator.validate(vpRequestCreate);
-        if (validationError != null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(validationError));
+        ErrorCode dcqlValidationError = DcqlQueryValidator.validate(vpRequestCreate.getDcqlQuery());
+        if (dcqlValidationError != null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(dcqlValidationError));
         }
         try {
             VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate);
