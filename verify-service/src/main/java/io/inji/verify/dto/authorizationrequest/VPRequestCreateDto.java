@@ -18,7 +18,7 @@ public class VPRequestCreateDto {
     String transactionId;
     String nonce;
     @Valid
-    @NotNull(message = "DCQL query must not be null")
+    @NotNull(message = "DCQL_QUERY_REQUIRED")
     private DCQLQueryDto dcqlQuery;
     boolean acceptVPWithoutHolderProof;
     boolean responseCodeValidationRequired;

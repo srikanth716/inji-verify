@@ -2,7 +2,7 @@ package io.inji.verify.dto.authorizationrequest;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.JsonNode;
+import io.inji.verify.dto.dcql.DCQLQueryDto;
 import io.inji.verify.shared.Constants;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -22,7 +22,7 @@ public class AuthorizationRequestResponseDto {
     private final String responseMode = Constants.RESPONSE_MODE;
     private final long issuedAt = Instant.now().toEpochMilli();
     private final String clientId;
-    private final JsonNode dcqlQuery;
+    private final DCQLQueryDto dcqlQuery;
     private final String nonce;
     private final String responseUri;
     private final boolean acceptVPWithoutHolderProof;

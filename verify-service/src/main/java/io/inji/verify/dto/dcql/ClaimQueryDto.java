@@ -1,6 +1,8 @@
 package io.inji.verify.dto.dcql;
 
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,8 +16,9 @@ public class ClaimQueryDto {
 
     private String id;
 
-    @NotEmpty
-    private List<String> path;
+    @NotNull(message = "DCQL_CLAIM_PATH_REQUIRED")
+    @NotEmpty(message = "DCQL_CLAIM_PATH_INVALID")
+    private List<@NotBlank(message = "DCQL_CLAIM_PATH_INVALID") String> path;
 
-    private boolean optional;
+    private boolean values;
 }

@@ -7,12 +7,16 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
@@ -20,7 +24,7 @@ import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.DcqlQueryMissingException;
 import io.inji.verify.exception.VPRequestNotFoundException;
-import io.inji.verify.validation.DcqlQueryValidator;
+import io.inji.verify.exception.VPRequestValidationException;
 import io.inji.verify.services.VerifiablePresentationRequestService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +36,7 @@ import static io.inji.verify.shared.Constants.VP_REQUEST_URI;
 
 @RestController
 @Slf4j
+@CrossOrigin(origins = "http://localhost:3000", allowedHeaders = "Content-Type", allowCredentials = "true")
 public class VPRequestController {
 
     @Value("${inji.verify.cookie-duration-in-minute:#{5}}")
@@ -63,12 +68,24 @@ public class VPRequestController {
         return processCreateVPRequest(vpRequestCreate, true);
     }
 
+    @ExceptionHandler(VPRequestValidationException.class)
+    public ResponseEntity<ErrorDto> handleVPRequestValidationException(VPRequestValidationException e) {
+        log.error("VP request validation error: {}", e.getMessage());
+        ErrorCode errorCode = e.getErrorCode();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(errorCode));
+    }
+
+    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
+    public ResponseEntity<ErrorDto> handleInvalidVpRequestBody(Exception ex) {
+        if (ex instanceof HttpMessageNotReadableException unreadable) {
+            log.error("VP request body unreadable: {}", unreadable.getMessage());
+            return handleVPRequestValidationException(new VPRequestValidationException(ErrorCode.INVALID_REQUEST_FORMAT));
+        }
+        return handleVPRequestValidationException(VPRequestValidationException.from((MethodArgumentNotValidException) ex));
+    }
+
     @NotNull
     private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie) {
-        ErrorCode dcqlValidationError = DcqlQueryValidator.validate(vpRequestCreate.getDcqlQuery());
-        if (dcqlValidationError != null) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(dcqlValidationError));
-        }
         try {
             VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate);
 

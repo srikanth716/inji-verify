@@ -2,7 +2,6 @@ package io.inji.verify.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JOSEObjectType;
@@ -87,14 +86,12 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         String requestId = Utils.generateID(Constants.REQUEST_ID_PREFIX);
         long expiresAt = Instant.now().plusSeconds(Constants.DEFAULT_EXPIRY).toEpochMilli();
         String nonce = vpRequestCreate.getNonce() != null ? vpRequestCreate.getNonce() : SecurityUtils.generateNonce();
-        String responseUri = verifyServiceBaseUrl + Constants.RESPONSE_SUBMISSION_URI_ROOT + Constants.RESPONSE_SUBMISSION_URI;
+        String responseUri = verifyServiceBaseUrl + Constants.VP_RESPONSE_SUBMISSION_URI;
         boolean acceptVPWithoutHolderProof = vpRequestCreate.isAcceptVPWithoutHolderProof();
         boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
-        JsonNode dcqlQuery = objectMapper.valueToTree(vpRequestCreate.getDcqlQuery());
-
         AuthorizationRequestResponseDto authorizationRequestResponseDto = new AuthorizationRequestResponseDto(
                 vpRequestCreate.getClientId(),
-                dcqlQuery,
+                vpRequestCreate.getDcqlQuery(),
                 nonce,
                 responseUri,
                 acceptVPWithoutHolderProof,
@@ -193,15 +190,9 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                 .findById(requestId)
                 .map(authorizationRequestCreateResponse -> {
                     AuthorizationRequestResponseDto details = authorizationRequestCreateResponse.getAuthorizationDetails();
-                    if (details == null
-                            || details.getDcqlQuery() == null
-                            || details.getDcqlQuery().isNull()) {
-                        throw new DcqlQueryMissingException(
-                                "dcql_query is required to issue an authorization request JWT for requestId=" + requestId);
-                    }
                     String verifierDid = details.getClientId();
                     String state = authorizationRequestCreateResponse.getRequestId();
-                    return createAndSignAuthorizationRequestJwt(verifierDid, details, state);
+                    return createAndSignAuthorizationRequestJwt(verifierDid, authorizationRequestCreateResponse.getAuthorizationDetails(), state);
                 })
                 .orElseThrow(VPRequestNotFoundException::new);
     }

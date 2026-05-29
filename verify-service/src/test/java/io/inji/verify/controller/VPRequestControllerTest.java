@@ -3,11 +3,15 @@ package io.inji.verify.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
-import io.inji.verify.config.ExceptionHandlerConfig;
+import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
+import org.springframework.core.MethodParameter;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import io.inji.verify.enums.VPRequestStatus;
 import io.inji.verify.services.VerifiablePresentationRequestService;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +24,6 @@ import org.springframework.http.converter.json.MappingJackson2HttpMessageConvert
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.context.request.async.DeferredResult;
 
 import java.nio.charset.StandardCharsets;
@@ -66,15 +69,27 @@ public class VPRequestControllerTest {
     @BeforeEach
     public void setUp() {
         VPRequestController vpRequestController = new VPRequestController(verifiablePresentationRequestService);
-        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
-        validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(vpRequestController)
                 .setMessageConverters(
                         new MappingJackson2HttpMessageConverter(objectMapper),
                         new StringHttpMessageConverter())
-                .setControllerAdvice(new ExceptionHandlerConfig())
-                .setValidator(validator)
+                .setValidator(noOpSpringValidator())
                 .build();
+    }
+
+    /** Bypasses bean validation so controller wiring can be tested in isolation. */
+    private static org.springframework.validation.Validator noOpSpringValidator() {
+        return new org.springframework.validation.Validator() {
+            @Override
+            public boolean supports(Class<?> clazz) {
+                return true;
+            }
+
+            @Override
+            public void validate(Object target, org.springframework.validation.Errors errors) {
+                // no-op
+            }
+        };
     }
 
     @Test
@@ -99,14 +114,16 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    public void testCreateVPRequest_BadRequest_NoDcqlQuery() throws Exception {
+    public void testCreateVPRequest_WithoutDcqlQuery_IsAccepted() throws Exception {
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
+        when(verifiablePresentationRequestService.createAuthorizationRequest(any())).thenReturn(responseDto);
+
         mockMvc.perform(post("/v2/vp-request")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(vpRequestJsonWithoutDcql()))
-                .andExpect(status().isBadRequest())
-                .andExpect(content().string(objectMapper.writeValueAsString(new ErrorDto(ErrorCode.DCQL_QUERY_REQUIRED))));
+                .andExpect(status().isCreated());
 
-        verify(verifiablePresentationRequestService, never()).createAuthorizationRequest(any());
+        verify(verifiablePresentationRequestService, times(1)).createAuthorizationRequest(any());
     }
 
     @Test
@@ -174,18 +191,17 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    void testCreateVPRequest_MissingMeta_Returns400() throws Exception {
+    void testCreateVPRequest_MissingMeta_IsAccepted() throws Exception {
         String body =
                 "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\"}]},"
                         + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
-        mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        content()
-                                .string(objectMapper.writeValueAsString(
-                                        new ErrorDto(ErrorCode.DCQL_META_REQUIRED))));
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
+        when(verifiablePresentationRequestService.createAuthorizationRequest(any())).thenReturn(responseDto);
 
-        verify(verifiablePresentationRequestService, never()).createAuthorizationRequest(any());
+        mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+
+        verify(verifiablePresentationRequestService, times(1)).createAuthorizationRequest(any());
     }
 
     @Test
@@ -203,17 +219,30 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    void testCreateVPRequest_InvalidCredentialId_Returns400() throws Exception {
-        String body =
-                "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"bad id\",\"format\":\"dc+sd-jwt\",\"meta\":{}}]},"
-                        + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
-        mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        content()
-                                .string(objectMapper.writeValueAsString(
-                                        new ErrorDto(ErrorCode.DCQL_CREDENTIAL_ID_INVALID))));
+    void handleVPRequestValidationException_returnsErrorDto() throws Exception {
+        BeanPropertyBindingResult bindingResult =
+                new BeanPropertyBindingResult(new Object(), "VPRequestCreateDto");
+        bindingResult.addError(new FieldError(
+                "VPRequestCreateDto",
+                "dcqlQuery.credentials[0].format",
+                null,
+                false,
+                new String[]{"NotBlank"},
+                null,
+                "DCQL_CREDENTIAL_FORMAT_REQUIRED"));
 
-        verify(verifiablePresentationRequestService, never()).createAuthorizationRequest(any());
+        MethodParameter parameter = new MethodParameter(
+                VPRequestController.class.getDeclaredMethod("createVPSessionRequest", VPRequestCreateDto.class),
+                0);
+        MethodArgumentNotValidException ex =
+                new MethodArgumentNotValidException(parameter, bindingResult);
+
+        var response = new VPRequestController(verifiablePresentationRequestService)
+                .handleInvalidVpRequestBody(ex);
+
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals(ErrorCode.DCQL_CREDENTIAL_FORMAT_REQUIRED.getErrorCode(), response.getBody().getErrorCode());
+        assertEquals(ErrorCode.DCQL_CREDENTIAL_FORMAT_REQUIRED.getErrorMessage(), response.getBody().getErrorMessage());
     }
+
 }

@@ -14,7 +14,7 @@ public class VPRequestResponseDtoTest {
         AuthorizationRequestResponseDto authorizationDetails =
                 new AuthorizationRequestResponseDto(
                         "client123",
-                        DcqlTestFixtures.minimalDcql(),
+                        DcqlTestFixtures.minimalDcqlDto(),
                         "nonce123",
                         "url",
                         false,

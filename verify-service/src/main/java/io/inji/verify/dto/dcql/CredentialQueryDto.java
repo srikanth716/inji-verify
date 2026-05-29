@@ -2,6 +2,7 @@ package io.inji.verify.dto.dcql;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,16 +14,19 @@ import java.util.List;
 @AllArgsConstructor
 public class CredentialQueryDto {
 
-    @NotBlank
+    @NotBlank(message = "DCQL_CREDENTIAL_ID_REQUIRED")
+    @NotNull(message = "DCQL_CREDENTIAL_ID_INVALID")
     private String id;
 
     /**
      * vc+sd-jwt, dc+sd-jwt etc.
      */
-    @NotBlank
+    @NotBlank(message = "DCQL_CREDENTIAL_FORMAT_REQUIRED")
+    @NotNull(message = "DCQL_CREDENTIAL_FORMAT_INVALID")
     private String format;
 
     @Valid
+    @NotNull(message = "DCQL_META_REQUIRED")
     private CredentialMetaDto meta;
 
     @Valid
@@ -31,6 +35,5 @@ public class CredentialQueryDto {
     /**
      * References claim ids.
      */
-    @Valid
     private List<List<String>> claimSets;
 }
