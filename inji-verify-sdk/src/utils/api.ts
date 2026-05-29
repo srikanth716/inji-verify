@@ -83,57 +83,6 @@ const isAppError = (error: unknown): error is AppError => (
   typeof (error as Record<string, unknown>).errorMessage === 'string'
 );
 
-export const vpRequest = async (
-  url: string,
-  clientId: string,
-  dcqlQuery: DcqlQuery,
-  txnId?: string,
-  acceptVPWithoutHolderProof?: boolean
-) => {
-  const requestBody: VPRequestBody = {
-    clientId: clientId,
-    nonce: generateNonce(),
-    dcqlQuery,
-  };
-
-  if (txnId) requestBody.transactionId = txnId;
-  
-  const requestOptions = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  };
-
-  try {
-    const response = await fetch(url + "/v2/vp-request", requestOptions);
-    if (response.status !== 201) {
-      const errorData = await response.json().catch(() => ({}));
-      const error = errorData as Record<string, unknown>;
-      throw {
-        errorCode: error.errorCode as string | undefined,
-        errorMessage:
-          (error.errorMessage as string) ||
-          (error.error as string) ||
-          "Failed to create VP request",
-      } as AppError;
-    }
-    const data: QrData = await response.json();
-    return data;
-  } catch (error) {
-    console.error(error);
-    if (isAppError(error)) {
-      throw error;
-    }
-    if (error instanceof Error) {
-      throw Error(error.message);
-    } else {
-      throw new Error("An unknown error occurred");
-    }
-  }
-};
-
 export const vpRequestStatus = async (url: string, reqId: string, abortSignal = false) => {
   try {
     const response = await fetch(url + `/vp-request/${reqId}/status`, {
@@ -165,13 +114,11 @@ export const vpSessionRequest = async (
     clientId: clientId,
     nonce: generateNonce(),
     dcqlQuery,
+    acceptVPWithoutHolderProof: acceptVPWithoutHolderProof
   };
   if (txnId) requestBody.transactionId = txnId;
   if (responseCodeValidationRequired) {
     requestBody.responseCodeValidationRequired = true;
-  }
-  if (acceptVPWithoutHolderProof) {
-    requestBody.acceptVPWithoutHolderProof = true;
   }
 
   try {

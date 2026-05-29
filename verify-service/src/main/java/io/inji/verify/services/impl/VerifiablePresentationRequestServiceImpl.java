@@ -56,6 +56,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     final AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository;
     final VPSubmissionRepository vpSubmissionRepository;
     final KeyManagementService<OctetKeyPair> keyManagementService;
+    final ObjectMapper objectMapper;
 
     @Value("${inji.vp-request.long-polling-timeout}")
     Long defaultTimeout;
@@ -68,10 +69,15 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
     HashMap<String, DeferredResult<VPRequestStatusDto>> vpRequestStatusListeners = new HashMap<>();
 
-    public VerifiablePresentationRequestServiceImpl(AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository, VPSubmissionRepository vpSubmissionRepository, KeyManagementService<OctetKeyPair> keyManagementService) {
+    public VerifiablePresentationRequestServiceImpl(
+            AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository,
+            VPSubmissionRepository vpSubmissionRepository,
+            KeyManagementService<OctetKeyPair> keyManagementService,
+            ObjectMapper objectMapper) {
         this.authorizationRequestCreateResponseRepository = authorizationRequestCreateResponseRepository;
         this.vpSubmissionRepository = vpSubmissionRepository;
         this.keyManagementService = keyManagementService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -84,7 +90,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         String responseUri = verifyServiceBaseUrl + Constants.RESPONSE_SUBMISSION_URI_ROOT + Constants.RESPONSE_SUBMISSION_URI;
         boolean acceptVPWithoutHolderProof = vpRequestCreate.isAcceptVPWithoutHolderProof();
         boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
-        JsonNode dcqlQuery = vpRequestCreate.getDcqlQuery();
+        JsonNode dcqlQuery = objectMapper.valueToTree(vpRequestCreate.getDcqlQuery());
 
         AuthorizationRequestResponseDto authorizationRequestResponseDto = new AuthorizationRequestResponseDto(
                 vpRequestCreate.getClientId(),

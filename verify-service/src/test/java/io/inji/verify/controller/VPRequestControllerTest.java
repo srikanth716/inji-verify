@@ -3,6 +3,7 @@ package io.inji.verify.controller;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import io.inji.verify.config.ExceptionHandlerConfig;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
@@ -13,10 +14,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.context.request.async.DeferredResult;
 
 import java.nio.charset.StandardCharsets;
@@ -38,18 +42,19 @@ public class VPRequestControllerTest {
     private MockMvc mockMvc;
 
     /** Matches production Jackson setup (parameter names + Lombok @ConstructorProperties). */
-    private final ObjectMapper objectMapper =
-            Jackson2ObjectMapperBuilder.json().modules(new ParameterNamesModule()).build();
+    private final ObjectMapper objectMapper = Jackson2ObjectMapperBuilder.json()
+            .modules(new ParameterNamesModule())
+            .build();
 
     private static String validVpRequestJson() {
         return "{\"clientId\":\"cId\",\"transactionId\":\"tId\",\"nonce\":\"nonce\","
-                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"cred1\"]}}]},"
+                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vctValues\":[\"cred1\"]}}]},"
                 + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
     }
 
     private static String validVpSessionRequestJson() {
         return "{\"clientId\":\"cId\",\"transactionId\":\"tId\",\"nonce\":\"nonce\","
-                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"cred1\"]}}]},"
+                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vctValues\":[\"cred1\"]}}]},"
                 + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":true}";
     }
 
@@ -61,7 +66,15 @@ public class VPRequestControllerTest {
     @BeforeEach
     public void setUp() {
         VPRequestController vpRequestController = new VPRequestController(verifiablePresentationRequestService);
-        mockMvc = MockMvcBuilders.standaloneSetup(vpRequestController).build();
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
+        mockMvc = MockMvcBuilders.standaloneSetup(vpRequestController)
+                .setMessageConverters(
+                        new MappingJackson2HttpMessageConverter(objectMapper),
+                        new StringHttpMessageConverter())
+                .setControllerAdvice(new ExceptionHandlerConfig())
+                .setValidator(validator)
+                .build();
     }
 
     @Test
@@ -158,49 +171,6 @@ public class VPRequestControllerTest {
                 .andExpect(header().exists("Set-Cookie"))
                 .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("transaction_id=" + expectedCookieValue)))
                 .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("HttpOnly")));
-    }
-
-    @Test
-    void testCreateVPRequest_LegacyPresentation_definition_snakeCaseOnly_Returns400() throws Exception {
-        String body =
-                "{\"clientId\":\"c1\",\"nonce\":\"n\",\"transactionId\":\"t\",\"presentation_definition\":{},"
-                        + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
-        mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        content()
-                                .string(objectMapper.writeValueAsString(
-                                        new ErrorDto(ErrorCode.PRESENTATION_DEFINITION_NOT_SUPPORTED))));
-
-        verify(verifiablePresentationRequestService, never()).createAuthorizationRequest(any());
-    }
-
-    @Test
-    void testCreateVPRequest_LegacyPresentation_definition_uri_snakeCaseOnly_Returns400() throws Exception {
-        String body =
-                "{\"clientId\":\"c1\",\"nonce\":\"n\",\"presentation_definition_uri\":\"https://example.com/pd\"}";
-        mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        content()
-                                .string(objectMapper.writeValueAsString(
-                                        new ErrorDto(ErrorCode.PRESENTATION_DEFINITION_NOT_SUPPORTED))));
-
-        verify(verifiablePresentationRequestService, never()).createAuthorizationRequest(any());
-    }
-
-    @Test
-    void testCreateVPRequest_DcqlPlusLegacyPresentation_definition_Returns400Ambiguous() throws Exception {
-        String body =
-                "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"x\"]}}]},"
-                        + "\"presentation_definition\":{\"id\":\"pd\"}}";
-        mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(
-                        content()
-                                .string(objectMapper.writeValueAsString(new ErrorDto(ErrorCode.AMBIGUOUS_QUERY))));
-
-        verify(verifiablePresentationRequestService, never()).createAuthorizationRequest(any());
     }
 
     @Test

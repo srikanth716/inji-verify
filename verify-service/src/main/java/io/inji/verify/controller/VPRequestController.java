@@ -7,7 +7,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,6 +20,7 @@ import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.DcqlQueryMissingException;
 import io.inji.verify.exception.VPRequestNotFoundException;
+import io.inji.verify.validation.VPRequestCreateValidator;
 import io.inji.verify.services.VerifiablePresentationRequestService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +31,6 @@ import static io.inji.verify.shared.Constants.COOKIE_NAME;
 import static io.inji.verify.shared.Constants.VP_REQUEST_URI;
 
 @RestController
-@Validated
 @Slf4j
 public class VPRequestController {
 
@@ -66,7 +65,7 @@ public class VPRequestController {
 
     @NotNull
     private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie) {
-        ErrorCode validationError = vpRequestCreate.validateRequest();
+        ErrorCode validationError = VPRequestCreateValidator.validate(vpRequestCreate);
         if (validationError != null) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(validationError));
         }

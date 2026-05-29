@@ -1,7 +1,7 @@
 package io.inji.verify.validation;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.inji.verify.dto.dcql.DCQLQueryDto;
 import io.inji.verify.enums.ErrorCode;
 import org.junit.jupiter.api.Test;
 
@@ -12,8 +12,8 @@ class DcqlQueryValidatorTest {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private static JsonNode parse(String json) throws Exception {
-        return MAPPER.readTree(json);
+    private static DCQLQueryDto parse(String json) throws Exception {
+        return MAPPER.readValue(json, DCQLQueryDto.class);
     }
 
     @Test
@@ -30,24 +30,19 @@ class DcqlQueryValidatorTest {
                     {
                       "id": "cred-1",
                       "format": "vc+sd-jwt",
-                      "meta": { "vct_values": ["IdentityCredential"] },
-                      "multiple": false,
-                      "require_cryptographic_holder_binding": true,
-                      "trusted_authorities": [
-                        { "type": "aki", "values": ["issuer-1"] }
-                      ],
+                      "meta": { "vctValues": ["IdentityCredential"] },
                       "claims": [
                         { "id": "age_over_18", "path": ["age_over_18"] },
                         { "id": "birth_date", "path": ["birth_date"] }
                       ],
-                      "claim_sets": [
+                      "claimSets": [
                         ["age_over_18"],
                         ["birth_date"]
                       ]
                     }
                   ],
-                  "credential_sets": [
-                    { "options": [["cred-1"]], "required": true }
+                  "credentialSets": [
+                    { "id": "set-1", "options": [["cred-1"]], "required": true }
                   ]
                 }
                 """)));
@@ -99,19 +94,13 @@ class DcqlQueryValidatorTest {
     @Test
     void rejectsInvalidVctValuesStructure() throws Exception {
         assertEquals(ErrorCode.INVALID_META_STRUCTURE, DcqlQueryValidator.validate(parse(
-                "{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"\"]}}]}")));
+                "{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vctValues\":[\"\"]}}]}")));
     }
 
     @Test
-    void rejectsMdocWithoutDoctypeValue() throws Exception {
-        assertEquals(ErrorCode.DCQL_DOCTYPE_VALUE_REQUIRED, DcqlQueryValidator.validate(parse(
-                "{\"credentials\":[{\"id\":\"mdoc1\",\"format\":\"mso_mdoc\",\"meta\":{}}]}")));
-    }
-
-    @Test
-    void acceptsMdocWithDoctypeValue() throws Exception {
-        assertNull(DcqlQueryValidator.validate(parse(
-                "{\"credentials\":[{\"id\":\"mdoc1\",\"format\":\"mso_mdoc\",\"meta\":{\"doctype_value\":\"org.iso.18013.5.1.mDL\"},"
+    void rejectsUnsupportedMsoMdocFormat() throws Exception {
+        assertEquals(ErrorCode.DCQL_CREDENTIAL_FORMAT_UNSUPPORTED, DcqlQueryValidator.validate(parse(
+                "{\"credentials\":[{\"id\":\"mdoc1\",\"format\":\"mso_mdoc\",\"meta\":{\"doctypeValues\":[\"org.iso.18013.5.1.mDL\"]},"
                         + "\"claims\":[{\"path\":[\"org.iso.18013.5.1\",\"first_name\"]}]}]}")));
     }
 
@@ -130,7 +119,7 @@ class DcqlQueryValidatorTest {
                     "format": "dc+sd-jwt",
                     "meta": {},
                     "claims": [{ "path": ["age_over_18"] }],
-                    "claim_sets": [["age_over_18"]]
+                    "claimSets": [["age_over_18"]]
                   }]
                 }
                 """)));
@@ -145,7 +134,7 @@ class DcqlQueryValidatorTest {
                     "format": "dc+sd-jwt",
                     "meta": {},
                     "claims": [{ "id": "age_over_18", "path": ["age_over_18"] }],
-                    "claim_sets": [["birth_date"]]
+                    "claimSets": [["birth_date"]]
                   }]
                 }
                 """)));
@@ -156,7 +145,17 @@ class DcqlQueryValidatorTest {
         assertEquals(ErrorCode.INVALID_CREDENTIAL_SETS_STRUCTURE, DcqlQueryValidator.validate(parse("""
                 {
                   "credentials": [{ "id": "cred1", "format": "dc+sd-jwt", "meta": {} }],
-                  "credential_sets": [{ "options": [["missing-id"]] }]
+                  "credentialSets": [{ "id": "set-1", "options": [["missing-id"]] }]
+                }
+                """)));
+    }
+
+    @Test
+    void rejectsCredentialSetWithoutId() throws Exception {
+        assertEquals(ErrorCode.INVALID_CREDENTIAL_SETS_STRUCTURE, DcqlQueryValidator.validate(parse("""
+                {
+                  "credentials": [{ "id": "cred1", "format": "dc+sd-jwt", "meta": {} }],
+                  "credentialSets": [{ "options": [["cred1"]] }]
                 }
                 """)));
     }

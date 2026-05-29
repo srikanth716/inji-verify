@@ -6,6 +6,7 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.OctetKeyPair;
 import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator;
+import io.inji.verify.dto.dcql.DCQLQueryDto;
 import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
@@ -45,9 +46,10 @@ class VerifiablePresentationRequestServiceImplTest {
     static VPSubmissionRepository mockVPSubmissionRepository;
     static KeyManagementService<OctetKeyPair> mockKeyManagementService;
 
-    private static JsonNode minimalDcqlQuery() throws Exception {
-        return OBJECT_MAPPER.readTree(
-                "{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"cred1\"]}}]}");
+    private static DCQLQueryDto minimalDcqlQuery() throws Exception {
+        return OBJECT_MAPPER.readValue(
+                "{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vctValues\":[\"cred1\"]}}]}",
+                DCQLQueryDto.class);
     }
 
     @BeforeAll
@@ -58,7 +60,8 @@ class VerifiablePresentationRequestServiceImplTest {
         service = new VerifiablePresentationRequestServiceImpl(
                 mockAuthorizationRequestCreateResponseRepository,
                 mockVPSubmissionRepository,
-                mockKeyManagementService);
+                mockKeyManagementService,
+                OBJECT_MAPPER);
     }
 
     @Test
@@ -164,7 +167,7 @@ class VerifiablePresentationRequestServiceImplTest {
         AuthorizationRequestResponseDto authzDetailsDto =
                 new AuthorizationRequestResponseDto(
                         verifierDid,
-                        minimalDcqlQuery(),
+                        DcqlTestFixtures.minimalDcql(),
                         "nonce",
                         "https://verifier.example/resp",
                         false,
