@@ -17,7 +17,7 @@ public class CredentialMetaDto {
     private List<String> vctValues;
 
     /**
-     * mdoc doctype values
+     * W3C VC (JSON-LD): expanded type values.
      */
-    private List<String> doctypeValues;
+    private List<String> type_values;
 }
