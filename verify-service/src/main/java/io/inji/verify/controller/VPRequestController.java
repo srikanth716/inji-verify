@@ -21,7 +21,6 @@ import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
-import io.inji.verify.exception.DcqlQueryMissingException;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.exception.VPRequestValidationException;
 import io.inji.verify.services.VerifiablePresentationRequestService;
@@ -58,7 +57,6 @@ public class VPRequestController {
     @PostMapping(path = VP_REQUEST_URI, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Object> createVPRequest(@Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
         return processCreateVPRequest(vpRequestCreate, false);
-
     }
 
     @PostMapping(path = "/v2/vp-session-request", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -120,9 +118,6 @@ public class VPRequestController {
             return ResponseEntity.status(HttpStatus.OK).body(verifiablePresentationRequestService.getVPRequestJwt(requestId));
         } catch (VPRequestNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorDto(ErrorCode.NO_AUTH_REQUEST));
-        } catch (DcqlQueryMissingException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(ErrorCode.DCQL_QUERY_REQUIRED));
         }
     }
-
 }

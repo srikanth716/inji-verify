@@ -20,7 +20,6 @@ import io.inji.verify.dto.client.ClientMetadataDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.enums.VPRequestStatus;
-import io.inji.verify.exception.DcqlQueryMissingException;
 import io.inji.verify.exception.JWTCreationException;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.models.AuthorizationRequestCreateResponse;
@@ -41,10 +40,10 @@ import java.text.ParseException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.Date;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Value;
 import static io.inji.verify.shared.Constants.VP_FORMATS_SUPPORTED;
 
@@ -66,7 +65,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     @Value("${inji.did.verify.public.key.uri}")
     String verifyPublicKeyURI;
 
-    HashMap<String, DeferredResult<VPRequestStatusDto>> vpRequestStatusListeners = new HashMap<>();
+    ConcurrentHashMap<String, DeferredResult<VPRequestStatusDto>> vpRequestStatusListeners = new ConcurrentHashMap<>();
 
     public VerifiablePresentationRequestServiceImpl(
             AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository,
@@ -174,6 +173,17 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                     }
 
                     result.onTimeout(() -> result.setResult(getCurrentRequestStatus(requestId)));
+                    // cleanup on timeout
+                    result.onTimeout(() -> {
+                        vpRequestStatusListeners.remove(requestId);
+                        result.setResult(getCurrentRequestStatus(requestId));
+                    });
+
+                    // cleanup on completion
+                    result.onCompletion(() ->
+                            vpRequestStatusListeners.remove(requestId)
+                    );
+                    
                     registerVpRequestStatusListener(requestId, result);
                     return result;
                 })
