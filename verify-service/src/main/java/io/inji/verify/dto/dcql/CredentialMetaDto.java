@@ -1,5 +1,6 @@
 package io.inji.verify.dto.dcql;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,10 +15,10 @@ public class CredentialMetaDto {
     /**
      * SD-JWT VC vct values
      */
-    private List<String> vctValues;
+    private List<@NotBlank(message = "DCQL_META_INVALID") String> vctValues;
 
     /**
      * W3C VC (JSON-LD): expanded type values.
      */
-    private List<String> typeValues;
+    private List<@NotBlank(message = "DCQL_META_INVALID") String> typeValues;
 }

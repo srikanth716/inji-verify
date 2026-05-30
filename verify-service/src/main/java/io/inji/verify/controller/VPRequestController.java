@@ -15,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
@@ -24,6 +23,7 @@ import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.exception.VPRequestValidationException;
 import io.inji.verify.services.VerifiablePresentationRequestService;
+import io.inji.verify.validator.DcqlValidator;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import java.nio.charset.StandardCharsets;
@@ -49,9 +49,11 @@ public class VPRequestController {
     String cookieSameSite;
 
     final VerifiablePresentationRequestService verifiablePresentationRequestService;
+    final DcqlValidator dcqlValidator;
 
-    public VPRequestController(VerifiablePresentationRequestService verifiablePresentationRequestService) {
+    public VPRequestController(VerifiablePresentationRequestService verifiablePresentationRequestService, DcqlValidator dcqlValidator) {
         this.verifiablePresentationRequestService = verifiablePresentationRequestService;
+        this.dcqlValidator = dcqlValidator;
     }
 
     @PostMapping(path = VP_REQUEST_URI, consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -61,6 +63,7 @@ public class VPRequestController {
 
     @PostMapping(path = "/v2/vp-session-request", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Object> createVPSessionRequest(@Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
+        dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
         return processCreateVPRequest(vpRequestCreate, true);
     }
 
@@ -71,19 +74,17 @@ public class VPRequestController {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(errorCode));
     }
 
-    @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class})
-    public ResponseEntity<ErrorDto> handleInvalidVpRequestBody(Exception ex) {
-        if (ex instanceof HttpMessageNotReadableException unreadable) {
-            log.error("VP request body unreadable: {}", unreadable.getMessage());
-            return handleVPRequestValidationException(new VPRequestValidationException(ErrorCode.INVALID_REQUEST_FORMAT));
-        }
-        return handleVPRequestValidationException(VPRequestValidationException.from((MethodArgumentNotValidException) ex));
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorDto> handleUnreadable(HttpMessageNotReadableException ex) {
+        log.error("VP request body unreadable: {}", ex.getMessage());
+        return handleVPRequestValidationException(
+                new VPRequestValidationException(
+                        ErrorCode.INVALID_REQUEST_FORMAT));
     }
 
     @NotNull
     private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie) {
-        try {
-            VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate);
+        VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate);
 
             if (createCookie) {
                 String transactionId = authorizationRequestResponse.getTransactionId();
@@ -100,11 +101,7 @@ public class VPRequestController {
                         .body(authorizationRequestResponse);
             }
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(authorizationRequestResponse);
-        } catch (Exception e) {
-            log.error("Error creating VP request: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorDto(ErrorCode.INTERNAL_SERVER_ERROR));
-        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(authorizationRequestResponse);
     }
 
     @GetMapping(path = "/vp-request/{requestId}/status")

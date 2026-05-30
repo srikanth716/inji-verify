@@ -24,9 +24,6 @@ public class VPRequestValidationException extends RuntimeException {
     }
 
     private static ErrorCode toErrorCode(FieldError fieldError) {
-        if ("clientId".equals(fieldError.getField())) {
-            return ErrorCode.CLIENT_ID_REQUIRED;
-        }
         String message = fieldError.getDefaultMessage();
         if (message == null || message.isBlank()) {
             return ErrorCode.INVALID_REQUEST_FORMAT;

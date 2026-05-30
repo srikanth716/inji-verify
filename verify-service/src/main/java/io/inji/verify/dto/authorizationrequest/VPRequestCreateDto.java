@@ -11,8 +11,7 @@ import lombok.Getter;
 @Getter
 @NotNull
 public class VPRequestCreateDto {
-    @NotNull(message = "Client Id must not be null")
-    @NotBlank(message = "Client Id must not be empty")
+    @NotBlank(message = "CLIENT_ID_REQUIRED")
     String clientId;
     String transactionId;
     String nonce;

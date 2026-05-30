@@ -8,6 +8,8 @@ import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
+import io.inji.verify.exception.VPRequestValidationException;
+import io.inji.verify.validator.DcqlValidator;
 import org.springframework.core.MethodParameter;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
@@ -43,6 +45,7 @@ public class VPRequestControllerTest {
 
     private final VerifiablePresentationRequestService verifiablePresentationRequestService =
             Mockito.mock(VerifiablePresentationRequestService.class);
+    private final DcqlValidator dcqlValidator = Mockito.mock(DcqlValidator.class);
 
     private MockMvc mockMvc;
 
@@ -70,7 +73,7 @@ public class VPRequestControllerTest {
 
     @BeforeEach
     public void setUp() {
-        VPRequestController vpRequestController = new VPRequestController(verifiablePresentationRequestService);
+        VPRequestController vpRequestController = new VPRequestController(verifiablePresentationRequestService, dcqlValidator);
         mockMvc = MockMvcBuilders.standaloneSetup(vpRequestController)
                 .setMessageConverters(
                         new MappingJackson2HttpMessageConverter(objectMapper),
@@ -239,8 +242,8 @@ public class VPRequestControllerTest {
         MethodArgumentNotValidException ex =
                 new MethodArgumentNotValidException(parameter, bindingResult);
 
-        var response = new VPRequestController(verifiablePresentationRequestService)
-                .handleInvalidVpRequestBody(ex);
+        var response = new VPRequestController(verifiablePresentationRequestService, dcqlValidator)
+                .handleVPRequestValidationException(VPRequestValidationException.from(ex));
 
         assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, response.getStatusCode());
         ErrorDto body = response.getBody();
