@@ -9,13 +9,13 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
@@ -35,7 +35,6 @@ import static io.inji.verify.shared.Constants.VP_REQUEST_URI;
 
 @RestController
 @Slf4j
-@CrossOrigin(originPatterns = "*", allowedHeaders = "Content-Type", allowCredentials = "true")
 public class VPRequestController {
 
     @Value("${inji.verify.cookie-duration-in-minute:#{5}}")
@@ -83,6 +82,11 @@ public class VPRequestController {
         return handleVPRequestValidationException(
                 new VPRequestValidationException(
                         ErrorCode.INVALID_REQUEST_FORMAT));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorDto> handleInvalidRequestBody(MethodArgumentNotValidException ex) {
+        return handleVPRequestValidationException(VPRequestValidationException.from(ex));
     }
 
     @NotNull
