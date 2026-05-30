@@ -50,23 +50,23 @@ class CredentialSetQueryDtoTest {
     }
 
     @Test
-    void emptyOptions_isAllowed() {
+    void emptyOptions_failsValidation() {
         CredentialSetQueryDto credentialSet = new CredentialSetQueryDto(List.of(), true);
 
-        assertTrue(validator.validate(credentialSet).isEmpty());
+        assertFalse(validator.validate(credentialSet).isEmpty());
     }
 
     @Test
-    void emptyOptionCombination_isAllowed() {
+    void emptyOptionCombination_failsValidation() {
         CredentialSetQueryDto credentialSet = new CredentialSetQueryDto(List.of(List.of()), true);
 
-        assertTrue(validator.validate(credentialSet).isEmpty());
+        assertFalse(validator.validate(credentialSet).isEmpty());
     }
 
     @Test
-    void blankCredentialIdInOption_isAllowed() {
+    void blankCredentialIdInOption_failsValidation() {
         CredentialSetQueryDto credentialSet = new CredentialSetQueryDto(List.of(List.of("")), true);
 
-        assertTrue(validator.validate(credentialSet).isEmpty());
+        assertFalse(validator.validate(credentialSet).isEmpty());
     }
 }

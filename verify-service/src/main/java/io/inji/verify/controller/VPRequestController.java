@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,6 +35,7 @@ import static io.inji.verify.shared.Constants.VP_REQUEST_URI;
 
 @RestController
 @Slf4j
+@CrossOrigin(originPatterns = "*", allowedHeaders = "Content-Type", allowCredentials = "true")
 public class VPRequestController {
 
     @Value("${inji.verify.cookie-duration-in-minute:#{5}}")
@@ -58,6 +60,7 @@ public class VPRequestController {
 
     @PostMapping(path = VP_REQUEST_URI, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Object> createVPRequest(@Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
+        dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
         return processCreateVPRequest(vpRequestCreate, false);
     }
 

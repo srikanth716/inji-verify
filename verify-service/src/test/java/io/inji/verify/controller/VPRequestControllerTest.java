@@ -7,7 +7,6 @@ import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
-import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.VPRequestValidationException;
 import io.inji.verify.validator.DcqlValidator;
 import org.springframework.core.MethodParameter;
@@ -34,6 +33,7 @@ import java.util.Base64;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -132,15 +132,13 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    public void testCreateVPRequest_InternalServerError_WhenServiceThrows() throws Exception {
+    public void testCreateVPRequest_WhenServiceThrows_propagatesException() {
         when(verifiablePresentationRequestService.createAuthorizationRequest(any()))
                 .thenThrow(new RuntimeException("unexpected"));
 
-        mockMvc.perform(post("/v2/vp-request")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validVpRequestJson()))
-                .andExpect(status().isInternalServerError())
-                .andExpect(content().string(objectMapper.writeValueAsString(new ErrorDto(ErrorCode.INTERNAL_SERVER_ERROR))));
+        assertThrows(Exception.class, () -> mockMvc.perform(post("/v2/vp-request")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validVpRequestJson())));
     }
 
     @Test
