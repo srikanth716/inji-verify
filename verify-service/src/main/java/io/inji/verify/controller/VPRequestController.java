@@ -7,20 +7,24 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.VPRequestNotFoundException;
+import io.inji.verify.exception.VPRequestValidationException;
 import io.inji.verify.services.VerifiablePresentationRequestService;
+import io.inji.verify.validator.DcqlValidator;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import java.nio.charset.StandardCharsets;
@@ -30,7 +34,6 @@ import static io.inji.verify.shared.Constants.COOKIE_NAME;
 import static io.inji.verify.shared.Constants.VP_REQUEST_URI;
 
 @RestController
-@Validated
 @Slf4j
 public class VPRequestController {
 
@@ -47,19 +50,43 @@ public class VPRequestController {
     String cookieSameSite;
 
     final VerifiablePresentationRequestService verifiablePresentationRequestService;
+    final DcqlValidator dcqlValidator;
 
-    public VPRequestController(VerifiablePresentationRequestService verifiablePresentationRequestService) {
+    public VPRequestController(VerifiablePresentationRequestService verifiablePresentationRequestService, DcqlValidator dcqlValidator) {
         this.verifiablePresentationRequestService = verifiablePresentationRequestService;
+        this.dcqlValidator = dcqlValidator;
     }
 
     @PostMapping(path = VP_REQUEST_URI, consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Object> createVPRequest(@Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
+        dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
         return processCreateVPRequest(vpRequestCreate, false);
     }
 
     @PostMapping(path = "/v2/vp-session-request", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Object> createVPSessionRequest(@Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
+        dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
         return processCreateVPRequest(vpRequestCreate, true);
+    }
+
+    @ExceptionHandler(VPRequestValidationException.class)
+    public ResponseEntity<ErrorDto> handleVPRequestValidationException(VPRequestValidationException e) {
+        log.error("VP request validation error: {}", e.getMessage());
+        ErrorCode errorCode = e.getErrorCode();
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorDto(errorCode));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorDto> handleUnreadable(HttpMessageNotReadableException ex) {
+        log.error("VP request body unreadable: {}", ex.getMessage());
+        return handleVPRequestValidationException(
+                new VPRequestValidationException(
+                        ErrorCode.INVALID_REQUEST_FORMAT));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorDto> handleInvalidRequestBody(MethodArgumentNotValidException ex) {
+        return handleVPRequestValidationException(VPRequestValidationException.from(ex));
     }
 
     @NotNull

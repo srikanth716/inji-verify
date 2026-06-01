@@ -2,27 +2,38 @@ package io.inji.verify.controller;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
-import io.inji.verify.dto.presentation.FormatDto;
-import io.inji.verify.dto.presentation.VPDefinitionResponseDto;
+import io.inji.verify.dto.core.ErrorDto;
+import io.inji.verify.exception.VPRequestValidationException;
+import io.inji.verify.validator.DcqlValidator;
+import org.springframework.core.MethodParameter;
+import org.springframework.validation.BeanPropertyBindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import io.inji.verify.enums.VPRequestStatus;
 import io.inji.verify.services.VerifiablePresentationRequestService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.StringHttpMessageConverter;
+import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.request.async.DeferredResult;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,31 +43,69 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 public class VPRequestControllerTest {
 
-    private final VerifiablePresentationRequestService verifiablePresentationRequestService = Mockito.mock(VerifiablePresentationRequestService.class);
+    private final VerifiablePresentationRequestService verifiablePresentationRequestService =
+            Mockito.mock(VerifiablePresentationRequestService.class);
+    private final DcqlValidator dcqlValidator = Mockito.mock(DcqlValidator.class);
 
     private MockMvc mockMvc;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    /** Matches production Jackson setup (parameter names + Lombok @ConstructorProperties). */
+    private final ObjectMapper objectMapper = Jackson2ObjectMapperBuilder.json()
+            .modules(new ParameterNamesModule())
+            .build();
+
+    private static String validVpRequestJson() {
+        return "{\"clientId\":\"cId\",\"transactionId\":\"tId\",\"nonce\":\"nonce\","
+                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vctValues\":[\"cred1\"]}}]},"
+                + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
+    }
+
+    private static String validVpSessionRequestJson() {
+        return "{\"clientId\":\"cId\",\"transactionId\":\"tId\",\"nonce\":\"nonce\","
+                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vctValues\":[\"cred1\"]}}]},"
+                + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":true}";
+    }
+
+    private static String vpRequestJsonWithoutDcql() {
+        return "{\"clientId\":\"cId\",\"transactionId\":\"tId\",\"nonce\":\"nonce\","
+                + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
+    }
 
     @BeforeEach
     public void setUp() {
-        VPRequestController vpRequestController = new VPRequestController(verifiablePresentationRequestService);
-        mockMvc = MockMvcBuilders.standaloneSetup(vpRequestController).build();
+        VPRequestController vpRequestController = new VPRequestController(verifiablePresentationRequestService, dcqlValidator);
+        mockMvc = MockMvcBuilders.standaloneSetup(vpRequestController)
+                .setMessageConverters(
+                        new MappingJackson2HttpMessageConverter(objectMapper),
+                        new StringHttpMessageConverter())
+                .setValidator(noOpSpringValidator())
+                .build();
+    }
+
+    /** Bypasses bean validation so controller wiring can be tested in isolation. */
+    private static org.springframework.validation.Validator noOpSpringValidator() {
+        return new org.springframework.validation.Validator() {
+            @Override
+            public boolean supports(Class<?> clazz) {
+                return true;
+            }
+
+            @Override
+            public void validate(Object target, org.springframework.validation.Errors errors) {
+                // no-op
+            }
+        };
     }
 
     @Test
     public void testCreateVPRequest_Success() throws Exception {
-        FormatDto formatDto = new FormatDto(null, null, null);
-        VPDefinitionResponseDto vpDefinitionResponseDto = new VPDefinitionResponseDto("id", new ArrayList<>(), "name", "purposr", formatDto, new ArrayList<>());
-        VPRequestCreateDto createDto = new VPRequestCreateDto("cId", "tId",
-                "nonce", vpDefinitionResponseDto, false, false);
         VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
 
         when(verifiablePresentationRequestService.createAuthorizationRequest(any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v2/vp-request")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
+                        .content(validVpRequestJson()))
                 .andExpect(status().isCreated())
                 .andExpect(result -> {
                     JsonNode expected = objectMapper.readTree(
@@ -70,6 +119,29 @@ public class VPRequestControllerTest {
     }
 
     @Test
+    public void testCreateVPRequest_WithoutDcqlQuery_IsAccepted() throws Exception {
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
+        when(verifiablePresentationRequestService.createAuthorizationRequest(any())).thenReturn(responseDto);
+
+        mockMvc.perform(post("/v2/vp-request")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(vpRequestJsonWithoutDcql()))
+                .andExpect(status().isCreated());
+
+        verify(verifiablePresentationRequestService, times(1)).createAuthorizationRequest(any());
+    }
+
+    @Test
+    public void testCreateVPRequest_WhenServiceThrows_propagatesException() {
+        when(verifiablePresentationRequestService.createAuthorizationRequest(any()))
+                .thenThrow(new RuntimeException("unexpected"));
+
+        assertThrows(Exception.class, () -> mockMvc.perform(post("/v2/vp-request")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(validVpRequestJson())));
+    }
+
+    @Test
     public void testGetStatus() throws Exception {
         String requestId = "req789";
         VPRequestStatusDto statusDto = new VPRequestStatusDto(VPRequestStatus.ACTIVE);
@@ -79,13 +151,13 @@ public class VPRequestControllerTest {
         when(verifiablePresentationRequestService.getStatus(requestId)).thenReturn(deferredResult);
 
         MvcResult mvcResult = mockMvc.perform(get("/vp-request/{requestId}/status", requestId)
-                .contentType(MediaType.APPLICATION_JSON))
+                        .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andReturn();
 
         deferredResult.setResult(statusDto);
         Object result = mvcResult.getAsyncResult();
-        assertEquals(new ObjectMapper().writeValueAsString(statusDto), new ObjectMapper().writeValueAsString(result));
+        assertEquals(objectMapper.writeValueAsString(statusDto), objectMapper.writeValueAsString(result));
         verify(verifiablePresentationRequestService, times(1)).getStatus(requestId);
     }
 
@@ -106,9 +178,6 @@ public class VPRequestControllerTest {
 
     @Test
     public void testCreateVPSessionRequest_SetsCookie() throws Exception {
-        FormatDto formatDto = new FormatDto(null, null, null);
-        VPDefinitionResponseDto vpDefinitionResponseDto = new VPDefinitionResponseDto("id", new ArrayList<>(), "name", "purpose", formatDto, new ArrayList<>());
-        VPRequestCreateDto createDto = new VPRequestCreateDto("cId", "tId", "nonce", vpDefinitionResponseDto, false, true);
         VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
 
         when(verifiablePresentationRequestService.createAuthorizationRequest(any())).thenReturn(responseDto);
@@ -117,10 +186,70 @@ public class VPRequestControllerTest {
 
         mockMvc.perform(post("/v2/vp-session-request")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(createDto)))
+                        .content(validVpSessionRequestJson()))
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Set-Cookie"))
                 .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("transaction_id=" + expectedCookieValue)))
                 .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("HttpOnly")));
     }
+
+    @Test
+    void testCreateVPRequest_MissingMeta_IsAccepted() throws Exception {
+        String body =
+                "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\"}]},"
+                        + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
+        when(verifiablePresentationRequestService.createAuthorizationRequest(any())).thenReturn(responseDto);
+
+        mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+
+        verify(verifiablePresentationRequestService, times(1)).createAuthorizationRequest(any());
+    }
+
+    @Test
+    void testCreateVPRequest_EmptyMeta_IsAccepted() throws Exception {
+        String body =
+                "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\",\"meta\":{}}]},"
+                        + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
+        when(verifiablePresentationRequestService.createAuthorizationRequest(any())).thenReturn(responseDto);
+
+        mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+
+        verify(verifiablePresentationRequestService, times(1)).createAuthorizationRequest(any());
+    }
+
+    @Test
+    void handleVPRequestValidationException_returnsErrorDto() throws Exception {
+        BeanPropertyBindingResult bindingResult =
+                new BeanPropertyBindingResult(new Object(), "VPRequestCreateDto");
+        bindingResult.addError(new FieldError(
+                "VPRequestCreateDto",
+                "dcqlQuery.credentials[0].format",
+                null,
+                false,
+                new String[]{"NotBlank"},
+                null,
+                "DCQL_CREDENTIAL_FORMAT_REQUIRED"));
+
+        MethodParameter parameter = new MethodParameter(
+                VPRequestController.class.getDeclaredMethod("createVPSessionRequest", VPRequestCreateDto.class),
+                0);
+        MethodArgumentNotValidException ex =
+                new MethodArgumentNotValidException(parameter, bindingResult);
+
+        var response = new VPRequestController(verifiablePresentationRequestService, dcqlValidator)
+                .handleVPRequestValidationException(VPRequestValidationException.from(ex));
+
+        assertEquals(org.springframework.http.HttpStatus.BAD_REQUEST, response.getStatusCode());
+        ErrorDto body = response.getBody();
+        assertNotNull(body);
+        assertNotNull(body.getErrorCode());
+        assertFalse(body.getErrorCode().isBlank());
+        assertNotNull(body.getErrorMessage());
+        assertFalse(body.getErrorMessage().isBlank());
+    }
+
 }

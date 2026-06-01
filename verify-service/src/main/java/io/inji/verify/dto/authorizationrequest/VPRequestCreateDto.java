@@ -1,6 +1,6 @@
 package io.inji.verify.dto.authorizationrequest;
 
-import io.inji.verify.dto.presentation.VPDefinitionResponseDto;
+import io.inji.verify.dto.dcql.DCQLQueryDto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -11,13 +11,13 @@ import lombok.Getter;
 @Getter
 @NotNull
 public class VPRequestCreateDto {
-    @NotNull(message = "Client Id must not be null")
-    @NotBlank(message = "Client Id must not be empty")
+    @NotBlank(message = "CLIENT_ID_REQUIRED")
     String clientId;
     String transactionId;
     String nonce;
     @Valid
-    VPDefinitionResponseDto presentationDefinition;
+    @NotNull(message = "DCQL_QUERY_REQUIRED")
+    private DCQLQueryDto dcqlQuery;
     boolean acceptVPWithoutHolderProof;
     boolean responseCodeValidationRequired;
 }

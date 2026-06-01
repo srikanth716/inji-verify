@@ -1,4 +1,3 @@
-
 package io.inji.verify.enums;
 
 import lombok.AllArgsConstructor;
@@ -10,6 +9,25 @@ public enum ErrorCode {
     INVALID_TRANSACTION_ID("INVALID_TRANSACTION_ID","Invalid transaction ID, No requests found for given transaction ID."),
     NO_VP_SUBMISSION("NO_VP_SUBMISSION","No VP submission found for given transaction ID."),
     NO_AUTH_REQUEST("NO_AUTH_REQUEST","No Authorization request found for given request ID."),
+    DCQL_QUERY_REQUIRED("dcql_query_required","dcql_query is required"),
+    INVALID_REQUEST_FORMAT("invalid_request_format", "Request body JSON is invalid or cannot be parsed."),
+    DCQL_CREDENTIALS_REQUIRED("dcql_query.credentials","Each DCQL credential entry must not be null."),
+    DCQL_CREDENTIALS_INVALID("dcql_query.credentials","dcql_query.credentials must be a non-empty array."),
+    DCQL_CREDENTIAL_ID_REQUIRED("dcql_query.credentials","Each DCQL credential entry must contain id."),
+    DCQL_CREDENTIAL_ID_INVALID("dcql_query.credentials","Credential id must contain only alphanumeric characters, underscores, and hyphens."),
+    DCQL_CREDENTIAL_FORMAT_REQUIRED("dcql_query.credentials","Each DCQL credential entry must contain format."),
+    DCQL_CREDENTIAL_FORMAT_INVALID("dcql_query.credentials","DCQL credential format must be a valid format."),
+    DCQL_META_REQUIRED("dcql_query.credentials","Each DCQL credential entry must contain meta."),
+    DCQL_META_INVALID("dcql_query.credentials","DCQL meta must not contain null/blank values."),
+    DCQL_CLAIM_PATH_REQUIRED("dcql_query.credentials","Each claim must contain path."),
+    DCQL_CREDENTIAL_SETS_REQUIRED("dcql_query.credentials","Each DCQL credential entry must contain credential_sets."),
+    DCQL_CREDENTIAL_SETS_INVALID("dcql_query.credentials","DCQL credential_sets must be a non-empty array with non-empty values."),
+    DCQL_DUPLICATE_CREDENTIAL_ID("dcql_query.credentials","Duplicate credential ids are not allowed."),
+    DCQL_DUPLICATE_CLAIM_ID("dcql_query.credentials","Duplicate claim ids are not allowed."),
+    DCQL_INVALID_CREDENTIAL_SET("dcql_query.credentials","credential_sets contains unknown credential id reference."),
+    DCQL_INVALID_CLAIM_SET("dcql_query.credentials","claim_sets contains unknown claim id reference."),
+    DCQL_CLAIM_PATH_INVALID("dcql_query.credentials","DCQL claim path must be a valid path."),
+    CLIENT_ID_REQUIRED("invalid_request","client_id is required"),
     DID_CREATION_FAILED("DID_CREATION_FAILED","Error while creating DID document."),
     VP_SUBMISSION_EXCEPTION("VP_SUBMISSION_EXCEPTION","Error while processing VP submission"),
     TOKEN_MATCHING_FAILED("TOKEN_MATCHING_FAILED", "Token matching failed."),

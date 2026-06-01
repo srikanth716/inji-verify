@@ -1,6 +1,6 @@
 import {
     AppError,
-    PresentationDefinition,
+    DcqlQuery,
     VPRequestBody, VPVerificationRequest,
 } from "../components/openid4vp-verification/OpenID4VPVerification.types";
 import { vcSubmissionBody, VCVerificationV2Request, VCVerificationV2Response} from "../components/qrcode-verification/QRCodeVerification.types";
@@ -76,44 +76,12 @@ export const vcSubmission = async (
   }
 };
 
-export const vpRequest = async (
-  url: string,
-  clientId: string,
-  txnId?: string,
-  presentationDefinition?: PresentationDefinition,
-  acceptVPWithoutHolderProof?: boolean
-) => {
-  const requestBody: VPRequestBody = {
-    clientId: clientId,
-    nonce: generateNonce(),
-    presentationDefinition: presentationDefinition!,
-    acceptVPWithoutHolderProof: acceptVPWithoutHolderProof
-  };
-
-  if (txnId) requestBody.transactionId = txnId;
-
-  const requestOptions = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  };
-
-  try {
-    const response = await fetch(url + "/v2/vp-request", requestOptions);
-    if (response.status !== 201) throw new Error("Failed to create VP request");
-    const data: QrData = await response.json();
-    return data;
-  } catch (error) {
-    console.error(error);
-    if (error instanceof Error) {
-      throw Error(error.message);
-    } else {
-      throw new Error("An unknown error occurred");
-    }
-  }
-};
+const isAppError = (error: unknown): error is AppError => (
+  typeof error === 'object' &&
+  error !== null &&
+  'errorMessage' in error &&
+  typeof (error as Record<string, unknown>).errorMessage === 'string'
+);
 
 export const vpRequestStatus = async (url: string, reqId: string, abortSignal = false) => {
   try {
@@ -134,28 +102,20 @@ export const vpRequestStatus = async (url: string, reqId: string, abortSignal = 
   }
 };
 
-const isAppError = (error: unknown): error is AppError => (
-  typeof error === 'object' &&
-  error !== null &&
-  'errorMessage' in error &&
-  typeof (error as Record<string, unknown>).errorMessage === 'string'
-);
-
 export const vpSessionRequest = async (
   url: string,
+  dcqlQuery: DcqlQuery,
   clientId: string,
   txnId?: string,
-  presentationDefinition?: PresentationDefinition,
   acceptVPWithoutHolderProof?: boolean,
   responseCodeValidationRequired?: boolean
 ) => {
   const requestBody: VPRequestBody = {
     clientId: clientId,
     nonce: generateNonce(),
-    presentationDefinition :presentationDefinition!,
-    acceptVPWithoutHolderProof: acceptVPWithoutHolderProof,
+    dcqlQuery,
+    acceptVPWithoutHolderProof: acceptVPWithoutHolderProof
   };
-
   if (txnId) requestBody.transactionId = txnId;
   if (responseCodeValidationRequired) {
     requestBody.responseCodeValidationRequired = true;
@@ -170,11 +130,24 @@ export const vpSessionRequest = async (
       credentials: "include",
       body: JSON.stringify(requestBody),
     });
-    if (response.status !== 201) throw new Error("Failed to create VP request");
+    if (response.status !== 201) {
+      const errorData = await response.json().catch(() => ({}));
+      const record = errorData as Record<string, unknown>;
+      throw {
+        errorCode: record.errorCode as string | undefined,
+        errorMessage:
+          (record.errorMessage as string) ||
+          (record.error as string) ||
+          "Failed to create VP request",
+      } as AppError;
+    }
     const data: QrData = await response.json();
     return data;
   } catch (error) {
     console.error(error);
+    if (isAppError(error)) {
+      throw error;
+    }
     if (error instanceof Error) {
       throw Error(error.message);
     } else {

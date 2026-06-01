@@ -19,11 +19,13 @@ import {
   THROTTLE_FRAMES_PER_SEC,
   ZOOM_STEP,
 } from "../../utils/constants";
-import {vpSessionRequest,
+import {
+    vpSessionRequest,
     vcSubmission,
     vcVerificationV2,
     vpSessionResults
 } from "../../utils/api";
+import type { DcqlQuery } from "../openid4vp-verification/OpenID4VPVerification.types";
 import {
     decodeQrData,
     extractRedirectUrlFromQrData,
@@ -380,13 +382,13 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
     }
   };
 
-  const createVPRequest = async (presentationDefinition: any) => {
+  const createVPRequest = async (dcqlQuery: DcqlQuery) => {
     try {
       const data: QrData = await vpSessionRequest(
         verifyServiceUrl,
+        dcqlQuery,
         clientId,
         transactionId ?? undefined,
-        presentationDefinition,
         true, // acceptVPWithoutHolderProof is set to true for DataShare VCs
         true // responseCodeValidationRequired is set to true for DataShare VCs
       );
@@ -398,18 +400,19 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
     }
   };
 
-  const parsePresentationDefinition = (pdParams: string) => {
+  const parseDcqlQuery = (dcqlParams: string): DcqlQuery => {
     try {
-      const decoded = JSON.parse(pdParams);
-      const {inputDescriptors, ...rest} = decoded;
-
-      if (inputDescriptors) return {
-        ...rest,
-        input_descriptors: inputDescriptors
-      };
-      return decoded;
-    } catch (error) {
-      throw new Error("Failed to create VP request, due to invalid presentation definition");
+      const decoded = JSON.parse(dcqlParams);
+      if (
+        !decoded ||
+        typeof decoded !== "object" ||
+        !Array.isArray((decoded as { credentials?: unknown }).credentials)
+      ) {
+        throw new Error("Invalid dcql_query structure");
+      }
+      return decoded as DcqlQuery;
+    } catch {
+      throw new Error("Failed to create VP request, due to invalid dcql_query");
     }
   };
 
@@ -419,7 +422,6 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
     responseUri: string,
     nonce: string
   ) => {
-
     const url = new URL(baseRedirectUrl);
     url.hash = "";
     url.searchParams.set("client_id", clientId);
@@ -449,14 +451,15 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
         }
 
         const parsedUrl = new URL(redirectUrl);
-        const pdParams = parsedUrl.searchParams.get("presentation_definition");
+        const dcqlQueryParam = parsedUrl.searchParams.get("dcql_query");
 
-        if (!pdParams) throw new Error("Missing presentation_definition in redirect URL");
+        if (!dcqlQueryParam) {
+          throw new Error(
+            "Missing dcql_query in redirect URL"
+          );
+        }
 
-        const presentationDefinition = parsePresentationDefinition(pdParams);
-        //call /v1/verify/vp-request endpoint to get the request_id and
-        // transaction_id to be sent to the redirectUrl
-        const response = await createVPRequest(presentationDefinition);
+        const response = await createVPRequest(parseDcqlQuery(dcqlQueryParam));
 
         if (!response) throw new Error("Unable to access the shared VC, due to failure in creating VP request");
 
@@ -467,8 +470,13 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
         const { responseUri, nonce } = authorizationDetails;
 
         if (!responseUri || !nonce) throw new Error("Unable to access the shared VC, due to missing responseUri or nonce in authorization details");
-        //call the redirectUrl
-        window.location.href = buildOnlineSharingUrl(parsedUrl.toString(), state, responseUri, nonce);
+
+        window.location.href = buildOnlineSharingUrl(
+          parsedUrl.toString(),
+          state,
+          responseUri,
+          nonce
+        );
         return;
       }
 
