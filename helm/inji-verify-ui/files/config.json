@@ -11,7 +11,7 @@
         "credentials": [
           {
             "id": "mosip_verifiable_credential_id_card",
-            "format": "vc+sd-jwt",
+            "format": "dc+sd-jwt",
             "meta": {
               "vct_values": ["MOSIPVerifiableCredential"]
             },
@@ -83,7 +83,7 @@
         "credentials": [
           {
             "id": "mock_identity_sd_jwt",
-            "format": "dc+sd-jwt",
+            "format": "vc+sd-jwt",
             "meta": {
               "vct_values": ["MockVerifiableCredential_SD_JWT"]
             },
@@ -109,7 +109,7 @@
             "id": "land_statement_id_card",
             "format": "vc+sd-jwt",
             "meta": {
-              "vct_values": ["RegistrationReceiptCredential"]
+              "vct_values": ["LandStatementCredential"]
             },
             "claims": [
               {
