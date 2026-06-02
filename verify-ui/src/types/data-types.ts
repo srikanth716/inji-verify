@@ -263,7 +263,6 @@ export interface DcqlClaimQuery {
 
 export interface DcqlCredentialMeta {
   vct_values?: string[];
-  doctype_value?: string;
   type_values?: string[][];
 }
 
@@ -272,8 +271,15 @@ export interface DcqlCredentialQuery {
   format: string;
   meta: DcqlCredentialMeta;
   claims?: DcqlClaimQuery[];
+  claim_sets?: string[][];
+}
+
+export interface DcqlCredentialSetQuery {
+  options: string[][];
+  required?: boolean;
 }
 
 export interface DcqlQuery {
   credentials: DcqlCredentialQuery[];
+  credential_sets?: DcqlCredentialSetQuery[];
 }
