@@ -29,7 +29,7 @@ const DisplayActiveStep = () => {
   const originalSelectedCredentials = useVerifyFlowSelector((state) => state.originalSelectedCredentials);
   const verifiedVcs: VpSubmissionResultInt[] = useVerifyFlowSelector((state) => state.verificationSubmissionResult );
   const unverifiedCredentials = useVerifyFlowSelector((state) => state.unVerifiedCredentials );
-  const presentationDefinition = useVerifyFlowSelector((state) => state.presentationDefinition );
+  const dcqlQuery = useVerifyFlowSelector((state) => state.dcqlQuery);
   const qrSize = window.innerWidth <= 1024 ? 240 : 320;
   const activeScreen = useVerifyFlowSelector((state) => state.activeScreen);
   const showResult = useVerifyFlowSelector((state) => state.isShowResult);
@@ -117,13 +117,14 @@ const DisplayActiveStep = () => {
     // Auto-trigger SDK only when we're on the ScanQrCode step and NOT in the
     // wallet selection panel. This avoids firing when the user is choosing a wallet.
     if (selectedCredentials.length > 0 && activeScreen === 3 && !openSelectWallet) {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         const triggerElement = document.getElementById("OpenID4VPVerification_trigger");
         if (triggerElement) {
           const event = new MouseEvent("click", { bubbles: true, cancelable: true });
           triggerElement.dispatchEvent(event);
         }
       }, 100); // Delay to ensure the DOM is updated
+      return () => clearTimeout(timeoutId);
     }
   }, [selectedCredentials, activeScreen, openSelectWallet]);
 
@@ -179,9 +180,9 @@ const DisplayActiveStep = () => {
               >
                 <OpenID4VPVerification
                   key={`${flowType}-${sdkInstanceKey}`}
-                  triggerElement={ <QrIcon id="OpenID4VPVerification_trigger" className="w-[78px] lg:w-[100px]" aria-disabled={presentationDefinition.input_descriptors.length === 0 } /> }
+                  triggerElement={ <QrIcon id="OpenID4VPVerification_trigger" className="w-[78px] lg:w-[100px]" aria-disabled={dcqlQuery.credentials.length === 0 } /> }
                   verifyServiceUrl={window.location.origin + window._env_.VERIFY_SERVICE_API_URL}
-                  presentationDefinition={presentationDefinition}
+                  dcqlQuery={dcqlQuery}
                   onVPProcessed={handleOnVpProcessed}
                   onQrCodeExpired={handleOnQrExpired}
                   onError={handleOnError}
@@ -217,9 +218,9 @@ const DisplayActiveStep = () => {
               >
                 <OpenID4VPVerification
                   key={`${flowType}-${sdkInstanceKey}`}
-                  triggerElement={ <QrIcon id="OpenID4VPVerification_trigger" className="w-[78px] lg:w-[100px]" aria-disabled={presentationDefinition.input_descriptors.length === 0 } /> }
+                  triggerElement={ <QrIcon id="OpenID4VPVerification_trigger" className="w-[78px] lg:w-[100px]" aria-disabled={dcqlQuery.credentials.length === 0 } /> }
                   verifyServiceUrl={window.location.origin + window._env_.VERIFY_SERVICE_API_URL}
-                  presentationDefinition={presentationDefinition}
+                  dcqlQuery={dcqlQuery}
                   onVPProcessed={handleOnVpProcessed}
                   onQrCodeExpired={handleOnQrExpired}
                   onError={handleOnError}

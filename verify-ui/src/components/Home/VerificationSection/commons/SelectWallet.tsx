@@ -40,9 +40,7 @@ const SelectWalletContent: React.FC = () => {
   const webWallets = getWebWallets();
   const [search, setSearch] = useState("");
   const [selectedWalletId, setSelectedWalletId] = useState<string | null>(null);
-  const presentationDefinition = useVerifyFlowSelector(
-    (state) => state.presentationDefinition,
-  );
+  const dcqlQuery = useVerifyFlowSelector((state) => state.dcqlQuery);
   const selectedCredentials = useVerifyFlowSelector((state) => state.selectedCredentials);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,7 +170,7 @@ const SelectWalletContent: React.FC = () => {
           onClick={handleProceed}
           disabled={
             !selectedWalletId ||
-            (presentationDefinition?.input_descriptors?.length ?? 0) === 0
+            (dcqlQuery?.credentials?.length ?? 0) === 0
           }
           variant="fill"
         />

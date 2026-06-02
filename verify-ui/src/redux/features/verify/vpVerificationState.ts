@@ -1,6 +1,6 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { getVerifiableClaims, VerificationSteps } from "../../../utils/config";
-import { VCShareType, VerifyState, claim } from "../../../types/data-types";
+import { DcqlQuery, VCShareType, VerifyState, claim } from "../../../types/data-types";
 import { calculateUnverifiedClaims, calculateVerifiedClaims, getCredentialType } from "../../../utils/commonUtils";
 
 export const OVP_SESSION_SELECTED_CREDENTIALS_KEY = "ovp_selectedCredentials";
@@ -8,13 +8,17 @@ export const OVP_SESSION_SELECTED_CREDENTIALS_KEY = "ovp_selectedCredentials";
 const DEFAULT_CREDENTIALS = (): claim[] =>
   getVerifiableClaims()?.filter((c) => c.essential) ?? [];
 
+const mergeDcqlFromCredentials = (credentials: claim[]): DcqlQuery => ({
+  credentials: credentials.flatMap((c) => c.dcqlQuery?.credentials ?? []),
+});
+
 const hasValidCredentialStructure = (item: unknown): item is claim => {
   if (!item || typeof item !== "object") return false;
   const c = item as Record<string, unknown>;
-  const def = c.definition;
-  if (!def || typeof def !== "object") return false;
-  const descriptors = (def as Record<string, unknown>).input_descriptors;
-  if (!Array.isArray(descriptors)) return false;
+  const dcqlQuery = c.dcqlQuery;
+  if (!dcqlQuery || typeof dcqlQuery !== "object") return false;
+  const credentials = (dcqlQuery as DcqlQuery).credentials;
+  if (!Array.isArray(credentials) || credentials.length === 0) return false;
   const type = c.type;
   return typeof type === "string" && !!type;
 };
@@ -55,12 +59,7 @@ const createPreloadedState = (): VerifyState => {
       initialCredentials.length > 1 ? VCShareType.MULTIPLE : VCShareType.SINGLE,
     isPartiallyShared: false,
     isShowResult: false,
-    presentationDefinition: {
-      id: "c4822b58-7fb4-454e-b827-f8758fe27f9a",
-      purpose:
-        "Relying party is requesting your digital ID for the purpose of Self-Authentication",
-      input_descriptors: [] as any[],
-    },
+    dcqlQuery: mergeDcqlFromCredentials(initialCredentials),
     sdkInstanceKey: 0,
     SelectWalletPanel: false,
     selectedWalletId: undefined,
@@ -69,6 +68,10 @@ const createPreloadedState = (): VerifyState => {
 };
 
 const PreloadedState: VerifyState = createPreloadedState();
+
+const updateAggregatedDcqlQuery = (state: VerifyState) => {
+  state.dcqlQuery = mergeDcqlFromCredentials(state.selectedCredentials);
+};
 
 const vpVerificationState = createSlice({
   name: "vpVerification",
@@ -79,8 +82,7 @@ const vpVerificationState = createSlice({
       state.selectedCredentials = getVerifiableClaims().filter((c) => c.essential);
       state.originalSelectedCredentials = [...state.selectedCredentials];
       state.sharingType = state.selectedCredentials.length > 1 ? VCShareType.MULTIPLE : VCShareType.SINGLE;
-      const inputDescriptors = state.selectedCredentials.flatMap((c) => c.definition.input_descriptors);
-      state.presentationDefinition.input_descriptors = [...inputDescriptors];
+      updateAggregatedDcqlQuery(state);
       state.SelectionPanel = true;
       state.SelectWalletPanel = false;
       state.verificationSubmissionResult = [];
@@ -90,8 +92,7 @@ const vpVerificationState = createSlice({
     setSelectedCredentials: (state, action) => {
       state.selectedCredentials = [...action.payload.selectedCredentials];
       state.sharingType = state.selectedCredentials.length > 1 ? VCShareType.MULTIPLE : VCShareType.SINGLE;
-      const inputDescriptors = state.selectedCredentials.flatMap((c) => c.definition.input_descriptors);
-      state.presentationDefinition.input_descriptors = [...inputDescriptors];
+      updateAggregatedDcqlQuery(state);
       state.verificationSubmissionResult = [];
       state.originalSelectedCredentials = [...state.selectedCredentials];
     },
@@ -114,8 +115,7 @@ const vpVerificationState = createSlice({
     showMissingCredentialOptions: (state) => {
       state.selectedCredentials = [...state.unVerifiedCredentials];
       state.sharingType = state.selectedCredentials.length > 1 ? VCShareType.MULTIPLE : VCShareType.SINGLE;
-      const inputDescriptors = state.selectedCredentials.flatMap((c) => c.definition.input_descriptors);
-      state.presentationDefinition.input_descriptors = [...inputDescriptors];
+      updateAggregatedDcqlQuery(state);
       state.isShowResult = false;
 
       if (state.flowType === "sameDevice") {
@@ -135,8 +135,7 @@ const vpVerificationState = createSlice({
         state.selectedCredentials = [...action.payload.selectedCredentials];
         state.originalSelectedCredentials = [...action.payload.selectedCredentials];
       }
-      const inputDescriptors = state.selectedCredentials.flatMap((c) => c.definition.input_descriptors);
-      state.presentationDefinition.input_descriptors = [...inputDescriptors];
+      updateAggregatedDcqlQuery(state);
       state.SelectionPanel = false;
       state.SelectWalletPanel = false;
       state.isShowResult = false;

@@ -10,11 +10,15 @@ import { VCShareType } from "../../../../types/data-types";
 import {getVerifiableClaims, VerificationSteps} from "../../../../utils/config";
 import {calculateUnverifiedClaims, calculateVerifiedClaims, getCredentialType} from "../../../../utils/commonUtils";
 
+const mockDcqlQuery = {
+    credentials: [{ id: "desc1", format: "dc+sd-jwt", meta: {} }],
+};
+
 jest.mock("../../../../utils/config", () => ({
     ...jest.requireActual("../../../../utils/config"),
     getVerifiableClaims: jest.fn(() => [
-        { id: "1", type: "Type1", essential: true, definition: { input_descriptors: [{ id: "desc1" }] } },
-        { id: "2", type: "Type2", essential: false, definition: { input_descriptors: [{ id: "desc2" }] } }
+        { id: "1", type: "Type1", essential: true, dcqlQuery: mockDcqlQuery },
+        { id: "2", type: "Type2", essential: false, dcqlQuery: mockDcqlQuery },
     ])
 }));
 
@@ -33,8 +37,8 @@ describe("vpVerification slice", () => {
                 id: "2",
                 type: "Type2",
                 essential: false,
-                definition: {
-                    input_descriptors: [{ id: "desc2" }],
+                dcqlQuery: {
+                    credentials: [{ id: "desc2", format: "dc+sd-jwt", meta: {} }],
                 },
             },
         ] as any;
@@ -44,10 +48,7 @@ describe("vpVerification slice", () => {
             selectedCredentials: [],
             originalSelectedCredentials: [],
             unVerifiedCredentials: [],
-            presentationDefinition: {
-                id: "test",
-                input_descriptors: [{ id: "desc1" }, { id: "desc2" }],
-            },
+            dcqlQuery: mockDcqlQuery,
         } as any;
 
         const state = vpVerificationReducer(
@@ -65,16 +66,16 @@ describe("vpVerification slice", () => {
                 id: "1",
                 type: "Type1",
                 essential: true,
-                definition: {
-                    input_descriptors: [{ id: "desc1" }],
+                dcqlQuery: {
+                    credentials: [{ id: "desc1", format: "dc+sd-jwt", meta: {} }],
                 },
             },
             {
                 id: "2",
                 type: "Type2",
                 essential: true,
-                definition: {
-                    input_descriptors: [{ id: "desc2" }],
+                dcqlQuery: {
+                    credentials: [{ id: "desc2", format: "dc+sd-jwt", meta: {} }],
                 },
             },
         ]);
@@ -89,10 +90,7 @@ describe("vpVerification slice", () => {
             originalSelectedCredentials: [],
             verificationSubmissionResult: [],
             unVerifiedCredentials: [],
-            presentationDefinition: {
-                id: "test",
-                input_descriptors: [{ id: "desc1" }, { id: "desc2" }],
-            },
+            dcqlQuery: mockDcqlQuery,
         } as any;
 
         const state = vpVerificationReducer(preparedState, setSelectCredential());
@@ -129,16 +127,13 @@ describe("vpVerification slice", () => {
                 id: "1",
                 type: "Type1",
                 essential: true,
-                definition: { input_descriptors: [{ id: "desc1" }] },
+                dcqlQuery: mockDcqlQuery,
             },
         ] as any;
 
         const initialState = {
             ...vpVerificationReducer(undefined, { type: "@@INIT" }),
-            presentationDefinition: {
-                id: "test",
-                input_descriptors: [{ id: "desc1" }],
-            },
+            dcqlQuery: mockDcqlQuery,
         } as any;
 
         const state = vpVerificationReducer(
@@ -178,7 +173,7 @@ describe("vpVerification slice", () => {
                     id: "1",
                     type: "Type1",
                     essential: true,
-                    definition: { input_descriptors: [{ id: "desc1" }] },
+                    dcqlQuery: mockDcqlQuery,
                 },
             ],
             originalSelectedCredentials: [
@@ -186,17 +181,14 @@ describe("vpVerification slice", () => {
                     id: "1",
                     type: "Type1",
                     essential: true,
-                    definition: { input_descriptors: [{ id: "desc1" }] },
+                    dcqlQuery: mockDcqlQuery,
                 },
             ],
             verificationSubmissionResult: [],
             unVerifiedCredentials: [],
             isPartiallyShared: false,
             flowType: "crossDevice",
-            presentationDefinition: {
-                id: "test",
-                input_descriptors: [{ id: "desc1" }],
-            },
+            dcqlQuery: mockDcqlQuery,
         } as any;
 
         const action = verificationSubmissionComplete({
