@@ -18,7 +18,22 @@ const hasValidCredentialStructure = (item: unknown): item is claim => {
   const dcqlQuery = c.dcqlQuery;
   if (!dcqlQuery || typeof dcqlQuery !== "object") return false;
   const credentials = (dcqlQuery as DcqlQuery).credentials;
-  if (!Array.isArray(credentials) || credentials.length === 0) return false;
+  if (
+    !Array.isArray(credentials) ||
+    credentials.length === 0 ||
+    !credentials.every((credential) => {
+      return (
+        !!credential &&
+        typeof credential === "object" &&
+        typeof credential.id === "string" &&
+        typeof credential.format === "string" &&
+        !!credential.meta &&
+        typeof credential.meta === "object"
+      );
+    })
+  ) {
+    return false;
+  }
   const type = c.type;
   return typeof type === "string" && !!type;
 };

@@ -180,7 +180,7 @@ const DisplayActiveStep = () => {
               >
                 <OpenID4VPVerification
                   key={`${flowType}-${sdkInstanceKey}`}
-                  triggerElement={ <QrIcon id="OpenID4VPVerification_trigger" className="w-[78px] lg:w-[100px]" aria-disabled={dcqlQuery.credentials.length === 0 } /> }
+                  triggerElement={ <QrIcon id="OpenID4VPVerification_trigger" className="w-[78px] lg:w-[100px]" aria-disabled={(dcqlQuery?.credentials?.length ?? 0) === 0 } /> }
                   verifyServiceUrl={window.location.origin + window._env_.VERIFY_SERVICE_API_URL}
                   dcqlQuery={dcqlQuery}
                   onVPProcessed={handleOnVpProcessed}
@@ -218,7 +218,7 @@ const DisplayActiveStep = () => {
               >
                 <OpenID4VPVerification
                   key={`${flowType}-${sdkInstanceKey}`}
-                  triggerElement={ <QrIcon id="OpenID4VPVerification_trigger" className="w-[78px] lg:w-[100px]" aria-disabled={dcqlQuery.credentials.length === 0 } /> }
+                  triggerElement={ <QrIcon id="OpenID4VPVerification_trigger" className="w-[78px] lg:w-[100px]" aria-disabled={(dcqlQuery?.credentials?.length ?? 0) === 0 } /> }
                   verifyServiceUrl={window.location.origin + window._env_.VERIFY_SERVICE_API_URL}
                   dcqlQuery={dcqlQuery}
                   onVPProcessed={handleOnVpProcessed}

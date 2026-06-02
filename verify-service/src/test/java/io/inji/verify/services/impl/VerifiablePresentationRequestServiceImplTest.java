@@ -47,7 +47,7 @@ class VerifiablePresentationRequestServiceImplTest {
 
     private static DCQLQueryDto minimalDcqlQuery() throws Exception {
         return OBJECT_MAPPER.readValue(
-                "{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vctValues\":[\"cred1\"]}}]}",
+                "{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"cred1\"]}}]}",
                 DCQLQueryDto.class);
     }
 

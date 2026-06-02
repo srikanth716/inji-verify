@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.DeferredResult;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
@@ -77,11 +78,22 @@ public class VPRequestController {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorDto> handleUnreadable(HttpMessageNotReadableException ex) {
-        log.error("VP request body unreadable: {}", ex.getMessage());
-        return handleVPRequestValidationException(
-                new VPRequestValidationException(
-                        ErrorCode.INVALID_REQUEST_FORMAT));
+    public ResponseEntity<ErrorDto> handleJsonErrors(HttpMessageNotReadableException ex) {
+        Throwable cause = ex.getCause();
+        if (cause instanceof UnrecognizedPropertyException upe) {
+            String fieldName = upe.getPropertyName();
+            return ResponseEntity.badRequest()
+                    .body(new ErrorDto(
+                            "UNKNOWN_FIELD",
+                            "Unknown field: " + fieldName
+                    ));
+        }
+
+        return ResponseEntity.badRequest()
+                .body(new ErrorDto(
+                        "INVALID_REQUEST",
+                        "Invalid request payload"
+                ));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
