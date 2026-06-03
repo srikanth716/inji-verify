@@ -7,6 +7,9 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.nimbusds.jose.shaded.gson.annotations.SerializedName;
+
 import java.util.List;
 
 @Getter
@@ -33,5 +36,7 @@ public class CredentialQueryDto {
     /**
      * References claim ids.
      */
+    @JsonProperty("claim_sets")
+    @SerializedName("claim_sets")
     private List<List<String>> claimSets;
 }

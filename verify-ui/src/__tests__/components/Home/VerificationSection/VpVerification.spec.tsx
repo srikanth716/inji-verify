@@ -1,5 +1,5 @@
-import React, { act } from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import React from "react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { VpVerification } from "../../../../components/Home/VerificationSection/VpVerification";
 import { useVerifyFlowSelector } from "../../../../redux/features/verification/verification.selector";
 import { VCShareType } from "../../../../types/data-types";
@@ -137,7 +137,7 @@ describe("VpVerification Component", () => {
                 originalSelectedCredentials: [],
                 verificationSubmissionResult: [],
                 unVerifiedCredentials: [],
-                presentationDefinition: { input_descriptors: [] },
+                dcqlQuery: { credentials: [] },
                 activeScreen: 1,
                 isShowResult: false,
                 flowType: "crossDevice",
@@ -177,12 +177,12 @@ describe("VpVerification Component", () => {
         mockState({ isShowResult: false, flowType: "crossDevice" });
         render(<VpVerification />);
 
-        await act(async () => {
-            fireEvent.click(screen.getByTestId("openid-verification-sdk"));
-        });
+        fireEvent.click(screen.getByTestId("openid-verification-sdk"));
 
-        expect(mockDispatch).toHaveBeenCalledWith(expect.objectContaining({
-            type: "vpVerification/verificationSubmissionComplete"
-        }));
+        await waitFor(() =>
+            expect(mockDispatch).toHaveBeenCalledWith(expect.objectContaining({
+                type: "vpVerification/verificationSubmissionComplete"
+            }))
+        );
     });
 });

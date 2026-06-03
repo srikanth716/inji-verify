@@ -56,13 +56,13 @@ public class VPRequestControllerTest {
 
     private static String validVpRequestJson() {
         return "{\"clientId\":\"cId\",\"transactionId\":\"tId\",\"nonce\":\"nonce\","
-                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vctValues\":[\"cred1\"]}}]},"
+                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"cred1\"]}}]},"
                 + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
     }
 
     private static String validVpSessionRequestJson() {
         return "{\"clientId\":\"cId\",\"transactionId\":\"tId\",\"nonce\":\"nonce\","
-                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vctValues\":[\"cred1\"]}}]},"
+                + "\"dcqlQuery\":{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"cred1\"]}}]},"
                 + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":true}";
     }
 

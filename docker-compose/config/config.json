@@ -6,38 +6,21 @@
       "type": "MOSIPVerifiableCredential",
       "essential": true,
       "clientIdPrefix":"decentralized_identifier",
-      "definition": {
-        "purpose": "Relying party is requesting your digital ID for the purpose of Self-Authentication",
-        "format": {
-          "ldp_vc": {
-            "proof_type": [
-              "RsaSignature2018",
-              "Ed25519Signature2020"
-            ]
-          }
-        },
-        "input_descriptors": [
+      "purpose": "Relying party is requesting your digital ID for the purpose of Self-Authentication",
+      "dcqlQuery": {
+        "credentials": [
           {
-            "id": "id card credential",
-            "format": {
-              "ldp_vc": {
-                "proof_type": [
-                  "RsaSignature2018",
-                  "Ed25519Signature2020"
-                ]
-              }
+            "id": "mosip_verifiable_credential_id_card",
+            "format": "dc+sd-jwt",
+            "meta": {
+              "vct_values": ["MOSIPVerifiableCredential"]
             },
-            "constraints": {
-              "fields": [
-                {
-                  "path": ["$.type"],
-                  "filter": {
-                    "type": "object",
-                    "pattern": "MOSIPVerifiableCredential"
-                  }
-                }
-              ]
-            }
+            "claims": [
+              {
+                "id": "type",
+                "path": ["type"]
+              }
+            ]
           }
         ]
       }
@@ -47,32 +30,21 @@
       "name": "Life Insurance",
       "type": "LifeInsuranceCredential",
       "clientIdPrefix":"decentralized_identifier",
-      "definition": {
-        "purpose": "Relying party is requesting your digital ID for the purpose of Self-Authentication",
-        "format": {
-          "ldp_vc": {
-            "proof_type": ["Ed25519Signature2018"]
-          }
-        },
-        "input_descriptors": [
+      "purpose": "Relying party is requesting your digital ID for the purpose of Self-Authentication",
+      "dcqlQuery": {
+        "credentials": [
           {
-            "id": "id card credential",
-            "format": {
-              "ldp_vc": {
-                "proof_type": ["Ed25519Signature2020"]
-              }
+            "id": "life_insurance_id_card",
+            "format": "vc+sd-jwt",
+            "meta": {
+              "vct_values": ["LifeInsuranceCredential"]
             },
-            "constraints": {
-              "fields": [
-                {
-                  "path": ["$.type"],
-                  "filter": {
-                    "type": "object",
-                    "pattern": "LifeInsuranceCredential"
-                  }
-                }
-              ]
-            }
+            "claims": [
+              {
+                "id": "type",
+                "path": ["type"]
+              }
+            ]
           }
         ]
       }
@@ -82,32 +54,21 @@
       "name": "Health Insurance",
       "type": "InsuranceCredential",
       "clientIdPrefix":"pre_registered",
-      "definition": {
-        "purpose": "Relying party is requesting your digital ID for the purpose of Self-Authentication",
-        "format": {
-          "ldp_vc": {
-            "proof_type": ["Ed25519Signature2018"]
-          }
-        },
-        "input_descriptors": [
+      "purpose": "Relying party is requesting your digital ID for the purpose of Self-Authentication",
+      "dcqlQuery": {
+        "credentials": [
           {
-            "id": "id card credential",
-            "format": {
-              "ldp_vc": {
-                "proof_type": ["Ed25519Signature2020"]
-              }
+            "id": "health_insurance_id_card",
+            "format": "vc+sd-jwt",
+            "meta": {
+              "vct_values": ["InsuranceCredential"]
             },
-            "constraints": {
-              "fields": [
-                {
-                  "path": ["$.type"],
-                  "filter": {
-                    "type": "object",
-                    "pattern": "InsuranceCredential"
-                  }
-                }
-              ]
-            }
+            "claims": [
+              {
+                "id": "type",
+                "path": ["type"]
+              }
+            ]
           }
         ]
       }
@@ -115,34 +76,23 @@
     {
       "logo": "/assets/cert.png",
       "name": "Mock Identity (SD JWT)",
-      "type": "SD_JWT",
+      "type": "MockVerifiableCredential_SD_JWT",
       "clientIdPrefix":"decentralized_identifier",
-      "definition": {
-        "purpose": "Relying party is requesting your digital ID for the purpose of Self-Authentication",
-        "format": {
-          "vc+sd-jwt": {
-            "sd-jwt_alg_values": ["EdDSA"]
-          }
-        },
-        "input_descriptors": [
+      "purpose": "Relying party is requesting your digital ID for the purpose of Self-Authentication",
+      "dcqlQuery": {
+        "credentials": [
           {
-            "id": "Mock Identity card credential",
-            "format": {
-              "vc+sd-jwt": {
-                "sd-jwt_alg_values": ["EdDSA"]
-              }
+            "id": "mock_identity_sd_jwt",
+            "format": "vc+sd-jwt",
+            "meta": {
+              "vct_values": ["MockVerifiableCredential_SD_JWT"]
             },
-            "constraints": {
-              "fields": [
-                {
-                  "path": ["$.vct"],
-                  "filter": {
-                    "type": "string",
-                    "pattern": "SD_JWT"
-                  }
-                }
-              ]
-            }
+            "claims": [
+              {
+                "id": "vct",
+                "path": ["vct"]
+              }
+            ]
           }
         ]
       }
@@ -152,32 +102,21 @@
       "name": "Land Registry",
       "type": "LandStatementCredential",
       "clientIdPrefix":"decentralized_identifier",
-      "definition": {
-        "purpose": "Relying party is requesting your digital ID for the purpose of Self-Authentication",
-        "format": {
-          "ldp_vc": {
-            "proof_type": ["Ed25519Signature2020"]
-          }
-        },
-        "input_descriptors": [
+      "purpose": "Relying party is requesting your digital ID for the purpose of Self-Authentication",
+      "dcqlQuery": {
+        "credentials": [
           {
-            "id": "id card credential",
-            "format": {
-              "ldp_vc": {
-                "proof_type": ["Ed25519Signature2020"]
-              }
+            "id": "land_statement_id_card",
+            "format": "vc+sd-jwt",
+            "meta": {
+              "vct_values": ["LandStatementCredential"]
             },
-            "constraints": {
-              "fields": [
-                {
-                  "path": ["$.type"],
-                  "filter": {
-                    "type": "object",
-                    "pattern": "LandStatementCredential"
-                  }
-                }
-              ]
-            }
+            "claims": [
+              {
+                "id": "type",
+                "path": ["type"]
+              }
+            ]
           }
         ]
       }

@@ -27,7 +27,7 @@ function SelectionPanelContent() {
   language = language ?? window._env_.DEFAULT_LANG;
   const rtl = isRTL(language);
   const selectedCredentials = useVerifyFlowSelector((state) => state.selectedCredentials);
-  const presentationDefinition = useVerifyFlowSelector((state) => state.presentationDefinition );
+  const dcqlQuery = useVerifyFlowSelector((state) => state.dcqlQuery);
   const isMobile = isMobileDevice();
 
   const isCredentialSelected = (cred: claim) =>
@@ -249,7 +249,7 @@ function SelectionPanelContent() {
             title={t("Common:Button.openWallet")}
             className="w-full text-smallTextSize lg:text-sm my-2"
             onClick={handleOpenWallet}
-            disabled={presentationDefinition.input_descriptors.length === 0}
+            disabled={dcqlQuery.credentials.length === 0}
             variant="fill"
           />
         )}
@@ -259,7 +259,7 @@ function SelectionPanelContent() {
           title={t("openWebWallets")}
           className="w-full text-smallTextSize lg:text-sm my-2"
           onClick={handleChooseWallet}
-          disabled={presentationDefinition.input_descriptors.length === 0}
+          disabled={dcqlQuery.credentials.length === 0}
           variant="fill"
         />
 

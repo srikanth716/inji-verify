@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.nimbusds.jose.shaded.gson.annotations.SerializedName;
+
 @Getter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,5 +23,7 @@ public class DCQLQueryDto {
     private List<CredentialQueryDto> credentials;
 
     @Valid
+    @JsonProperty("credential_sets")
+    @SerializedName("credential_sets")
     private List<CredentialSetQueryDto> credentialSets;
 }
