@@ -10,10 +10,7 @@ import java.util.List;
 
 public final class DcqlTestFixtures {
 
-    private static final ObjectMapper MAPPER = new ObjectMapper();
-
     public static final JsonNode MINIMAL_DCQL;
-
     public static final DCQLQueryDto MINIMAL_DCQL_DTO = new DCQLQueryDto(
             List.of(new CredentialQueryDto(
                     "cred1",
@@ -22,6 +19,7 @@ public final class DcqlTestFixtures {
                     null,
                     null)),
             null);
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     static {
         try {
@@ -32,6 +30,9 @@ public final class DcqlTestFixtures {
         }
     }
 
+    private DcqlTestFixtures() {
+    }
+
     public static JsonNode minimalDcql() {
         return MINIMAL_DCQL;
     }
@@ -39,6 +40,4 @@ public final class DcqlTestFixtures {
     public static DCQLQueryDto minimalDcqlDto() {
         return MINIMAL_DCQL_DTO;
     }
-
-    private DcqlTestFixtures() {}
 }
