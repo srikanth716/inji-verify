@@ -20,7 +20,6 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "Represents a DCQL query, specifying the credentials and credential sets for matching against credentials in the wallet.")
 public class DCQLQueryDto {
-
     @Valid
     @NotNull(message = "DCQL_CREDENTIALS_REQUIRED")
     @NotEmpty(message = "DCQL_CREDENTIALS_INVALID")

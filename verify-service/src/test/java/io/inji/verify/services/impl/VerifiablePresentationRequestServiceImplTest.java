@@ -1,16 +1,14 @@
 package io.inji.verify.services.impl;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.Curve;
 import com.nimbusds.jose.jwk.OctetKeyPair;
 import com.nimbusds.jose.jwk.gen.OctetKeyPairGenerator;
-import io.inji.verify.dto.dcql.DCQLQueryDto;
 import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
+import io.inji.verify.dto.dcql.DCQLQueryDto;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import com.nimbusds.jwt.SignedJWT;
 import io.inji.verify.testsupport.DcqlTestFixtures;
@@ -167,6 +165,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 new AuthorizationRequestResponseDto(
                         verifierDid,
                         DcqlTestFixtures.minimalDcqlDto(),
+                        null,
                         "nonce",
                         "https://verifier.example/resp",
                         false,
@@ -207,7 +206,7 @@ class VerifiablePresentationRequestServiceImplTest {
     void getVPRequestJwt_WhenDcqlMissing_ReturnsJwtWithoutDcqlClaim() throws Exception {
         String requestId = "reqMissingDcql";
         AuthorizationRequestResponseDto authzDto =
-                new AuthorizationRequestResponseDto("did:example", null, "nonce", "responseUri", false, false);
+                new AuthorizationRequestResponseDto("did:example", null, null, "nonce", "responseUri", false, false);
         AuthorizationRequestCreateResponse response =
                 new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 1000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(response));
@@ -229,7 +228,7 @@ class VerifiablePresentationRequestServiceImplTest {
                         requestId,
                         "tx",
                         new AuthorizationRequestResponseDto(
-                                "did:example", DcqlTestFixtures.minimalDcqlDto(), "nonce", "responseUri", false, false),
+                                "did:example", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false),
                         Instant.now().toEpochMilli() + 2000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(response));
 
@@ -248,7 +247,7 @@ class VerifiablePresentationRequestServiceImplTest {
     void getVPRequestJwt_WithExpiredRequest_AllowsJwt() throws Exception {
         String requestId = "expiredReq";
         AuthorizationRequestResponseDto authzDto =
-                new AuthorizationRequestResponseDto("did:example", DcqlTestFixtures.minimalDcqlDto(), "nonce", "responseUri", false, false);
+                new AuthorizationRequestResponseDto("did:example", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false);
         AuthorizationRequestCreateResponse expiredResponse =
                 new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() - 5000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(expiredResponse));

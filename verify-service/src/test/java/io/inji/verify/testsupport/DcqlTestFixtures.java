@@ -24,7 +24,7 @@ public final class DcqlTestFixtures {
     static {
         try {
             MINIMAL_DCQL = MAPPER.readTree(
-                    "{\"credentials\":[{\"id\":\"cred1\",\"format\":\"dc+sd-jwt\",\"meta\":{\"vct_values\":[\"cred1\"]}}]}");
+                    "{\"credentials\":[{\"id\":\"age_credential\",\"format\":\"ldp_vc\",\"meta\":{}}]}");
         } catch (Exception e) {
             throw new ExceptionInInitializerError(e);
         }
