@@ -1,6 +1,7 @@
 package io.inji.verify.controller;
 
 import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
+import io.inji.verify.dto.dcql.DCQLQueryDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.dto.result.DcqlVPTokenDto;
@@ -90,7 +91,9 @@ class VPSubmissionControllerTest {
         return new DcqlVPTokenDto(ldpVpTokens, new HashMap<>());
     }
 
-    private void stubDcqlValidationSuccess() throws InvalidVpTokenException {
+    private void stubDcqlValidationSuccess(AuthorizationRequestResponseDto authorizationDetails)
+            throws InvalidVpTokenException {
+        when(authorizationDetails.getDcqlQuery()).thenReturn(mock(DCQLQueryDto.class));
         when(vpSubmissionService.extractDcqlVpTokens(anyString()))
                 .thenReturn(mockDcqlTokens());
         when(vpSubmissionService.validateDcqlQuery(any(), any(DcqlVPTokenDto.class)))
@@ -274,7 +277,7 @@ class VPSubmissionControllerTest {
         when(vpSubmissionService.getAuthRequest(STATE))
                 .thenReturn(auth);
 
-        stubDcqlValidationSuccess();
+        stubDcqlValidationSuccess(authorizationDetails);
 
         when(vpSubmissionService.isClientIdValid(any(), any()))
                 .thenReturn(false);
@@ -313,7 +316,7 @@ class VPSubmissionControllerTest {
         when(vpSubmissionService.getAuthRequest(STATE))
                 .thenReturn(auth);
 
-        stubDcqlValidationSuccess();
+        stubDcqlValidationSuccess(authorizationDetails);
 
         when(vpSubmissionService.isClientIdValid(any(), any()))
                 .thenReturn(true);
@@ -355,7 +358,7 @@ class VPSubmissionControllerTest {
         when(vpSubmissionService.getAuthRequest(STATE))
                 .thenReturn(auth);
 
-        stubDcqlValidationSuccess();
+        stubDcqlValidationSuccess(authorizationDetails);
 
         when(vpSubmissionService.isClientIdValid(any(), any()))
                 .thenReturn(true);
@@ -399,7 +402,7 @@ class VPSubmissionControllerTest {
         when(vpSubmissionService.getAuthRequest(STATE))
                 .thenReturn(auth);
 
-        stubDcqlValidationSuccess();
+        stubDcqlValidationSuccess(authorizationDetails);
 
         when(vpSubmissionService.isClientIdValid(any(), any()))
                 .thenReturn(true);
@@ -445,6 +448,7 @@ class VPSubmissionControllerTest {
         when(vpSubmissionService.getAuthRequest(STATE))
                 .thenReturn(auth);
 
+        when(authorizationDetails.getDcqlQuery()).thenReturn(mock(DCQLQueryDto.class));
         when(vpSubmissionService.extractDcqlVpTokens(anyString()))
                 .thenReturn(mockDcqlTokens());
         when(vpSubmissionService.validateDcqlQuery(any(), any(DcqlVPTokenDto.class)))
@@ -485,7 +489,7 @@ class VPSubmissionControllerTest {
         when(vpSubmissionService.getAuthRequest(STATE))
                 .thenReturn(auth);
 
-        stubDcqlValidationSuccess();
+        stubDcqlValidationSuccess(authorizationDetails);
 
         when(vpSubmissionService.isClientIdValid(any(), any()))
                 .thenReturn(true);
@@ -497,6 +501,37 @@ class VPSubmissionControllerTest {
                 controller.submitVP(VALID_VP_TOKEN, STATE, null, null, request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(vpSubmissionService).submitVpToken(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void shouldSkipDcqlValidation_whenNoDcqlQuery() throws InvalidVpTokenException {
+
+        VPRequestStatusDto dto =
+                new VPRequestStatusDto(VPRequestStatus.ACTIVE);
+
+        AuthorizationRequestCreateResponse auth =
+                mock(AuthorizationRequestCreateResponse.class);
+
+        AuthorizationRequestResponseDto authorizationDetails =
+                mock(AuthorizationRequestResponseDto.class);
+
+        when(auth.getAuthorizationDetails())
+                .thenReturn(authorizationDetails);
+        when(authorizationDetails.getDcqlQuery()).thenReturn(null);
+
+        when(vpRequestService.getCurrentRequestStatus(STATE))
+                .thenReturn(dto);
+
+        when(vpSubmissionService.getAuthRequest(STATE))
+                .thenReturn(auth);
+
+        ResponseEntity<?> response =
+                controller.submitVP(VALID_VP_TOKEN, STATE, null, null, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(vpSubmissionService, never()).extractDcqlVpTokens(anyString());
+        verify(vpSubmissionService, never()).validateDcqlQuery(any(), any(DcqlVPTokenDto.class));
         verify(vpSubmissionService).submitVpToken(any(), any(), any(), any(), any(), any(), any());
     }
 }

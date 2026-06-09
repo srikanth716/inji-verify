@@ -6,6 +6,7 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.dto.result.DcqlVPTokenDto;
@@ -127,11 +128,13 @@ public class VPSubmissionController {
 
         // ---- 5. Extract DCQL VP tokens, and then validate against the DCQL query
         DcqlVPTokenDto dcqlVPToken = null;
-        if (StringUtils.hasText(vpToken)) {
+        AuthorizationRequestResponseDto authorizationDetails = authRequestCreateResponse.getAuthorizationDetails();
+        boolean hasDcqlQuery = authorizationDetails != null && authorizationDetails.getDcqlQuery() != null;
+        if (StringUtils.hasText(vpToken) && hasDcqlQuery) {
             try {
                 dcqlVPToken = verifiablePresentationSubmissionService.extractDcqlVpTokens(vpToken);
                 ValidationResult dcqlValidation = verifiablePresentationSubmissionService
-                        .validateDcqlQuery(authRequestCreateResponse.getAuthorizationDetails(), dcqlVPToken);
+                        .validateDcqlQuery(authorizationDetails, dcqlVPToken);
                 if (!dcqlValidation.valid()) {
                     return dcqlValidationFailureResponse(dcqlValidation.message());
                 }

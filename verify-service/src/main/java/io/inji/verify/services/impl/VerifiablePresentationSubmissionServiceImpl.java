@@ -141,17 +141,15 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
                 }
                 for (JsonNode item : value) {
                     if (item.isTextual()) {
-                        if (isSdJwt(item.asText())) {
+                        String text = item.asText();
+                        if (isSdJwt(text)) {
                             log.debug("Identified SD-JWT token");
                             sdJwtTokens.computeIfAbsent(queryId, k -> new ArrayList<>())
-                                    .add(item.asText());
+                                    .add(text);
                         } else {
-                            String errorMessage = String.format(
-                                    "Text node is not a valid SD-JWT token for query ID %s: %s",
-                                    queryId,
-                                    item.asText());
-                            log.warn(errorMessage);
-                            throw new InvalidVpTokenException(errorMessage);
+                            log.debug("Identified base64-encoded LDP VP token");
+                            ldpVpTokens.computeIfAbsent(queryId, k -> new ArrayList<>())
+                                    .add(parseBase64EncodedLdpVp(text, queryId));
                         }
                     } else if (item.isObject()) {
                         log.debug("Identified LDP VP token");
@@ -172,6 +170,29 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
             return new DcqlVPTokenDto(ldpVpTokens, sdJwtTokens);
         } catch (JsonProcessingException | IllegalArgumentException e) {
             String errorMessage = String.format("Failed to parse VP token: %s", e.getMessage());
+            log.warn(errorMessage);
+            throw new InvalidVpTokenException(errorMessage);
+        }
+    }
+
+    private JSONObject parseBase64EncodedLdpVp(String encoded, String queryId) throws InvalidVpTokenException {
+        try {
+            String decodedJson = new String(Base64.getUrlDecoder().decode(encoded));
+            JsonNode decoded = objectMapper.readTree(decodedJson);
+            if (!decoded.isObject() || !isVerifiablePresentationObject(decoded)) {
+                String errorMessage = String.format(
+                        "Decoded text is not a valid LDP VP for query ID %s: %s",
+                        queryId,
+                        decodedJson);
+                log.warn(errorMessage);
+                throw new InvalidVpTokenException(errorMessage);
+            }
+            return new JSONObject(decoded.toString());
+        } catch (IllegalArgumentException | JsonProcessingException e) {
+            String errorMessage = String.format(
+                    "Text node is not a valid SD-JWT or base64-encoded LDP VP for query ID %s: %s",
+                    queryId,
+                    e.getMessage());
             log.warn(errorMessage);
             throw new InvalidVpTokenException(errorMessage);
         }

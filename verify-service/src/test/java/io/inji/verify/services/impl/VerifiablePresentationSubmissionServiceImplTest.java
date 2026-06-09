@@ -155,7 +155,8 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             List<VCResultWithCredentialStatus> vcResults = List.of(
                     new VCResultWithCredentialStatus("", VerificationStatus.SUCCESS, new HashMap<>())
             );
-            VPSubmission vpSubmission = vpSubmission("state123", "\"" + base64Token + "\"",
+            VPSubmission vpSubmission = vpSubmission("state123",
+                    "{\"age_credential\":[\"" + base64Token + "\"]}",
                     "", "", "", null, false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
@@ -223,7 +224,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             );
 
             VPSubmission vpSubmission = vpSubmission("state123",
-                    "[\"" + base64Token1 + "\", \"{\\\"type\\\":[\\\"VerifiablePresentation\\\"],\\\"proof\\\":{\\\"type\\\":\\\"Ed25519Signature2018\\\"},\\\"VerifiablePresentation\\\":[{\\\"type\\\":[\\\"VerifiablePresentation\\\"]}]}\"]",
+                    "{\"age_credential\":[\"" + base64Token1 + "\", {\"type\":[\"VerifiablePresentation\"],\"proof\":{\"type\":\"Ed25519Signature2018\"},\"VerifiablePresentation\":[{\"type\":[\"VerifiablePresentation\"]}]}]}",
                     null, null, null, null,
                     false);
 
