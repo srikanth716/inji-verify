@@ -20,6 +20,12 @@ import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.models.AuthorizationRequestCreateResponse;
 import io.inji.verify.models.VPSubmission;
 import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
+import io.inji.verify.dto.dcql.CredentialMetaDto;
+import io.inji.verify.dto.dcql.CredentialQueryDto;
+import io.inji.verify.dto.dcql.CredentialSetQueryDto;
+import io.inji.verify.dto.dcql.DCQLQueryDto;
+import io.inji.verify.dto.result.DcqlVPTokenDto;
+import io.inji.verify.dto.result.ValidationResult;
 import io.inji.verify.testsupport.DcqlTestFixtures;
 import io.inji.verify.dto.result.VPVerificationResultDto;
 import io.inji.verify.dto.result.VerificationRequestDto;
@@ -1772,6 +1778,163 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         public void testExtractTokens_InvalidBase64InArray() {
             String arrayToken = "[\"valid-base64-first\", \"invalid!!!base64\"]";
             assertThrows(InvalidVpTokenException.class, () -> verifiablePresentationSubmissionService.extractTokens(arrayToken));
+        }
+    }
+
+    @Nested
+    class ValidateDcqlQuerySatisfactionTest {
+
+        private static String testSdJwt(String typ, String vct) {
+            String header = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                    ("{\"typ\":\"" + typ + "\",\"alg\":\"none\"}").getBytes());
+            String payload = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                    ("{\"vct\":\"" + vct + "\"}").getBytes());
+            return header + "." + payload + ".signature";
+        }
+
+        @Test
+        void shouldReturnSpecificError_whenQueryIdDoesNotMatch() {
+            AuthorizationRequestResponseDto auth = new AuthorizationRequestResponseDto(
+                    "clientId",
+                    new DCQLQueryDto(List.of(new CredentialQueryDto(
+                            "student_id_credential_query",
+                            "vc+sd-jwt",
+                            new CredentialMetaDto(List.of("eu.europa.ec.eudi.msisdn.1"), null),
+                            null,
+                            null)), null),
+                    null, "nonce", "responseUri", false, false);
+
+            DcqlVPTokenDto tokens = new DcqlVPTokenDto(
+                    new HashMap<>(),
+                    Map.of("wrong_query_id", List.of(testSdJwt("vc+sd-jwt", "eu.europa.ec.eudi.msisdn.1"))));
+
+            ValidationResult result = verifiablePresentationSubmissionService.validateDcqlQuery(auth, tokens);
+
+            assertFalse(result.valid());
+            assertTrue(result.message().contains("wrong_query_id"));
+            assertTrue(result.message().contains("does not match any credential id"));
+        }
+
+        @Test
+        void shouldReturnSpecificError_whenRequiredCredentialMissingFromSubmission() {
+            AuthorizationRequestResponseDto auth = new AuthorizationRequestResponseDto(
+                    "clientId",
+                    new DCQLQueryDto(List.of(new CredentialQueryDto(
+                            "student_id_credential_query",
+                            "vc+sd-jwt",
+                            new CredentialMetaDto(List.of("eu.europa.ec.eudi.msisdn.1"), null),
+                            null,
+                            null)), null),
+                    null, "nonce", "responseUri", false, false);
+
+            ValidationResult result = verifiablePresentationSubmissionService.validateDcqlQuery(
+                    auth, new DcqlVPTokenDto(new HashMap<>(), new HashMap<>()));
+
+            assertFalse(result.valid());
+            assertTrue(result.message().contains("student_id_credential_query"));
+            assertTrue(result.message().contains("was not included in vp_token"));
+        }
+
+        @Test
+        void shouldReturnSpecificError_whenSdJwtFormatMismatch() {
+            AuthorizationRequestResponseDto auth = new AuthorizationRequestResponseDto(
+                    "clientId",
+                    new DCQLQueryDto(List.of(new CredentialQueryDto(
+                            "student_id_credential_query",
+                            "vc+sd-jwt",
+                            new CredentialMetaDto(List.of("eu.europa.ec.eudi.msisdn.1"), null),
+                            null,
+                            null)), null),
+                    null, "nonce", "responseUri", false, false);
+
+            DcqlVPTokenDto tokens = new DcqlVPTokenDto(
+                    new HashMap<>(),
+                    Map.of("student_id_credential_query", List.of(testSdJwt("dc+sd-jwt", "eu.europa.ec.eudi.msisdn.1"))));
+
+            ValidationResult result = verifiablePresentationSubmissionService.validateDcqlQuery(auth, tokens);
+
+            assertFalse(result.valid());
+            assertTrue(result.message().contains("requires format vc+sd-jwt"));
+            assertTrue(result.message().contains("dc+sd-jwt"));
+        }
+
+        @Test
+        void shouldReturnSpecificError_whenVctDoesNotMatch() {
+            AuthorizationRequestResponseDto auth = new AuthorizationRequestResponseDto(
+                    "clientId",
+                    new DCQLQueryDto(List.of(new CredentialQueryDto(
+                            "student_id_credential_query",
+                            "vc+sd-jwt",
+                            new CredentialMetaDto(List.of("eu.europa.ec.eudi.msisdn.1"), null),
+                            null,
+                            null)), null),
+                    null, "nonce", "responseUri", false, false);
+
+            DcqlVPTokenDto tokens = new DcqlVPTokenDto(
+                    new HashMap<>(),
+                    Map.of("student_id_credential_query", List.of(testSdJwt("vc+sd-jwt", "wrong.vct.value"))));
+
+            ValidationResult result = verifiablePresentationSubmissionService.validateDcqlQuery(auth, tokens);
+
+            assertFalse(result.valid());
+            assertTrue(result.message().contains("vct 'wrong.vct.value'"));
+            assertTrue(result.message().contains("vct_values"));
+        }
+
+        @Test
+        void shouldReturnSpecificError_whenRequiredCredentialSetNotSatisfied() {
+            AuthorizationRequestResponseDto auth = new AuthorizationRequestResponseDto(
+                    "clientId",
+                    new DCQLQueryDto(
+                            List.of(
+                                    new CredentialQueryDto(
+                                            "age_credential_query",
+                                            "ldp_vc",
+                                            new CredentialMetaDto(null, List.of("AgeCredential")),
+                                            null,
+                                            null),
+                                    new CredentialQueryDto(
+                                            "student_id_credential_query",
+                                            "vc+sd-jwt",
+                                            new CredentialMetaDto(List.of("eu.europa.ec.eudi.msisdn.1"), null),
+                                            null,
+                                            null)),
+                            List.of(new CredentialSetQueryDto(
+                                    List.of(List.of("age_credential_query", "student_id_credential_query")),
+                                    true))),
+                    null, "nonce", "responseUri", false, false);
+
+            DcqlVPTokenDto tokens = new DcqlVPTokenDto(
+                    new HashMap<>(),
+                    Map.of("student_id_credential_query", List.of(testSdJwt("vc+sd-jwt", "eu.europa.ec.eudi.msisdn.1"))));
+
+            ValidationResult result = verifiablePresentationSubmissionService.validateDcqlQuery(auth, tokens);
+
+            assertFalse(result.valid());
+            assertTrue(result.message().contains("credential_set not satisfied"));
+            assertTrue(result.message().contains("age_credential_query"));
+        }
+
+        @Test
+        void shouldReturnSatisfied_whenSubmissionMatchesDcqlQuery() {
+            AuthorizationRequestResponseDto auth = new AuthorizationRequestResponseDto(
+                    "clientId",
+                    new DCQLQueryDto(List.of(new CredentialQueryDto(
+                            "student_id_credential_query",
+                            "vc+sd-jwt",
+                            new CredentialMetaDto(List.of("eu.europa.ec.eudi.msisdn.1"), null),
+                            null,
+                            null)), null),
+                    null, "nonce", "responseUri", false, false);
+
+            DcqlVPTokenDto tokens = new DcqlVPTokenDto(
+                    new HashMap<>(),
+                    Map.of("student_id_credential_query", List.of(testSdJwt("vc+sd-jwt", "eu.europa.ec.eudi.msisdn.1"))));
+
+            ValidationResult result = verifiablePresentationSubmissionService.validateDcqlQuery(auth, tokens);
+
+            assertTrue(result.valid());
+            assertNull(result.message());
         }
     }
 }

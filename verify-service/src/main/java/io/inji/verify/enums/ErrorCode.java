@@ -66,7 +66,8 @@ public enum ErrorCode {
     VP_TOKEN_ARRAY_ELEMENTS_INVALID("invalid_request", "invalid_vp_token: array elements must be non-empty JSON objects or non-empty SD-JWT strings"),
     VP_TOKEN_ALL_ELEMENTS_MUST_BE_OBJECTS("invalid_request", "invalid_vp_token: all elements must be non-empty JSON objects"),
     VP_TOKEN_ALL_ELEMENTS_MUST_BE_SD_JWT("invalid_request", "invalid_vp_token: all elements must be non-empty SD-JWT strings"),
-    VP_TOKEN_NOT_VALID_JSON_OBJECT("invalid_request", "invalid_vp_token, not a valid JSON object");
+    VP_TOKEN_NOT_VALID_JSON_OBJECT("invalid_request", "invalid_vp_token, not a valid JSON object"),
+    DCQL_QUERY_NOT_SATISFIED("invalid_request", "invalid_vp_token: DCQL query requirements are not satisfied");
 
     private final String errorCode;
     private final String errorMessage;

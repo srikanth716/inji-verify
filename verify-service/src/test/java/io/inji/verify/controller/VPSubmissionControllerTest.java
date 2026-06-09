@@ -4,8 +4,10 @@ import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.dto.result.DcqlVPTokenDto;
+import io.inji.verify.dto.result.ValidationResult;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.enums.VPRequestStatus;
+import io.inji.verify.exception.InvalidVpTokenException;
 import io.inji.verify.exception.VPAlreadySubmittedException;
 import io.inji.verify.models.AuthorizationRequestCreateResponse;
 import io.inji.verify.services.VerifiablePresentationRequestService;
@@ -86,6 +88,13 @@ class VPSubmissionControllerTest {
         ldpVpTokens.put("query1", Collections.singletonList(vp));
 
         return new DcqlVPTokenDto(ldpVpTokens, new HashMap<>());
+    }
+
+    private void stubDcqlValidationSuccess() throws InvalidVpTokenException {
+        when(vpSubmissionService.extractDcqlVpTokens(anyString()))
+                .thenReturn(mockDcqlTokens());
+        when(vpSubmissionService.validateDcqlQuery(any(), any(DcqlVPTokenDto.class)))
+                .thenReturn(ValidationResult.ok());
     }
 
     @Test
@@ -245,7 +254,7 @@ class VPSubmissionControllerTest {
     }
 
     @Test
-    void shouldReturnBadRequest_whenClientIdValidationFails() {
+    void shouldReturnBadRequest_whenClientIdValidationFails() throws InvalidVpTokenException {
 
         VPRequestStatusDto dto =
                 new VPRequestStatusDto(VPRequestStatus.ACTIVE);
@@ -265,8 +274,7 @@ class VPSubmissionControllerTest {
         when(vpSubmissionService.getAuthRequest(STATE))
                 .thenReturn(auth);
 
-        when(vpSubmissionService.extractDcqlVpTokens(any()))
-                .thenReturn(mockDcqlTokens());
+        stubDcqlValidationSuccess();
 
         when(vpSubmissionService.isClientIdValid(any(), any()))
                 .thenReturn(false);
@@ -285,7 +293,7 @@ class VPSubmissionControllerTest {
     }
 
     @Test
-    void shouldReturnBadRequest_whenNonceValidationFails() {
+    void shouldReturnBadRequest_whenNonceValidationFails() throws InvalidVpTokenException {
 
         VPRequestStatusDto dto =
                 new VPRequestStatusDto(VPRequestStatus.ACTIVE);
@@ -305,8 +313,7 @@ class VPSubmissionControllerTest {
         when(vpSubmissionService.getAuthRequest(STATE))
                 .thenReturn(auth);
 
-        when(vpSubmissionService.extractDcqlVpTokens(any()))
-                .thenReturn(mockDcqlTokens());
+        stubDcqlValidationSuccess();
 
         when(vpSubmissionService.isClientIdValid(any(), any()))
                 .thenReturn(true);
@@ -328,7 +335,7 @@ class VPSubmissionControllerTest {
     }
 
     @Test
-    void shouldReturnInternalServerError_whenRedirectUriMissing() {
+    void shouldReturnInternalServerError_whenRedirectUriMissing() throws InvalidVpTokenException {
 
         VPRequestStatusDto dto =
                 new VPRequestStatusDto(VPRequestStatus.ACTIVE);
@@ -348,8 +355,7 @@ class VPSubmissionControllerTest {
         when(vpSubmissionService.getAuthRequest(STATE))
                 .thenReturn(auth);
 
-        when(vpSubmissionService.extractDcqlVpTokens(any()))
-                .thenReturn(mockDcqlTokens());
+        stubDcqlValidationSuccess();
 
         when(vpSubmissionService.isClientIdValid(any(), any()))
                 .thenReturn(true);
@@ -373,7 +379,7 @@ class VPSubmissionControllerTest {
     }
 
     @Test
-    void shouldReturnBadRequest_whenDuplicateSubmissionOccurs() {
+    void shouldReturnBadRequest_whenDuplicateSubmissionOccurs() throws InvalidVpTokenException {
 
         VPRequestStatusDto dto =
                 new VPRequestStatusDto(VPRequestStatus.ACTIVE);
@@ -393,8 +399,7 @@ class VPSubmissionControllerTest {
         when(vpSubmissionService.getAuthRequest(STATE))
                 .thenReturn(auth);
 
-        when(vpSubmissionService.extractDcqlVpTokens(any()))
-                .thenReturn(mockDcqlTokens());
+        stubDcqlValidationSuccess();
 
         when(vpSubmissionService.isClientIdValid(any(), any()))
                 .thenReturn(true);
@@ -420,7 +425,7 @@ class VPSubmissionControllerTest {
     }
 
     @Test
-    void shouldReturnSuccess_whenSubmissionSucceeds() {
+    void shouldReturnBadRequest_whenDcqlValidationFails() throws InvalidVpTokenException {
 
         VPRequestStatusDto dto =
                 new VPRequestStatusDto(VPRequestStatus.ACTIVE);
@@ -440,8 +445,47 @@ class VPSubmissionControllerTest {
         when(vpSubmissionService.getAuthRequest(STATE))
                 .thenReturn(auth);
 
-        when(vpSubmissionService.extractDcqlVpTokens(any()))
+        when(vpSubmissionService.extractDcqlVpTokens(anyString()))
                 .thenReturn(mockDcqlTokens());
+        when(vpSubmissionService.validateDcqlQuery(any(), any(DcqlVPTokenDto.class)))
+                .thenReturn(ValidationResult.fail(
+                        "invalid_vp_token: query id 'wrong_id' does not match any credential id in the DCQL query"));
+
+        ResponseEntity<?> response =
+                controller.submitVP(VALID_VP_TOKEN, STATE, null, null, request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+
+        ErrorDto body = (ErrorDto) response.getBody();
+
+        assertNotNull(body);
+        assertEquals(ErrorCode.DCQL_QUERY_NOT_SATISFIED.getErrorCode(), body.getErrorCode());
+        assertTrue(body.getErrorMessage().contains("wrong_id"));
+        verify(vpSubmissionService, never()).submitVpToken(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void shouldReturnSuccess_whenSubmissionSucceeds() throws InvalidVpTokenException {
+
+        VPRequestStatusDto dto =
+                new VPRequestStatusDto(VPRequestStatus.ACTIVE);
+
+        AuthorizationRequestCreateResponse auth =
+                mock(AuthorizationRequestCreateResponse.class);
+
+        AuthorizationRequestResponseDto authorizationDetails =
+                mock(AuthorizationRequestResponseDto.class);
+
+        when(auth.getAuthorizationDetails())
+                .thenReturn(authorizationDetails);
+
+        when(vpRequestService.getCurrentRequestStatus(STATE))
+                .thenReturn(dto);
+
+        when(vpSubmissionService.getAuthRequest(STATE))
+                .thenReturn(auth);
+
+        stubDcqlValidationSuccess();
 
         when(vpSubmissionService.isClientIdValid(any(), any()))
                 .thenReturn(true);

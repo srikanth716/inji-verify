@@ -4335,6 +4335,491 @@
               "response": []
             }
           ]
+        },
+        {
+          "name": "6. DCQL validation failures",
+          "item": [
+            {
+              "name": "vp request for negative tests",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/verify/v2/vp-request",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "verify",
+                    "v2",
+                    "vp-request"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"clientId\": \"did:web:injiverify.dev-int-inji.mosip.net:v1:verify\",\n    \"nonce\": \"MTc3OTEwMTI1ODkzOQ==\",\n    \"acceptVPWithoutHolderProof\": true,\n    \"responseCodeValidationRequired\": false,\n    \"dcqlQuery\": {\n        \"credentials\": [\n            {\n                \"id\": \"student_id_credential_query\",\n                \"format\": \"dc+sd-jwt\",\n                \"meta\": {\"vct_values\": [\"student_id_credential\"]},\n                \"claims\": [{\"id\": \"first_name\", \"path\": [\"first_name\"]}]\n            },\n            {\n                \"id\": \"age_credential_query\",\n                \"format\": \"ldp_vc\",\n                \"meta\": {\"type_values\": [\"https://www.w3.org/2018/credentials#VerifiableCredential\"]},\n                \"claims\": [{\"id\": \"first_name\", \"path\": [\"credentialSubject\", \"first_name\"]}]\n            }\n        ],\n        \"credential_sets\": [{\"options\": [[\"age_credential_query\"]]}]\n    }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var responseJson = pm.response.json();",
+                      "pm.collectionVariables.set('reqIdForDcqlNegativeTests', responseJson.requestId);",
+                      "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "vp submission unknown query id",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/verify/v2/vp-submission/direct-post",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "verify",
+                    "v2",
+                    "vp-submission",
+                    "direct-post"
+                  ]
+                },
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "vp_token",
+                      "value": "{\"wrong_query_id\":[\"eyJ0eXAiOiJ2YytzZC1qd3QifQ.eyJ2Y3QiOiJ0ZXN0In0.test-signature\"]}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "state",
+                      "value": "{{reqIdForDcqlNegativeTests}}",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                      "var body = pm.response.json();",
+                      "pm.test('Response has errorCode', function () { pm.expect(body.errorCode).to.exist; });",
+                      "pm.test('Error mentions unknown query id', function () { pm.expect(pm.response.json().errorMessage).to.include('wrong_query_id'); });"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "vp submission missing required credential",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/verify/v2/vp-submission/direct-post",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "verify",
+                    "v2",
+                    "vp-submission",
+                    "direct-post"
+                  ]
+                },
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "vp_token",
+                      "value": "{\"student_id_credential_query\":[\"eyJ0eXAiOiJ2YytzZC1qd3QifQ.eyJ2Y3QiOiJ0ZXN0In0.test-signature\"]}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "state",
+                      "value": "{{reqIdForDcqlNegativeTests}}",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                      "var body = pm.response.json();",
+                      "pm.test('Response has errorCode', function () { pm.expect(body.errorCode).to.exist; });",
+                      "pm.test('Error mentions missing required credential', function () { var msg = pm.response.json().errorMessage; pm.expect(msg.includes('age_credential_query') || msg.includes('credential_set')).to.be.true; });"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "vp submission malformed vp_token",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/verify/v2/vp-submission/direct-post",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "verify",
+                    "v2",
+                    "vp-submission",
+                    "direct-post"
+                  ]
+                },
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "vp_token",
+                      "value": "not-json",
+                      "type": "text"
+                    },
+                    {
+                      "key": "state",
+                      "value": "{{reqIdForDcqlNegativeTests}}",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                      "var body = pm.response.json();",
+                      "pm.test('Response has errorCode', function () { pm.expect(body.errorCode).to.exist; });",
+                      "pm.test('Error mentions invalid vp_token', function () { pm.expect(pm.response.json().errorMessage.toLowerCase()).to.include('vp_token'); });"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "7. VP submission request validation",
+          "item": [
+            {
+              "name": "vp request for submission validation tests",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/verify/v2/vp-request",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "verify",
+                    "v2",
+                    "vp-request"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"clientId\": \"did:web:injiverify.dev-int-inji.mosip.net:v1:verify\",\n    \"nonce\": \"MTc3OTEwMTI1ODkzOQ==\",\n    \"acceptVPWithoutHolderProof\": true,\n    \"responseCodeValidationRequired\": false,\n    \"dcqlQuery\": {\n        \"credentials\": [\n            {\n                \"id\": \"student_id_credential_query\",\n                \"format\": \"dc+sd-jwt\",\n                \"meta\": {\"vct_values\": [\"student_id_credential\"]},\n                \"claims\": [{\"id\": \"first_name\", \"path\": [\"first_name\"]}]\n            },\n            {\n                \"id\": \"age_credential_query\",\n                \"format\": \"ldp_vc\",\n                \"meta\": {\"type_values\": [\"https://www.w3.org/2018/credentials#VerifiableCredential\"]},\n                \"claims\": [{\"id\": \"first_name\", \"path\": [\"credentialSubject\", \"first_name\"]}]\n            }\n        ],\n        \"credential_sets\": [{\"options\": [[\"age_credential_query\"]]}]\n    }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "var responseJson = pm.response.json();",
+                      "pm.collectionVariables.set('reqIdForSubmissionValidationTests', responseJson.requestId);",
+                      "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "vp submission missing state",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/verify/v2/vp-submission/direct-post",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "verify",
+                    "v2",
+                    "vp-submission",
+                    "direct-post"
+                  ]
+                },
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "vp_token",
+                      "value": "{}",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('State required error', function () { pm.expect(pm.response.json().errorMessage).to.include('State parameter is required'); });"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "vp submission both vp_token and error",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/verify/v2/vp-submission/direct-post",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "verify",
+                    "v2",
+                    "vp-submission",
+                    "direct-post"
+                  ]
+                },
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "vp_token",
+                      "value": "{}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "state",
+                      "value": "{{reqIdForSubmissionValidationTests}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "error",
+                      "value": "access_denied",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('Mutually exclusive params error', function () { pm.expect(pm.response.json().errorMessage).to.include('Both vp_token and error cannot be provided'); });"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "vp submission wallet error only",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/verify/v2/vp-submission/direct-post",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "verify",
+                    "v2",
+                    "vp-submission",
+                    "direct-post"
+                  ]
+                },
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "state",
+                      "value": "{{reqIdForSubmissionValidationTests}}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "error",
+                      "value": "access_denied",
+                      "type": "text"
+                    },
+                    {
+                      "key": "error_description",
+                      "value": "User denied authorization",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            },
+            {
+              "name": "vp submission invalid state",
+              "request": {
+                "auth": {
+                  "type": "noauth"
+                },
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/v1/verify/v2/vp-submission/direct-post",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "v1",
+                    "verify",
+                    "v2",
+                    "vp-submission",
+                    "direct-post"
+                  ]
+                },
+                "body": {
+                  "mode": "urlencoded",
+                  "urlencoded": [
+                    {
+                      "key": "vp_token",
+                      "value": "{}",
+                      "type": "text"
+                    },
+                    {
+                      "key": "state",
+                      "value": "non-existent-state-id",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "exec": [
+                      "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                      "pm.test('No matching VP request error', function () { pm.expect(pm.response.json().errorMessage).to.include('No matching VP request'); });"
+                    ],
+                    "type": "text/javascript",
+                    "packages": {},
+                    "requests": {}
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     }
@@ -4456,6 +4941,14 @@
     },
     {
       "key": "reqId_with_response_code",
+      "value": ""
+    },
+    {
+      "key": "reqIdForDcqlNegativeTests",
+      "value": ""
+    },
+    {
+      "key": "reqIdForSubmissionValidationTests",
       "value": ""
     }
   ]

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.dto.result.DcqlVPTokenDto;
+import io.inji.verify.dto.result.ValidationResult;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.enums.VPRequestStatus;
 import io.inji.verify.exception.InvalidVpTokenException;
@@ -115,7 +116,7 @@ public class VPSubmissionController {
             }
         }
         log.debug("Request parameters validated successfully for state: {}", state);
-        // ---- 5. Validate against the Authorization Request
+        // ---- 4. Validate against the Authorization Request
 
         AuthorizationRequestCreateResponse authRequestCreateResponse = verifiablePresentationSubmissionService
                 .getAuthRequest(state);
@@ -124,31 +125,32 @@ public class VPSubmissionController {
         }
         log.debug("authRequestCreateResponse is {}", authRequestCreateResponse);
 
-        // ---- 5. Validate against the DCQL if vp_token is present
-
-        // TODO
-
-        // ---- 6. Extract DCQL VP tokens from the vp_token string
-        DcqlVPTokenDto dcqlVPTokenDto = null;
+        // ---- 5. Extract DCQL VP tokens, and then validate against the DCQL query
+        DcqlVPTokenDto dcqlVPToken = null;
         if (StringUtils.hasText(vpToken)) {
             try {
-                dcqlVPTokenDto = verifiablePresentationSubmissionService.extractDcqlVpTokens(vpToken);
+                dcqlVPToken = verifiablePresentationSubmissionService.extractDcqlVpTokens(vpToken);
+                ValidationResult dcqlValidation = verifiablePresentationSubmissionService
+                        .validateDcqlQuery(authRequestCreateResponse.getAuthorizationDetails(), dcqlVPToken);
+                if (!dcqlValidation.valid()) {
+                    return dcqlValidationFailureResponse(dcqlValidation.message());
+                }
             } catch (InvalidVpTokenException ex) {
                 log.error("Invalid VP token structure for state {}", state);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new ErrorDto("invalid_vp_token", "The vp_token structure is invalid: " + ex.getMessage()));
             }
         }
-        // ---- 7. Validate client_id and none if vp_token is present
-        if (dcqlVPTokenDto != null && dcqlVPTokenDto.getLdpVpTokens() != null && !dcqlVPTokenDto.getLdpVpTokens().isEmpty()) {
-            ResponseEntity<?> clientIdNonceValidation = validateClientIdNonce(dcqlVPTokenDto.getLdpVpTokens(), authRequestCreateResponse);
+        // ---- 6. Validate client_id and nonce if vp_token is present
+        if (dcqlVPToken != null && dcqlVPToken.getLdpVpTokens() != null && !dcqlVPToken.getLdpVpTokens().isEmpty()) {
+            ResponseEntity<?> clientIdNonceValidation = validateClientIdNonce(dcqlVPToken.getLdpVpTokens(), authRequestCreateResponse);
             if (clientIdNonceValidation != null) {
                 return clientIdNonceValidation;
             }
         } else {
             log.debug("Skipping client_id and nonce validation as no LdpVpTokens extracted for state {}", state);
         }
-        // ---- 8. generate response_code and build redirect_uri as required
+        // ---- 7. generate response_code and build redirect_uri as required
         Map<String, Object> response = new HashMap<>();
         String responseCode = verifiablePresentationSubmissionService
                 .generateResponseCode(authRequestCreateResponse.getAuthorizationDetails());
@@ -164,7 +166,7 @@ public class VPSubmissionController {
             }
             response.put("redirect_uri", redirectUriWithResponseCode);
         }
-        // ---- 9. If all validations pass, proceed with VP submission processing
+        // ---- 8. If all validations pass, proceed with VP submission processing
         try {
             verifiablePresentationSubmissionService.submitVpToken(authRequestCreateResponse.getAuthorizationDetails(),
                     vpToken, state, error, errorDescription, responseCode, responseCodeExpiryAt);
@@ -173,7 +175,7 @@ public class VPSubmissionController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ErrorDto(ErrorCode.VP_ALREADY_SUBMITTED));
         }
-        // --- 10. Return success response with redirect URI if generated
+        // --- 9. Return success response with redirect URI if generated
         return ResponseEntity.status(HttpStatus.OK).body(response);
 
     }
@@ -365,6 +367,11 @@ public class VPSubmissionController {
      * @throws IOException
      * @throws JsonParseException
      */
+    private ResponseEntity<ErrorDto> dcqlValidationFailureResponse(String message) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorDto(ErrorCode.DCQL_QUERY_NOT_SATISFIED.getErrorCode(), message));
+    }
+
     private boolean validateDuplicateQueryIds(String vpToken) throws IOException, JsonParseException {
         // Use Jackson's streaming API to efficiently parse the JSON and check for
         // duplicate keys at the outermost level
