@@ -16,7 +16,6 @@ import java.util.stream.IntStream;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.inji.verify.dto.dcql.*;
 import io.inji.verify.dto.result.*;
 import io.inji.verify.dto.submission.DescriptorMapDto;
 import io.inji.verify.exception.*;
@@ -51,6 +50,7 @@ import io.inji.verify.repository.VPSubmissionRepository;
 import io.inji.verify.services.VerifiablePresentationSubmissionService;
 import io.inji.verify.shared.Constants;
 import io.inji.verify.utils.Utils;
+import io.inji.verify.validator.DcqlResponseValidator;
 import io.mosip.pixelpass.PixelPass;
 import io.mosip.vercred.vcverifier.CredentialsVerifier;
 import io.mosip.vercred.vcverifier.PresentationVerifier;
@@ -91,8 +91,9 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
     final Gson gson;
     final Validator validator;
     final ObjectMapper objectMapper;
+    final DcqlResponseValidator dcqlResponseValidator;
 
-    public VerifiablePresentationSubmissionServiceImpl(VPSubmissionRepository vpSubmissionRepository, CredentialsVerifier credentialsVerifier, PresentationVerifier presentationVerifier, VerifiablePresentationRequestServiceImpl verifiablePresentationRequestService, VCVerificationServiceImpl vcVerificationService, PixelPass pixelPass, AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository, Gson gson, Validator validator, ObjectMapper objectMapper) {
+    public VerifiablePresentationSubmissionServiceImpl(VPSubmissionRepository vpSubmissionRepository, CredentialsVerifier credentialsVerifier, PresentationVerifier presentationVerifier, VerifiablePresentationRequestServiceImpl verifiablePresentationRequestService, VCVerificationServiceImpl vcVerificationService, PixelPass pixelPass, AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository, Gson gson, Validator validator, ObjectMapper objectMapper, DcqlResponseValidator dcqlResponseValidator) {
         this.vpSubmissionRepository = vpSubmissionRepository;
         this.credentialsVerifier = credentialsVerifier;
         this.presentationVerifier = presentationVerifier;
@@ -103,6 +104,7 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         this.gson = gson;
         this.validator = validator;
         this.objectMapper = objectMapper;
+        this.dcqlResponseValidator = dcqlResponseValidator;
     }
 
     /**
@@ -127,9 +129,6 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         log.debug("Extracting VP tokens from input string");
         try {
             JsonNode root = objectMapper.readTree(vpTokenString);
-            if (!root.isObject()) {
-                throw new InvalidVpTokenException();
-            }
             Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> entry = fields.next();
@@ -145,15 +144,17 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
                 }
                 for (JsonNode item : value) {
                     if (item.isTextual()) {
-                        String text = item.asText();
-                        if (isSdJwt(text)) {
+                        if (isSdJwt(item.asText())) {
                             log.debug("Identified SD-JWT token");
                             sdJwtTokens.computeIfAbsent(queryId, k -> new ArrayList<>())
-                                    .add(text);
+                                    .add(item.asText());
                         } else {
-                            log.debug("Identified base64-encoded LDP VP token");
-                            ldpVpTokens.computeIfAbsent(queryId, k -> new ArrayList<>())
-                                    .add(parseBase64EncodedLdpVp(text, queryId));
+                            String errorMessage = String.format(
+                                    "Text node is not a valid SD-JWT token for query ID %s: %s",
+                                    queryId,
+                                    item.asText());
+                            log.warn(errorMessage);
+                            throw new InvalidVpTokenException(errorMessage);
                         }
                     } else if (item.isObject()) {
                         log.debug("Identified JSON LD Proof token");
@@ -302,576 +303,8 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
     }
 
     @Override
-    public ValidationResult validateDcqlQuery(AuthorizationRequestResponseDto authRequest, String vpTokenString)
-            throws InvalidVpTokenException {
-        return validateDcqlQuery(authRequest, extractDcqlVpTokens(vpTokenString));
-    }
-
-    @Override
-    public ValidationResult validateDcqlQuery(AuthorizationRequestResponseDto authRequest, DcqlVPTokenDto vpTokens) {
-        if (authRequest == null || authRequest.getDcqlQuery() == null) {
-            return ValidationResult.fail("invalid_vp_token: DCQL query is missing from the authorization request");
-        }
-        if (vpTokens == null) {
-            return ValidationResult.fail("invalid_vp_token: vp_token is missing or could not be parsed");
-        }
-
-        DCQLQueryDto dcqlQuery = authRequest.getDcqlQuery();
-        Map<String, CredentialQueryDto> queryById = new HashMap<>();
-        for (CredentialQueryDto credential : dcqlQuery.getCredentials()) {
-            queryById.put(credential.getId(), credential);
-        }
-
-        Set<String> submittedIds = collectSubmittedCredentialIds(vpTokens);
-        for (String submittedId : submittedIds) {
-            if (!queryById.containsKey(submittedId)) {
-                return ValidationResult.fail(String.format(
-                        "invalid_vp_token: query id '%s' does not match any credential id in the DCQL query",
-                        submittedId));
-            }
-        }
-
-        Set<String> validCredentialIds = new HashSet<>();
-        Map<String, String> credentialFailureReasons = new LinkedHashMap<>();
-
-        if (vpTokens.getLdpVpTokens() != null) {
-            for (Map.Entry<String, List<JSONObject>> entry : vpTokens.getLdpVpTokens().entrySet()) {
-                validateSubmittedPresentations(
-                        queryById.get(entry.getKey()),
-                        entry.getKey(),
-                        entry.getValue(),
-                        validCredentialIds,
-                        credentialFailureReasons,
-                        vp -> isPresentationValid(queryById.get(entry.getKey()), vp, null),
-                        (vp, index) -> validatePresentationFailure(queryById.get(entry.getKey()), vp, null));
-            }
-        }
-
-        if (vpTokens.getSdJwtTokens() != null) {
-            for (Map.Entry<String, List<String>> entry : vpTokens.getSdJwtTokens().entrySet()) {
-                validateSubmittedPresentations(
-                        queryById.get(entry.getKey()),
-                        entry.getKey(),
-                        entry.getValue(),
-                        validCredentialIds,
-                        credentialFailureReasons,
-                        jwt -> isPresentationValid(queryById.get(entry.getKey()), null, jwt),
-                        (jwt, index) -> validatePresentationFailure(queryById.get(entry.getKey()), null, jwt));
-            }
-        }
-
-        return validateCredentialSetsWithReason(dcqlQuery, validCredentialIds, credentialFailureReasons, submittedIds);
-    }
-
-    private Set<String> collectSubmittedCredentialIds(DcqlVPTokenDto tokens) {
-        Set<String> submittedIds = new HashSet<>();
-        if (tokens.getLdpVpTokens() != null) {
-            submittedIds.addAll(tokens.getLdpVpTokens().keySet());
-        }
-        if (tokens.getSdJwtTokens() != null) {
-            submittedIds.addAll(tokens.getSdJwtTokens().keySet());
-        }
-        return submittedIds;
-    }
-
-    private <T> void validateSubmittedPresentations(
-            CredentialQueryDto query,
-            String credentialId,
-            List<T> presentations,
-            Set<String> validCredentialIds,
-            Map<String, String> credentialFailureReasons,
-            java.util.function.Predicate<T> validator,
-            java.util.function.BiFunction<T, Integer, String> failureValidator) {
-        if (query == null || presentations == null) {
-            return;
-        }
-        String bestFailure = null;
-        for (int index = 0; index < presentations.size(); index++) {
-            T presentation = presentations.get(index);
-            if (validator.test(presentation)) {
-                validCredentialIds.add(credentialId);
-                credentialFailureReasons.remove(credentialId);
-                return;
-            }
-            if (bestFailure == null) {
-                bestFailure = failureValidator.apply(presentation, index);
-            }
-        }
-        if (!validCredentialIds.contains(credentialId) && bestFailure != null) {
-            credentialFailureReasons.put(credentialId, bestFailure);
-        }
-    }
-
-    private ValidationResult validateCredentialSetsWithReason(
-            DCQLQueryDto dcqlQuery,
-            Set<String> validCredentialIds,
-            Map<String, String> credentialFailureReasons,
-            Set<String> submittedIds) {
-        List<CredentialSetQueryDto> credentialSets = dcqlQuery.getCredentialSets();
-        if (credentialSets == null || credentialSets.isEmpty()) {
-            for (CredentialQueryDto credential : dcqlQuery.getCredentials()) {
-                if (!validCredentialIds.contains(credential.getId())) {
-                    return credentialRequirementFailure(credential.getId(), credentialFailureReasons, submittedIds);
-                }
-            }
-            return ValidationResult.ok();
-        }
-
-        for (CredentialSetQueryDto credentialSet : credentialSets) {
-            if (!credentialSet.isRequired()) {
-                continue;
-            }
-            boolean satisfied = credentialSet.getOptions().stream()
-                    .anyMatch(option -> option.stream().allMatch(validCredentialIds::contains));
-            if (!satisfied) {
-                String optionsDescription = credentialSet.getOptions().stream()
-                        .map(option -> "[" + String.join(", ", option) + "]")
-                        .reduce((left, right) -> left + " OR " + right)
-                        .orElse("[]");
-                return ValidationResult.fail(String.format(
-                        "invalid_vp_token: required credential_set not satisfied; at least one of %s must be fully satisfied",
-                        optionsDescription));
-            }
-        }
-        return ValidationResult.ok();
-    }
-
-    private ValidationResult credentialRequirementFailure(
-            String credentialId,
-            Map<String, String> credentialFailureReasons,
-            Set<String> submittedIds) {
-        String reason = credentialFailureReasons.get(credentialId);
-        if (reason != null) {
-            return ValidationResult.fail(reason);
-        }
-        if (!submittedIds.contains(credentialId)) {
-            return ValidationResult.fail(String.format(
-                    "invalid_vp_token: required credential '%s' was not included in vp_token",
-                    credentialId));
-        }
-        return ValidationResult.fail(String.format(
-                "invalid_vp_token: submitted presentation for credential '%s' does not satisfy the DCQL query",
-                credentialId));
-    }
-
-    private String validatePresentationFailure(CredentialQueryDto query, JSONObject ldpVp, String sdJwt) {
-        Optional<String> formatFailure = validateFormatFailure(query, ldpVp, sdJwt);
-        if (formatFailure.isPresent()) {
-            return formatFailure.get();
-        }
-        Optional<String> metaFailure = validateMetaFailure(query, ldpVp, sdJwt);
-        if (metaFailure.isPresent()) {
-            return metaFailure.get();
-        }
-        String claimsFailure = validateClaimsFailure(query, ldpVp, sdJwt);
-        if (claimsFailure != null) {
-            return claimsFailure;
-        }
-        return String.format(
-                "invalid_vp_token: submitted presentation for credential '%s' does not satisfy the DCQL query",
-                query.getId());
-    }
-
-    private Optional<String> validateFormatFailure(CredentialQueryDto query, JSONObject ldpVp, String sdJwt) {
-        String format = query.getFormat();
-        String credentialId = query.getId();
-        if ("ldp_vc".equals(format)) {
-            if (ldpVp == null) {
-                return Optional.of(String.format(
-                        "invalid_vp_token: credential '%s' requires an LDP Verifiable Presentation but an SD-JWT was submitted",
-                        credentialId));
-            }
-            if (!isVerifiablePresentationJson(ldpVp)) {
-                return Optional.of(String.format(
-                        "invalid_vp_token: credential '%s' requires a VerifiablePresentation but the submitted presentation does not have type VerifiablePresentation",
-                        credentialId));
-            }
-            return Optional.empty();
-        }
-        if (isSdJwtCredentialFormat(format)) {
-            if (sdJwt == null) {
-                return Optional.of(String.format(
-                        "invalid_vp_token: credential '%s' requires format %s but an LDP Verifiable Presentation was submitted",
-                        credentialId, format));
-            }
-            if (!isSdJwt(sdJwt)) {
-                return Optional.of(String.format(
-                        "invalid_vp_token: credential '%s' requires a valid SD-JWT presentation",
-                        credentialId));
-            }
-            String typ = readSdJwtTyp(sdJwt);
-            if (!format.equals(typ)) {
-                return Optional.of(String.format(
-                        "invalid_vp_token: credential '%s' requires format %s but submitted SD-JWT has typ '%s'",
-                        credentialId, format, typ.isEmpty() ? "unknown" : typ));
-            }
-            return Optional.empty();
-        }
-        return Optional.of(String.format(
-                "invalid_vp_token: credential '%s' has unsupported format '%s'",
-                credentialId, format));
-    }
-
-    private Optional<String> validateMetaFailure(CredentialQueryDto query, JSONObject ldpVp, String sdJwt) {
-        CredentialMetaDto meta = query.getMeta();
-        String credentialId = query.getId();
-        if (meta == null) {
-            return Optional.of(String.format(
-                    "invalid_vp_token: credential '%s' is missing required DCQL meta configuration",
-                    credentialId));
-        }
-        if (isSdJwtCredentialFormat(query.getFormat())) {
-            if (meta.getVctValues() == null || meta.getVctValues().isEmpty()) {
-                return Optional.empty();
-            }
-            String vct = readSdJwtVct(sdJwt);
-            if (vct == null || vct.isBlank()) {
-                return Optional.of(String.format(
-                        "invalid_vp_token: credential '%s' requires vct in %s but submitted SD-JWT has no vct claim",
-                        credentialId, meta.getVctValues()));
-            }
-            if (!meta.getVctValues().contains(vct)) {
-                return Optional.of(String.format(
-                        "invalid_vp_token: credential '%s' vct '%s' does not match required vct_values %s",
-                        credentialId, vct, meta.getVctValues()));
-            }
-            return Optional.empty();
-        }
-        if ("ldp_vc".equals(query.getFormat())) {
-            if (meta.getTypeValues() == null || meta.getTypeValues().isEmpty()) {
-                return Optional.empty();
-            }
-            Set<String> vcTypes = extractNormalizedVcTypes(ldpVp);
-            boolean allTypesPresent = meta.getTypeValues().stream()
-                    .map(this::normalizeTypeValue)
-                    .allMatch(vcTypes::contains);
-            if (!allTypesPresent) {
-                return Optional.of(String.format(
-                        "invalid_vp_token: credential '%s' verifiable credential type does not match required type_values %s",
-                        credentialId, meta.getTypeValues()));
-            }
-        }
-        return Optional.empty();
-    }
-
-    private String validateClaimsFailure(CredentialQueryDto query, JSONObject ldpVp, String sdJwt) {
-        List<ClaimQueryDto> claims = query.getClaims();
-        if (claims == null || claims.isEmpty()) {
-            return null;
-        }
-        String credentialString = resolveCredentialString(query, ldpVp, sdJwt);
-        if (credentialString == null) {
-            return String.format(
-                    "invalid_vp_token: credential '%s' claim validation failed: could not extract credential from presentation",
-                    query.getId());
-        }
-        Map<String, Object> claimsMap;
-        try {
-            claimsMap = extractClaims(credentialString, toCredentialFormat(query.getFormat()), claimsWithMetaData, pixelPass);
-        } catch (InvalidCredentialException e) {
-            return String.format(
-                    "invalid_vp_token: credential '%s' claim validation failed: could not extract claims from credential",
-                    query.getId());
-        }
-        if (claimsMap == null) {
-            return String.format(
-                    "invalid_vp_token: credential '%s' claim validation failed: could not extract claims from credential",
-                    query.getId());
-        }
-
-        List<List<String>> claimSets = query.getClaimSets();
-        if (claimSets == null || claimSets.isEmpty()) {
-            for (ClaimQueryDto claim : claims) {
-                String failure = validateSingleClaim(query.getId(), claim, claimsMap);
-                if (failure != null) {
-                    return failure;
-                }
-            }
-            return null;
-        }
-
-        for (List<String> claimSet : claimSets) {
-            if (validateClaimSetOption(claims, claimSet, claimsMap)) {
-                return null;
-            }
-        }
-        return String.format(
-                "invalid_vp_token: credential '%s' claim validation failed: none of the required claim_sets options are satisfied",
-                query.getId());
-    }
-
-    private String validateSingleClaim(String credentialId, ClaimQueryDto claim, Map<String, Object> claimsMap) {
-        Object value = resolveClaimValue(claim, claimsMap);
-        String claimRef = claim.getId() != null ? claim.getId() : String.valueOf(claim.getPath());
-        if (value == null) {
-            return String.format(
-                    "invalid_vp_token: credential '%s' claim '%s' at path %s was not found in the submitted credential",
-                    credentialId, claimRef, claim.getPath());
-        }
-        if (claim.getValues() != null && !claim.getValues().isEmpty()
-                && claim.getValues().stream().noneMatch(expected -> valuesMatch(expected, value))) {
-            return String.format(
-                    "invalid_vp_token: credential '%s' claim '%s' value '%s' does not match required values %s",
-                    credentialId, claimRef, value, claim.getValues());
-        }
-        return null;
-    }
-
-    private boolean isPresentationValid(CredentialQueryDto query, JSONObject ldpVp, String sdJwt) {
-        if (!matchesFormat(query, ldpVp, sdJwt)) {
-            return false;
-        }
-        if (!matchesMeta(query, ldpVp, sdJwt)) {
-            return false;
-        }
-        return matchesClaims(query, ldpVp, sdJwt);
-    }
-
-    private boolean matchesFormat(CredentialQueryDto query, JSONObject ldpVp, String sdJwt) {
-        String format = query.getFormat();
-        if ("ldp_vc".equals(format)) {
-            return ldpVp != null && isVerifiablePresentationJson(ldpVp);
-        }
-        if (isSdJwtCredentialFormat(format)) {
-            return sdJwt != null && isSdJwt(sdJwt) && format.equals(readSdJwtTyp(sdJwt));
-        }
-        return false;
-    }
-
-    private boolean isSdJwtCredentialFormat(String format) {
-        return "dc+sd-jwt".equals(format) || "vc+sd-jwt".equals(format);
-    }
-
-    private boolean isVerifiablePresentationJson(JSONObject vp) {
-        Object types = vp.opt("type");
-        if (types == null) {
-            return false;
-        }
-        return switch (types) {
-            case JSONArray jsonTypes -> {
-                boolean found = false;
-                for (Object type : jsonTypes) {
-                    if ("VerifiablePresentation".equalsIgnoreCase(type.toString())) {
-                        found = true;
-                        break;
-                    }
-                }
-                yield found;
-            }
-            case String typeString -> "VerifiablePresentation".equalsIgnoreCase(typeString);
-            default -> false;
-        };
-    }
-
-    private boolean matchesMeta(CredentialQueryDto query, JSONObject ldpVp, String sdJwt) {
-        CredentialMetaDto meta = query.getMeta();
-        if (meta == null) {
-            return false;
-        }
-        if (isSdJwtCredentialFormat(query.getFormat())) {
-            if (meta.getVctValues() == null || meta.getVctValues().isEmpty()) {
-                return true;
-            }
-            String vct = readSdJwtVct(sdJwt);
-            return vct != null && meta.getVctValues().contains(vct);
-        }
-        if ("ldp_vc".equals(query.getFormat())) {
-            if (meta.getTypeValues() == null || meta.getTypeValues().isEmpty()) {
-                return true;
-            }
-            Set<String> vcTypes = extractNormalizedVcTypes(ldpVp);
-            return meta.getTypeValues().stream()
-                    .map(this::normalizeTypeValue)
-                    .allMatch(vcTypes::contains);
-        }
-        return false;
-    }
-
-    private boolean matchesClaims(CredentialQueryDto query, JSONObject ldpVp, String sdJwt) {
-        List<ClaimQueryDto> claims = query.getClaims();
-        if (claims == null || claims.isEmpty()) {
-            return true;
-        }
-        Map<String, Object> claimsMap;
-        try {
-            String credentialString = resolveCredentialString(query, ldpVp, sdJwt);
-            if (credentialString == null) {
-                return false;
-            }
-            claimsMap = extractClaims(credentialString, toCredentialFormat(query.getFormat()), claimsWithMetaData, pixelPass);
-        } catch (InvalidCredentialException e) {
-            return false;
-        }
-        if (claimsMap == null) {
-            return false;
-        }
-
-        List<List<String>> claimSets = query.getClaimSets();
-        if (claimSets == null || claimSets.isEmpty()) {
-            return validateAllClaims(claims, claimsMap);
-        }
-
-        for (List<String> claimSet : claimSets) {
-            if (validateClaimSetOption(claims, claimSet, claimsMap)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private boolean validateAllClaims(List<ClaimQueryDto> claims, Map<String, Object> claimsMap) {
-        for (ClaimQueryDto claim : claims) {
-            if (!claimSatisfied(claims, claim, claimsMap)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean validateClaimSetOption(List<ClaimQueryDto> claims, List<String> claimSet, Map<String, Object> claimsMap) {
-        for (String claimId : claimSet) {
-            ClaimQueryDto claim = findClaimById(claims, claimId);
-            if (claim == null || !claimSatisfied(claims, claim, claimsMap)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean claimSatisfied(List<ClaimQueryDto> claims, ClaimQueryDto claim, Map<String, Object> claimsMap) {
-        Object value = resolveClaimValue(claim, claimsMap);
-        if (value == null) {
-            return false;
-        }
-        if (claim.getValues() == null || claim.getValues().isEmpty()) {
-            return true;
-        }
-        return claim.getValues().stream().anyMatch(expected -> valuesMatch(expected, value));
-    }
-
-    private ClaimQueryDto findClaimById(List<ClaimQueryDto> claims, String claimId) {
-        return claims.stream()
-                .filter(c -> claimId.equals(c.getId()))
-                .findFirst()
-                .orElse(null);
-    }
-
-    private Object resolveClaimValue(ClaimQueryDto claim, Map<String, Object> claimsMap) {
-        List<String> path = claim.getPath();
-        if (path == null || path.isEmpty()) {
-            return null;
-        }
-        List<String> effectivePath = path;
-        if (!path.isEmpty() && "credentialSubject".equals(path.get(0))) {
-            effectivePath = path.subList(1, path.size());
-        }
-        return navigateClaimPath(claimsMap, effectivePath);
-    }
-
-    private Object navigateClaimPath(Object current, List<String> path) {
-        if (path.isEmpty()) {
-            return current;
-        }
-        if (current == null) {
-            return null;
-        }
-        String segment = path.getFirst();
-        List<String> remaining = path.subList(1, path.size());
-        if (current instanceof Map<?, ?> map) {
-            return navigateClaimPath(map.get(segment), remaining);
-        }
-        return null;
-    }
-
-    private boolean valuesMatch(Object expected, Object actual) {
-        if (expected == null) {
-            return actual == null;
-        }
-        if (expected instanceof Number expectedNumber && actual instanceof Number actualNumber) {
-            return expectedNumber.doubleValue() == actualNumber.doubleValue();
-        }
-        return Objects.equals(String.valueOf(expected), String.valueOf(actual));
-    }
-
-    private String resolveCredentialString(CredentialQueryDto query, JSONObject ldpVp, String sdJwt) {
-        if (isSdJwtCredentialFormat(query.getFormat())) {
-            return sdJwt;
-        }
-        if (ldpVp == null) {
-            return null;
-        }
-        Object verifiableCredential = ldpVp.opt("verifiableCredential");
-        List<Object> credentials = getListOfVerifiableCredentials(verifiableCredential);
-        if (credentials.isEmpty()) {
-            return null;
-        }
-        return credentials.getFirst().toString();
-    }
-
-    private CredentialFormat toCredentialFormat(String format) {
-        return switch (format) {
-            case "dc+sd-jwt" -> CredentialFormat.DC_SD_JWT;
-            case "vc+sd-jwt" -> CredentialFormat.VC_SD_JWT;
-            case "ldp_vc" -> CredentialFormat.LDP_VC;
-            default -> CredentialFormat.LDP_VC;
-        };
-    }
-
-    private Set<String> extractNormalizedVcTypes(JSONObject ldpVp) {
-        Set<String> types = new HashSet<>();
-        try {
-            Object verifiableCredential = ldpVp.opt("verifiableCredential");
-            List<Object> credentials = getListOfVerifiableCredentials(verifiableCredential);
-            if (credentials.isEmpty()) {
-                return types;
-            }
-            JSONObject vc = new JSONObject(credentials.getFirst().toString());
-            Object typeField = vc.opt("type");
-            if (typeField instanceof JSONArray array) {
-                for (Object item : array) {
-                    types.add(normalizeTypeValue(item.toString()));
-                }
-            } else if (typeField != null) {
-                types.add(normalizeTypeValue(typeField.toString()));
-            }
-        } catch (Exception e) {
-            log.debug("Failed to extract VC types", e);
-        }
-        return types;
-    }
-
-    private String normalizeTypeValue(String typeValue) {
-        if (typeValue == null) {
-            return "";
-        }
-        int hashIndex = typeValue.lastIndexOf('#');
-        if (hashIndex >= 0 && hashIndex < typeValue.length() - 1) {
-            return typeValue.substring(hashIndex + 1);
-        }
-        return typeValue;
-    }
-
-    private String readSdJwtTyp(String sdJwt) {
-        try {
-            String header = decodeBase64UrlJson(sdJwt.split("~")[0].split("\\.")[0]);
-            return new JSONObject(header).optString("typ", "");
-        } catch (Exception e) {
-            return "";
-        }
-    }
-
-    private String readSdJwtVct(String sdJwt) {
-        try {
-            String payload = decodeBase64UrlJson(sdJwt.split("~")[0].split("\\.")[1]);
-            return new JSONObject(payload).optString("vct", null);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private String decodeBase64UrlJson(String encoded) {
-        byte[] decodedBytes = Base64.getUrlDecoder().decode(encoded);
-        return new String(decodedBytes);
+    public ValidationResult validateDcqlQuery(AuthorizationRequestResponseDto authRequest, DcqlTokensDto tokens) {
+        return dcqlResponseValidator.validate(authRequest, tokens);
     }
 
     /**

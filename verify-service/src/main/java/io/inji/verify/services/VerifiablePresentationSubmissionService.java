@@ -33,9 +33,6 @@ public interface VerifiablePresentationSubmissionService {
     
     boolean isNonceValid(AuthorizationRequestResponseDto authRequest, Map<String, List<JSONObject>> ldpVpTokens);
     
-    ValidationResult validateDcqlQuery(AuthorizationRequestResponseDto authRequest, String vpTokenString)
-            throws InvalidVpTokenException;
-
     ValidationResult validateDcqlQuery(AuthorizationRequestResponseDto authRequest, DcqlTokensDto tokens);
     
     String generateResponseCode(AuthorizationRequestResponseDto authRequest);

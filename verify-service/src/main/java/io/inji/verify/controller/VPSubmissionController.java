@@ -126,22 +126,26 @@ public class VPSubmissionController {
         }
         log.debug("authRequestCreateResponse is {}", authRequestCreateResponse);
 
-        // ---- 5. Validate against the DCQL if vp_token is present
-
-        // TODO
-
-        // ---- 6. Extract DCQL VP tokens from the vp_token string
+        // ---- 5. Extract DCQL tokens and validate against the DCQL query
         DcqlTokensDto dcqlTokensDto = null;
+        AuthorizationRequestResponseDto authorizationDetails = authRequestCreateResponse.getAuthorizationDetails();
         if (StringUtils.hasText(vpToken)) {
             try {
-                dcqlTokensDto = verifiablePresentationSubmissionService.extractDcqlTokens(vpToken, authRequestCreateResponse.getAuthorizationDetails());
+                dcqlTokensDto = verifiablePresentationSubmissionService.extractDcqlTokens(vpToken, authorizationDetails);
+                if (authorizationDetails != null && authorizationDetails.getDcqlQuery() != null) {
+                    ValidationResult dcqlValidation = verifiablePresentationSubmissionService
+                            .validateDcqlQuery(authorizationDetails, dcqlTokensDto);
+                    if (!dcqlValidation.valid()) {
+                        return dcqlValidationFailureResponse(dcqlValidation.message());
+                    }
+                }
             } catch (InvalidVpTokenException ex) {
                 log.error("Invalid VP token structure for state {}", state);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new ErrorDto("invalid_vp_token", "The vp_token structure is invalid: " + ex.getMessage()));
             }
         }
-        // ---- 7. Validate client_id and none if vp_token is present
+        // ---- 6. Validate client_id and nonce if vp_token is present
         if (dcqlTokensDto != null && dcqlTokensDto.getLdpVpTokens() != null && !dcqlTokensDto.getLdpVpTokens().isEmpty()) {
             ResponseEntity<?> clientIdNonceValidation = validateClientIdNonce(dcqlTokensDto.getLdpVpTokens(), authRequestCreateResponse);
             if (clientIdNonceValidation != null) {

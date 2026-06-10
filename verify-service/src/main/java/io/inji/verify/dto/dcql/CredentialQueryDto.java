@@ -42,6 +42,9 @@ public class CredentialQueryDto {
     @Schema(description = "Indicates whether cryptographic holder binding is required for the credential, which means that the credential must be cryptographically bound to the holder's proof of possession, such as a signature or proof of key ownership, to ensure that only the rightful holder can present the credential.")
     private Boolean require_cryptographic_holder_binding = true;
 
+    @Schema(description = "Whether multiple presentations can be returned for this credential query. Defaults to false.")
+    private Boolean multiple = false;
+
     @Valid
     @Schema(description = "List of claims to be matched against the credential.")
     private List<ClaimQueryDto> claims;
