@@ -9,7 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
-import io.inji.verify.dto.result.DcqlVPTokenDto;
+import io.inji.verify.dto.result.DcqlTokensDto;
 import io.inji.verify.dto.result.ValidationResult;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.enums.VPRequestStatus;
@@ -126,27 +126,24 @@ public class VPSubmissionController {
         }
         log.debug("authRequestCreateResponse is {}", authRequestCreateResponse);
 
-        // ---- 5. Extract DCQL VP tokens, and then validate against the DCQL query
-        DcqlVPTokenDto dcqlVPToken = null;
-        AuthorizationRequestResponseDto authorizationDetails = authRequestCreateResponse.getAuthorizationDetails();
-        boolean hasDcqlQuery = authorizationDetails != null && authorizationDetails.getDcqlQuery() != null;
-        if (StringUtils.hasText(vpToken) && hasDcqlQuery) {
+        // ---- 5. Validate against the DCQL if vp_token is present
+
+        // TODO
+
+        // ---- 6. Extract DCQL VP tokens from the vp_token string
+        DcqlTokensDto dcqlTokensDto = null;
+        if (StringUtils.hasText(vpToken)) {
             try {
-                dcqlVPToken = verifiablePresentationSubmissionService.extractDcqlVpTokens(vpToken);
-                ValidationResult dcqlValidation = verifiablePresentationSubmissionService
-                        .validateDcqlQuery(authorizationDetails, dcqlVPToken);
-                if (!dcqlValidation.valid()) {
-                    return dcqlValidationFailureResponse(dcqlValidation.message());
-                }
+                dcqlTokensDto = verifiablePresentationSubmissionService.extractDcqlTokens(vpToken, authRequestCreateResponse.getAuthorizationDetails());
             } catch (InvalidVpTokenException ex) {
                 log.error("Invalid VP token structure for state {}", state);
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body(new ErrorDto("invalid_vp_token", "The vp_token structure is invalid: " + ex.getMessage()));
             }
         }
-        // ---- 6. Validate client_id and nonce if vp_token is present
-        if (dcqlVPToken != null && dcqlVPToken.getLdpVpTokens() != null && !dcqlVPToken.getLdpVpTokens().isEmpty()) {
-            ResponseEntity<?> clientIdNonceValidation = validateClientIdNonce(dcqlVPToken.getLdpVpTokens(), authRequestCreateResponse);
+        // ---- 7. Validate client_id and none if vp_token is present
+        if (dcqlTokensDto != null && dcqlTokensDto.getLdpVpTokens() != null && !dcqlTokensDto.getLdpVpTokens().isEmpty()) {
+            ResponseEntity<?> clientIdNonceValidation = validateClientIdNonce(dcqlTokensDto.getLdpVpTokens(), authRequestCreateResponse);
             if (clientIdNonceValidation != null) {
                 return clientIdNonceValidation;
             }

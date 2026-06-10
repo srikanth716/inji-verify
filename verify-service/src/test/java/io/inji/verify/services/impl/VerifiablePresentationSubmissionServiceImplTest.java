@@ -1654,7 +1654,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
     @Nested
     class TestSingleCredential {
         @Test
-        void testVerifySingleCredential_NonSdJwt() {
+        void testverifyAndGetCredentialStatusV2_NonSdJwt() {
             VerificationRequestDto request = new VerificationRequestDto();
             String vcData = "jwt.vc.data";
 
@@ -1666,7 +1666,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
 
             CredentialResultsDto results = ReflectionTestUtils.invokeMethod(
                     verifiablePresentationSubmissionService,
-                    "verifySingleCredential",
+                    "verifyAndGetCredentialStatusV2",
                     request, vcData, false);
 
             assertNotNull(results);
@@ -1675,7 +1675,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         }
 
         @Test
-        void testVerifySingleCredential_SdJwt_Valid() {
+        void testverifyAndGetCredentialStatusV2_SdJwt_Valid() {
             VerificationRequestDto request = new VerificationRequestDto();
 
             VCVerificationResultDto mockResult = new VCVerificationResultDto();
@@ -1685,7 +1685,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
 
             CredentialResultsDto results = ReflectionTestUtils.invokeMethod(
                     verifiablePresentationSubmissionService,
-                    "verifySingleCredential",
+                    "verifyAndGetCredentialStatusV2",
                     request, "sd-jwt-content", true);
 
             assertNotNull(results);
@@ -1694,7 +1694,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         }
 
         @Test
-        void testVerifySingleCredential_SdJwt_InvalidWithError() {
+        void testverifyAndGetCredentialStatusV2_SdJwt_InvalidWithError() {
             VerificationRequestDto request = new VerificationRequestDto();
             String validEnumName = KBJwtErrorCodes.ERR_INVALID_KB_SIGNATURE.name();
 
@@ -1708,7 +1708,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
 
             CredentialResultsDto results = ReflectionTestUtils.invokeMethod(
                     verifiablePresentationSubmissionService,
-                    "verifySingleCredential",
+                    "verifyAndGetCredentialStatusV2",
                     request, "sd-jwt-content", true);
 
             assertNotNull(results);
