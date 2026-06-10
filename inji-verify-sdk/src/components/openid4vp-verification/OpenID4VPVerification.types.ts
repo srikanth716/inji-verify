@@ -112,7 +112,6 @@ export interface VPRequestBody {
   clientId: string;
   nonce: string;
   transactionId?: string;
-  acceptVPWithoutHolderProof?: boolean;
   dcqlQuery: DcqlQuery;
   /**
    * When true, the verifier backend will generate a short-lived single-use `response_code`
@@ -199,12 +198,6 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
    * This is a required field to ensure proper error handling.
    */
   onError: (error: AppError) => void;
-
-    /**
-     Indicates whether to accept VP submissions without holder proof.
-     When true, allows unsigned VPs (VPs without proof).
-     */
-    acceptVPWithoutHolderProof?: boolean;
 
     /**
      The base URL of the wallet.

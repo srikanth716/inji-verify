@@ -107,14 +107,12 @@ export const vpSessionRequest = async (
   dcqlQuery: DcqlQuery,
   clientId: string,
   txnId?: string,
-  acceptVPWithoutHolderProof?: boolean,
   responseCodeValidationRequired?: boolean
 ) => {
   const requestBody: VPRequestBody = {
     clientId: clientId,
     nonce: generateNonce(),
     dcqlQuery,
-    acceptVPWithoutHolderProof: acceptVPWithoutHolderProof
   };
   if (txnId) requestBody.transactionId = txnId;
   if (responseCodeValidationRequired) {
