@@ -90,12 +90,6 @@ export type QRCodeVerificationProps = ExclusiveCallbacks & {
   isVPSubmissionSupported?: boolean;
 
     /**
-     Indicates whether to accept VP submissions without holder proof.
-     When true, allows unsigned VPs (VPs without proof).
-     */
-    acceptVPWithoutHolderProof?: boolean;
-
-    /**
      * Configuration object used to control VC verification behaviour.
      *
      * Allows enabling/disabling specific verification checks such as:

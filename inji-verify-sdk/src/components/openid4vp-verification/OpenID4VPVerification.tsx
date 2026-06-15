@@ -44,7 +44,6 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   onError,
   clientId,
   isSameDeviceFlowEnabled = true,
-  acceptVPWithoutHolderProof = false,
   webWalletBaseUrl,
   vpVerificationRequest,
   summariseResults = true
@@ -245,7 +244,6 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         dcqlQuery,
         clientId,
         transactionId ?? undefined,
-        acceptVPWithoutHolderProof,
         responseCodeValidationRequired,
       );
 
