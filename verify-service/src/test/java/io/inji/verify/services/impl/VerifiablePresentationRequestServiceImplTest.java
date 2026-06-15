@@ -71,7 +71,6 @@ class VerifiablePresentationRequestServiceImplTest {
                 "test_transaction_id",
                 null,
                 minimalDcqlQuery(),
-                false,
                 false);
 
         VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);
@@ -93,7 +92,6 @@ class VerifiablePresentationRequestServiceImplTest {
                 null,
                 null,
                 minimalDcqlQuery(),
-                false,
                 false);
 
         VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);
@@ -296,7 +294,6 @@ class VerifiablePresentationRequestServiceImplTest {
                 "test_transaction_id",
                 null,
                 minimalDcqlQuery(),
-                false,
                 true);
 
         VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);
@@ -319,7 +316,6 @@ class VerifiablePresentationRequestServiceImplTest {
                 "test_transaction_id",
                 null,
                 minimalDcqlQuery(),
-                false,
                 false);
 
         VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);

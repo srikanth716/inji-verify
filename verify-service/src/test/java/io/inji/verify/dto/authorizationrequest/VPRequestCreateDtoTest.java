@@ -16,13 +16,12 @@ public class VPRequestCreateDtoTest {
         DCQLQueryDto dcqlQuery = DcqlTestFixtures.minimalDcqlDto();
 
         VPRequestCreateDto vpRequestCreateDto =
-                new VPRequestCreateDto(clientId, transactionId, nonce, dcqlQuery, true, false);
+                new VPRequestCreateDto(clientId, transactionId, nonce, dcqlQuery, false);
 
         assertEquals(clientId, vpRequestCreateDto.getClientId());
         assertEquals(transactionId, vpRequestCreateDto.getTransactionId());
         assertEquals(nonce, vpRequestCreateDto.getNonce());
         assertEquals(dcqlQuery, vpRequestCreateDto.getDcqlQuery());
-        assertEquals(true, vpRequestCreateDto.isAcceptVPWithoutHolderProof());
         assertEquals(false, vpRequestCreateDto.isResponseCodeValidationRequired());
     }
 }

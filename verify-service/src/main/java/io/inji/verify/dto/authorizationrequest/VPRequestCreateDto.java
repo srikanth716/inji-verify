@@ -24,8 +24,6 @@ public class VPRequestCreateDto {
     @NotNull(message = "DCQL_QUERY_REQUIRED")
     @Schema(description = "DCQL query defining the criteria for credential matching in the VP request.")
     private DCQLQueryDto dcqlQuery;
-    @Schema(description = "Indicates whether to accept VP without holder proof.")
-    boolean acceptVPWithoutHolderProof;
     @Schema(description = "Indicates whether response code validation is required.")
     boolean responseCodeValidationRequired;
 
