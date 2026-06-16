@@ -11,6 +11,7 @@ import io.inji.verify.shared.Constants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -282,6 +283,139 @@ class DcqlQueryValidatorTest {
                 () -> validator.validate(query));
 
         assertEquals(ErrorCode.DCQL_META_DUPLICATES, ex.getErrorCode());
+    }
+
+    @Test
+    void shouldFail_whenTypeValuesOuterArrayIsEmpty() {
+        // type_values: [] — outer array must be non-empty per spec
+        CredentialMetaDto meta = new CredentialMetaDto(null, List.of());
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_META_INVALID, ex.getErrorCode());
+    }
+
+    @Test
+    void shouldFail_whenTypeValuesInnerArrayIsEmpty() {
+        // type_values: [[]] — each inner array (AND-set) must not be empty
+        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(List.of()));
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_META_INVALID, ex.getErrorCode());
+    }
+
+    @Test
+    void shouldFail_whenTypeValuesInnerArrayContainsDuplicateTypes() {
+        // type_values: [["A", "A"]] — duplicate within an AND-set is invalid
+        CredentialMetaDto meta = new CredentialMetaDto(null,
+                List.of(List.of("VerifiableCredential", "VerifiableCredential")));
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_META_DUPLICATES, ex.getErrorCode());
+    }
+
+    @Test
+    void shouldFail_whenTypeValuesInnerArrayContainsNullEntry() {
+        List<String> option = new ArrayList<>();
+        option.add("VerifiableCredential");
+        option.add(null);
+        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(option));
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_META_INVALID, ex.getErrorCode());
+    }
+
+    @Test
+    void shouldFail_whenTypeValuesInnerArrayContainsBlankEntry() {
+        CredentialMetaDto meta = new CredentialMetaDto(null,
+                List.of(List.of("VerifiableCredential", "   ")));
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_META_INVALID, ex.getErrorCode());
+    }
+
+    @Test
+    void shouldFail_whenVctValuesContainsNullEntry() {
+        List<String> vctValues = new ArrayList<>();
+        vctValues.add("https://example.org/vct/MyCredential");
+        vctValues.add(null);
+        CredentialMetaDto meta = new CredentialMetaDto(vctValues, null);
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("c", Constants.FORMAT_DC_SD_JWT, meta)), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_META_INVALID, ex.getErrorCode());
+    }
+
+    @Test
+    void shouldFail_whenVctValuesContainsBlankEntry() {
+        CredentialMetaDto meta = new CredentialMetaDto(List.of("https://example.org/vct/MyCredential", "  "), null);
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("c", Constants.FORMAT_DC_SD_JWT, meta)), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_META_INVALID, ex.getErrorCode());
+    }
+
+    @Test
+    void shouldPass_whenTypeValuesContainAbsoluteIris() {
+        List<List<String>> typeValues = List.of(
+                List.of("https://www.w3.org/2018/credentials#VerifiableCredential",
+                        "https://example.org/types/UniversityDegreeCredential"));
+        CredentialMetaDto meta = new CredentialMetaDto(null, typeValues);
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
+
+        assertDoesNotThrow(() -> validator.validate(query));
+    }
+
+    @Test
+    void shouldPass_whenTypeValuesContainRelativeIris() {
+        // Per spec, a type not defined in any @context remains a relative IRI after JSON-LD processing
+        // and that relative IRI IS the fully expanded type — so it must be accepted.
+        List<List<String>> typeValues = List.of(List.of("VerifiableCredential", "UniversityDegreeCredential"));
+        CredentialMetaDto meta = new CredentialMetaDto(null, typeValues);
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
+
+        assertDoesNotThrow(() -> validator.validate(query));
+    }
+
+    @Test
+    void shouldFail_whenTypeValuesContainMalformedIri() {
+        // A string with spaces or illegal characters is not a valid IRI reference
+        List<List<String>> typeValues = List.of(List.of("not a valid iri"));
+        CredentialMetaDto meta = new CredentialMetaDto(null, typeValues);
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_META_TYPE_VALUE_INVALID_IRI, ex.getErrorCode());
     }
 
     // -------------------------------------------------------------------------
