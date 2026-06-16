@@ -8,8 +8,13 @@ import { QrData } from "../types/OVPSchemeQrData";
 import { isCWT } from "./cborUtils";
 
 const generateNonce = (): string => {
-  return btoa(Date.now().toString());
-};
+  const randomBytes = new Uint8Array(16);
+  crypto.getRandomValues(randomBytes);
+  return btoa(String.fromCharCode.apply(null, Array.from(randomBytes)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
 
 export const vcVerificationV2 = async (credential: unknown, url: string, config?: VCVerificationV2Request): Promise<VCVerificationV2Response> => {
     const vcString = isCWT(credential)
