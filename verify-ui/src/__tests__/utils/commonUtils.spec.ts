@@ -319,6 +319,38 @@ describe("commonUtils credential matching", () => {
       expect(result).toHaveLength(0);
     });
 
+    test("does not match credentials whose type IRIs end with trailing delimiters", () => {
+      const selectedClaim = buildClaim("Context A", "ContextA", [
+        {
+          id: "context_a_credential_id",
+          format: "ldp_vc",
+          meta: {
+            type_values: [["https://example.org/context-a#"]],
+          },
+        },
+      ]);
+
+      const hashResult = calculateVerifiedClaims(
+        [selectedClaim],
+        [matchingResult(ldpVc("https://example.org/context-b#"))]
+      );
+      const slashResult = calculateVerifiedClaims(
+        [buildClaim("Context C", "ContextC", [
+          {
+            id: "context_c_credential_id",
+            format: "ldp_vc",
+            meta: {
+              type_values: [["https://example.org/context-c/"]],
+            },
+          },
+        ])],
+        [matchingResult(ldpVc("https://example.org/context-d/"))]
+      );
+
+      expect(hashResult).toHaveLength(0);
+      expect(slashResult).toHaveLength(0);
+    });
+
     test("does not match using top-level claim type when dcql type_values are absent", () => {
       const selectedClaim = buildClaim("MOSIP ID", "MOSIPVerifiableCredential", [
         {

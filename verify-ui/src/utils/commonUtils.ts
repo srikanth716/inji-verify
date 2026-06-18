@@ -255,11 +255,13 @@ const filterPreferredCredentials = (matching: MatchingVc[]) => {
 const extractLocalTypeIdentifier = (typeValue: string): string => {
   const hashIndex = typeValue.lastIndexOf("#");
   if (hashIndex >= 0) {
-    return typeValue.substring(hashIndex + 1);
+    const localId = typeValue.substring(hashIndex + 1);
+    return localId || typeValue;
   }
   const slashIndex = typeValue.lastIndexOf("/");
   if (slashIndex >= 0) {
-    return typeValue.substring(slashIndex + 1);
+    const localId = typeValue.substring(slashIndex + 1);
+    return localId || typeValue;
   }
   return typeValue;
 };
