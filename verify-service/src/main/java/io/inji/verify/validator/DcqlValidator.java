@@ -9,8 +9,6 @@ import io.inji.verify.shared.Constants;
 import io.inji.verify.utils.Utils;
 import org.springframework.stereotype.Component;
 
-import com.authlete.sd.Disclosure;
-import com.authlete.sd.SDJWT;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.net.URI;
@@ -171,7 +169,7 @@ public class DcqlValidator {
                     continue;
                 }
                 if (element instanceof Integer || element instanceof Long) {
-                    long value = element instanceof Integer ? (Integer) element : (Long) element;
+                    long value = ((Number) element).longValue();
                     if (value < 0 || value > Integer.MAX_VALUE) {
                         throw new VPRequestValidationException(ErrorCode.DCQL_CLAIM_PATH_INVALID);
                     }
@@ -645,18 +643,13 @@ public class DcqlValidator {
         }
     }
 
-    /** Returns only the selectively disclosed claims from an SD-JWT directly as a JsonNode. */
+    /** Returns all claims from an SD-JWT (payload non-SD claims + selectively disclosed claims) as a JsonNode. */
     private static JsonNode sdJwtDisclosedClaimsAsJson(String sdJwt) {
         try {
-            List<Disclosure> disclosures = SDJWT.parse(sdJwt).getDisclosures();
+            Map<String, Object> allClaims = Utils.extractSdJwtClaims(sdJwt, null);
             ObjectNode result = MAPPER.createObjectNode();
-            if (disclosures == null) {
-                return result;
-            }
-            for (Disclosure d : disclosures) {
-                if (d.getClaimName() != null) {
-                    result.set(d.getClaimName(), claimValueToJsonNode(d.getClaimValue()));
-                }
+            for (Map.Entry<String, Object> entry : allClaims.entrySet()) {
+                result.set(entry.getKey(), claimValueToJsonNode(entry.getValue()));
             }
             return result;
         } catch (VPRequestValidationException e) {
