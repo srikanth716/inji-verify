@@ -46,7 +46,9 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     @Override
     public VCVerificationStatusDto verify(String vc, String contentType) throws CredentialStatusCheckException {
         CredentialFormat format;
-        if ("application/vc+sd-jwt".equalsIgnoreCase(contentType) || "application/dc+sd-jwt".equalsIgnoreCase(contentType)) {
+        if ("application/dc+sd-jwt".equalsIgnoreCase(contentType)) {
+            format = CredentialFormat.DC_SD_JWT;
+        } else if ("application/vc+sd-jwt".equalsIgnoreCase(contentType)) {
             format = CredentialFormat.VC_SD_JWT;
         } else if ("application/vc+cwt".equalsIgnoreCase(contentType)) {
             format = CredentialFormat.CWT_VC;

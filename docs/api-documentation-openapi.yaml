@@ -920,10 +920,10 @@ paths:
 
         **Version-specific behavior:**
 
-        From `0.15.x` onwards, 
+        From `0.15.x` onwards,
         - This endpoint supports verification of both JSON-LD and SD-JWT formatted VCs.
         - To verify a JSON-LD VC, set the request header: `Content-Type: application/vc+ld+json`
-        - To verify an SD-JWT VC, set the request header: `Content-Type: application/vc+sd-jwt`
+        - To verify an SD-JWT VC, set the request header: `Content-Type: application/dc+sd-jwt` (current format, draft-10) or `Content-Type: application/vc+sd-jwt` (legacy format, draft-04)
 
         From `0.16.x` onwards, 
         - This endpoint also performs revocation checks for JSON-LD credentials. 
@@ -964,14 +964,14 @@ paths:
                       verificationMethod: 'did:web:example.com#key-1'
                       proofPurpose: assertionMethod
                       jws: eyJhbGciOiJFZERTQSJ9.eyJpYXQiOiIwMjMxMTIzMTIzMTMiLCJ...signature
+          application/dc+sd-jwt:
+            schema:
+              type: string
+            example: eyJhbGciOiJFZERTQSIsInR5cCI6ImRjK3NkLWp3dCJ9.eyJ2Y3QiOiJodHRwczovL2V4YW1wbGUuY29tL015Q3JlZGVudGlhbCJ9...signature
           application/vc+sd-jwt:
             schema:
-              $ref: '#/components/schemas/VCVerificationSDJWTRequest'
-            examples:
-              example:
-                summary: Example SD-JWT format VC to be verified
-                value:
-                  vc: eyJhbGciOiJFZERTQSJ9.eyJpYXQiOiIwMjMxMTIzMTIzMTMiLCJ...signature
+              type: string
+            example: eyJhbGciOiJFZERTQSJ9.eyJpYXQiOiIwMjMxMTIzMTIzMTMiLCJ...signature
           application/vc+cwt:
             schema:
               $ref: '#/components/schemas/VCVerificationCWTRequest'
