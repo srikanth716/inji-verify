@@ -2,6 +2,7 @@ import {
   calculateVerifiedClaims,
   calculateUnverifiedClaims,
   getCredentialType,
+  getTotalCredentialCount,
 } from "../../utils/commonUtils";
 import { claim, DcqlCredentialQuery, MatchingVc } from "../../types/data-types";
 
@@ -277,7 +278,7 @@ describe("commonUtils credential matching", () => {
       expect(getCredentialType(result[0].vc)).toBe("InsuranceCredential");
     });
 
-    test("prefers SUCCESS credential when multiple submissions share the same type", () => {
+    test("returns all credentials from service without deduplicating by type", () => {
       const selectedClaim = buildClaim("Life Insurance", "InsuranceCredential", [
         {
           id: "life_insurance_credential_id",
@@ -288,19 +289,50 @@ describe("commonUtils credential matching", () => {
         },
       ]);
 
+      const submissions = [
+        matchingResult(ldpVc("InsuranceCredential"), "INVALID"),
+        matchingResult(ldpVc("InsuranceCredential"), "SUCCESS"),
+      ];
+
+      const result = calculateVerifiedClaims([selectedClaim], submissions);
+
+      expect(result).toEqual(submissions);
+    });
+
+    test("returns all service credentials when dcql query has multiple: true", () => {
+      const selectedClaim = buildClaim("Health Insurance", "InsuranceCredential", [
+        {
+          id: "health_insurance_credential_id",
+          format: "ldp_vc",
+          multiple: true,
+          meta: {
+            type_values: [
+              [
+                "https://inji.github.io/inji-config/contexts/insurance-context.json#InsuranceCredential",
+              ],
+            ],
+          },
+        },
+      ]);
+
       const result = calculateVerifiedClaims(
         [selectedClaim],
         [
-          matchingResult(ldpVc("InsuranceCredential"), "INVALID"),
-          matchingResult(ldpVc("InsuranceCredential"), "SUCCESS"),
+          matchingResult({
+            id: "urn:uuid:policy-1",
+            type: ["VerifiableCredential", "InsuranceCredential"],
+          }),
+          matchingResult({
+            id: "urn:uuid:policy-2",
+            type: ["VerifiableCredential", "InsuranceCredential"],
+          }),
         ]
       );
 
-      expect(result).toHaveLength(1);
-      expect(result[0].vcStatus).toBe("SUCCESS");
+      expect(result).toHaveLength(2);
     });
 
-    test("returns empty when no configured type value matches submitted credential", () => {
+    test("passes through service credentials even when type does not match selected claim", () => {
       const selectedClaim = buildClaim("MOSIP ID", "MOSIPVerifiableCredential", [
         {
           id: "mosip_verifiable_credential_id",
@@ -311,15 +343,14 @@ describe("commonUtils credential matching", () => {
         },
       ]);
 
-      const result = calculateVerifiedClaims(
-        [selectedClaim],
-        [matchingResult(ldpVc("InsuranceCredential"))]
-      );
+      const submissions = [matchingResult(ldpVc("InsuranceCredential"))];
 
-      expect(result).toHaveLength(0);
+      const result = calculateVerifiedClaims([selectedClaim], submissions);
+
+      expect(result).toEqual(submissions);
     });
 
-    test("does not match credentials whose type IRIs end with trailing delimiters", () => {
+    test("passes through credentials whose type IRIs end with trailing delimiters", () => {
       const selectedClaim = buildClaim("Context A", "ContextA", [
         {
           id: "context_a_credential_id",
@@ -330,9 +361,12 @@ describe("commonUtils credential matching", () => {
         },
       ]);
 
+      const hashSubmissions = [matchingResult(ldpVc("https://example.org/context-b#"))];
+      const slashSubmissions = [matchingResult(ldpVc("https://example.org/context-d/"))];
+
       const hashResult = calculateVerifiedClaims(
         [selectedClaim],
-        [matchingResult(ldpVc("https://example.org/context-b#"))]
+        hashSubmissions
       );
       const slashResult = calculateVerifiedClaims(
         [buildClaim("Context C", "ContextC", [
@@ -344,14 +378,14 @@ describe("commonUtils credential matching", () => {
             },
           },
         ])],
-        [matchingResult(ldpVc("https://example.org/context-d/"))]
+        slashSubmissions
       );
 
-      expect(hashResult).toHaveLength(0);
-      expect(slashResult).toHaveLength(0);
+      expect(hashResult).toEqual(hashSubmissions);
+      expect(slashResult).toEqual(slashSubmissions);
     });
 
-    test("does not match using top-level claim type when dcql type_values are absent", () => {
+    test("passes through credentials when dcql type_values are absent", () => {
       const selectedClaim = buildClaim("MOSIP ID", "MOSIPVerifiableCredential", [
         {
           id: "mosip_verifiable_credential_id",
@@ -360,12 +394,11 @@ describe("commonUtils credential matching", () => {
         },
       ]);
 
-      const result = calculateVerifiedClaims(
-        [selectedClaim],
-        [matchingResult(ldpVc("MOSIPVerifiableCredential"))]
-      );
+      const submissions = [matchingResult(ldpVc("MOSIPVerifiableCredential"))];
 
-      expect(result).toHaveLength(0);
+      const result = calculateVerifiedClaims([selectedClaim], submissions);
+
+      expect(result).toEqual(submissions);
     });
   });
 
@@ -479,6 +512,67 @@ describe("commonUtils credential matching", () => {
       );
 
       expect(unverified).toHaveLength(2);
+    });
+  });
+
+  describe("getTotalCredentialCount", () => {
+    test("uses dcql credentials array length across selected claims", () => {
+      const insuranceClaim = buildClaim("Life Insurance", "InsuranceCredential", [
+        {
+          id: "life_insurance_credential_id",
+          format: "ldp_vc",
+          meta: { type_values: [["InsuranceCredential"]] },
+        },
+      ]);
+      const mosipClaim = buildClaim("MOSIP ID", "MOSIPVerifiableCredential", [
+        {
+          id: "mosip_verifiable_credential_id",
+          format: "ldp_vc",
+          meta: { type_values: [["MOSIPVerifiableCredential"]] },
+        },
+      ]);
+
+      expect(
+        getTotalCredentialCount(
+          [matchingResult(ldpVc("MOSIPVerifiableCredential"))],
+          [insuranceClaim],
+          [insuranceClaim, mosipClaim]
+        )
+      ).toBe(2);
+    });
+
+    test("counts multiple submitted credentials for a single multiple:true query", () => {
+      const insuranceClaim = buildClaim("Health Insurance", "InsuranceCredential", [
+        {
+          id: "health_insurance_credential_id",
+          format: "ldp_vc",
+          multiple: true,
+          meta: {
+            type_values: [
+              [
+                "https://inji.github.io/inji-config/contexts/insurance-context.json#InsuranceCredential",
+              ],
+            ],
+          },
+        },
+      ]);
+
+      expect(
+        getTotalCredentialCount(
+          [
+            matchingResult({
+              id: "urn:uuid:policy-1",
+              type: ["VerifiableCredential", "InsuranceCredential"],
+            }),
+            matchingResult({
+              id: "urn:uuid:policy-2",
+              type: ["VerifiableCredential", "InsuranceCredential"],
+            }),
+          ],
+          [],
+          [insuranceClaim]
+        )
+      ).toBe(2);
     });
   });
 });

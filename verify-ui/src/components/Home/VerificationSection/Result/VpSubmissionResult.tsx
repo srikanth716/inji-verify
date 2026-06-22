@@ -7,7 +7,6 @@ import { Button } from "../commons/Button";
 import DisplayUnVerifiedVc from "./DisplayUnVerifiedVc";
 import { useVerifyFlowSelector } from "../../../../redux/features/verification/verification.selector";
 import {useTranslation} from "react-i18next";
-import {getCredentialType} from "../../../../utils/commonUtils";
 import { resetVpRequest } from "../../../../redux/features/verify/vpVerificationState";
 import { DisplayTimeout } from "../../../../utils/config";
 import { useAppDispatch } from "../../../../redux/hooks";
@@ -34,9 +33,6 @@ const VpSubmissionResult: React.FC<VpSubmissionResultProps> = ({
   const isPartiallyShared = useVerifyFlowSelector((state) => state.isPartiallyShared );
   const showResult = useVerifyFlowSelector((state) => state.isShowResult );
   const { t } = useTranslation("Verify");
-  const filterVerifiedVcs = verifiedVcs.filter((verifiedVc) =>
-    originalSelectedCredentials.some((selectedVc) => getCredentialType(verifiedVc.vc) === (selectedVc.type))
-  );
   const dispatch = useAppDispatch();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -88,11 +84,11 @@ const VpSubmissionResult: React.FC<VpSubmissionResultProps> = ({
 
   return (
     <div className="space-y-6 mb-[100px] lg:mb-0">
-      {isSingleVc && verifiedVcs.length > 0 ? (
+      {isSingleVc && verifiedVcs.length === 1 ? (
         <ResultSummary status={vcStatus} />
       ) : (
         <VpVerifyResultSummary
-          verifiedVcs={[...filterVerifiedVcs]}
+          verifiedVcs={verifiedVcs}
           unverifiedCredentials={unverifiedCredentials}
         />
       )}

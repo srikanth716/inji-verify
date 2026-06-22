@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { getVerifiableClaims, VerificationSteps } from "../../../utils/config";
 import { DcqlQuery, VCShareType, VerifyState, claim } from "../../../types/data-types";
-import { calculateUnverifiedClaims, calculateVerifiedClaims, getCredentialType } from "../../../utils/commonUtils";
+import { calculateUnverifiedClaims } from "../../../utils/commonUtils";
 
 export const OVP_SESSION_SELECTED_CREDENTIALS_KEY = "ovp_selectedCredentials";
 
@@ -158,17 +158,10 @@ const vpVerificationState = createSlice({
       state.unVerifiedCredentials = [];
     },
     verificationSubmissionComplete: (state, action) => {
-      const newlyVerified = calculateVerifiedClaims([...state.selectedCredentials], action.payload.verificationResult);
-
-      const uniqueResult = [
+      state.verificationSubmissionResult = [
         ...state.verificationSubmissionResult,
-        ...newlyVerified.filter(
-          (vc) =>
-            !state.verificationSubmissionResult.some(
-              (existing) => getCredentialType(existing.vc) === getCredentialType(vc.vc))
-        ),
+        ...action.payload.verificationResult,
       ];
-      state.verificationSubmissionResult = uniqueResult;
       state.isShowResult = true;
       state.unVerifiedCredentials = calculateUnverifiedClaims([...state.originalSelectedCredentials], state.verificationSubmissionResult);
       state.isPartiallyShared = state.unVerifiedCredentials.length > 0;

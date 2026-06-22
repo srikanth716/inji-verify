@@ -222,36 +222,6 @@ export const getDetailsOrder = (vc: any, currentLanguage: string): { key: string
   }
 };
 
-const groupCredentialsByType = (matching: MatchingVc[]) => {
-  const groupedCredentials = new Map<string, MatchingVc[]>();
-
-  for (const credential of matching) {
-    const credentialType = getCredentialType(credential.vc);
-
-    if (!groupedCredentials.has(credentialType)) {
-      groupedCredentials.set(credentialType, []);
-    }
-
-    groupedCredentials.get(credentialType)!.push(credential);
-  }
-
-  return groupedCredentials;
-};
-
-const selectPreferredCredential = (credentials: MatchingVc[]) => {
-  const successfulCredential = credentials.find(
-    (credential) => credential.vcStatus === "SUCCESS"
-  );
-
-  return successfulCredential ?? credentials[0];
-};
-
-const filterPreferredCredentials = (matching: MatchingVc[]) => {
-  const groupedCredentials = groupCredentialsByType(matching);
-
-  return Array.from(groupedCredentials.values()).map(selectPreferredCredential);
-};
-
 const extractLocalTypeIdentifier = (typeValue: string): string => {
   const hashIndex = typeValue.lastIndexOf("#");
   if (hashIndex >= 0) {
@@ -318,14 +288,25 @@ const credentialMatchesClaim = (credential: any, selectedClaim: claim): boolean 
 export const calculateVerifiedClaims = (
   selectedClaims: claim[],
   verificationSubmissionResult: MatchingVc[]
-) => {
-  const matching = verificationSubmissionResult.filter((credential) =>
-    selectedClaims.some(
-      (selectedClaim) => credentialMatchesClaim(credential.vc, selectedClaim)
-    )
+) => verificationSubmissionResult;
+
+export const getDcqlCredentialQueryCount = (claims: claim[]): number =>
+  claims.reduce(
+    (count, selectedClaim) =>
+      count + (selectedClaim.dcqlQuery?.credentials?.length ?? 0),
+    0,
   );
 
-  return filterPreferredCredentials(matching);
+export const getTotalCredentialCount = (
+  verifiedVcs: MatchingVc[],
+  unverifiedClaims: claim[],
+  originalSelectedClaims: claim[],
+): number => {
+  const dcqlQueryCount = getDcqlCredentialQueryCount(originalSelectedClaims);
+  const submittedOrMissingCount =
+    verifiedVcs.length + getDcqlCredentialQueryCount(unverifiedClaims);
+
+  return Math.max(dcqlQueryCount, submittedOrMissingCount);
 };
 
 export const calculateUnverifiedClaims = (
