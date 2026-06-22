@@ -31,7 +31,7 @@ function SelectionPanelContent() {
   const isMobile = isMobileDevice();
 
   const isCredentialSelected = (cred: claim) =>
-    selectedCredentials.some((c: claim) => c.type === cred.type);
+    selectedCredentials.some((c: claim) => c.name === cred.name);
 
   const filteredClaims = getVerifiableClaims()
     .filter((claim) => claim.name.toLowerCase().includes(search.toLowerCase()))
@@ -56,7 +56,7 @@ function SelectionPanelContent() {
       dispatch(
         setSelectedCredentials({
           selectedCredentials: selectedCredentials.filter(
-            (c: claim) => c.type !== cred.type
+            (c: claim) => c.name !== cred.name
           ),
         })
       );
