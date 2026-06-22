@@ -270,6 +270,7 @@ export interface DcqlCredentialQuery {
   id: string;
   format: string;
   meta: DcqlCredentialMeta;
+  multiple?: boolean;
   require_cryptographic_holder_binding?: boolean;
   claims?: DcqlClaimQuery[];
   claim_sets?: string[][];
