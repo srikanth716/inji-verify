@@ -40,6 +40,9 @@ module.exports = {
   },
   externals: {
     react: "react",
-    "react-dom": "ReactDOM",
+    "react-dom": "react-dom",
+    "react-dom/client": "react-dom/client",
+    "react/jsx-runtime": "react/jsx-runtime",
+    "react/jsx-dev-runtime": "react/jsx-dev-runtime",
   },
 };
