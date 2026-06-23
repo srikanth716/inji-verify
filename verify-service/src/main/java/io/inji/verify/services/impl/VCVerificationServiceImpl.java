@@ -46,7 +46,9 @@ public class VCVerificationServiceImpl implements VCVerificationService {
     @Override
     public VCVerificationStatusDto verify(String vc, String contentType) throws CredentialStatusCheckException {
         CredentialFormat format;
-        if ("application/vc+sd-jwt".equalsIgnoreCase(contentType) || "application/dc+sd-jwt".equalsIgnoreCase(contentType)) {
+        if ("application/dc+sd-jwt".equalsIgnoreCase(contentType)) {
+            format = CredentialFormat.DC_SD_JWT;
+        } else if ("application/vc+sd-jwt".equalsIgnoreCase(contentType)) {
             format = CredentialFormat.VC_SD_JWT;
         } else if ("application/vc+cwt".equalsIgnoreCase(contentType)) {
             format = CredentialFormat.CWT_VC;
@@ -58,15 +60,16 @@ public class VCVerificationServiceImpl implements VCVerificationService {
 
         List<String> statusPurposeList = new ArrayList<>();
         statusPurposeList.add(Constants.STATUS_PURPOSE_REVOKED);
+        // Plain VC verification endpoint — no VP session context, KB-JWT validation not applicable.
         CredentialVerificationSummary credentialVerificationSummary =
-                credentialsVerifier.verifyAndGetCredentialStatus(vc, format, statusPurposeList);
+                credentialsVerifier.verifyAndGetCredentialStatus(vc, format, statusPurposeList, false);
         log.debug("CredentialVerificationResult: {}", credentialVerificationSummary.getVerificationResult());
         return new VCVerificationStatusDto(Utils.getVcVerificationStatus(credentialVerificationSummary));
     }
 
     @Override
-    public VCVerificationResultDto verifyV2(VCVerificationRequestDto request) {
-        log.debug("Processing verification request with skipStatusChecks: {}, filters: {}", request.isSkipStatusChecks(), request.getStatusCheckFilters());
+    public VCVerificationResultDto verifyV2(VCVerificationRequestDto request, boolean validateKeyBindingJwt) {
+        log.debug("Processing verification request with skipStatusChecks: {}, filters: {}, validateKeyBindingJwt: {}", request.isSkipStatusChecks(), request.getStatusCheckFilters(), validateKeyBindingJwt);
         String verifiableCredential = request.getVerifiableCredential();
         CredentialFormat format = Utils.getCredentialFormat(verifiableCredential);
         VerificationResult verificationResult;
@@ -76,15 +79,15 @@ public class VCVerificationServiceImpl implements VCVerificationService {
         Map<String, Object> claims = Map.of();
 
         boolean skipStatusChecks = request.isSkipStatusChecks();
-            if (skipStatusChecks) {
-                verificationResult = credentialsVerifier.verify(verifiableCredential, format);
-            } else {
-                List<String> statusCheckFilters = request.getStatusCheckFilters();
-                CredentialVerificationSummary credentialVerificationSummary =
-                        credentialsVerifier.verifyAndGetCredentialStatus(verifiableCredential, format, statusCheckFilters);
-                verificationResult = credentialVerificationSummary.getVerificationResult();
-                credentialStatus = credentialVerificationSummary.getCredentialStatus();
-            }
+        if (skipStatusChecks) {
+            verificationResult = credentialsVerifier.verify(verifiableCredential, format, validateKeyBindingJwt);
+        } else {
+            List<String> statusCheckFilters = request.getStatusCheckFilters();
+            CredentialVerificationSummary credentialVerificationSummary =
+                    credentialsVerifier.verifyAndGetCredentialStatus(verifiableCredential, format, statusCheckFilters, validateKeyBindingJwt);
+            verificationResult = credentialVerificationSummary.getVerificationResult();
+            credentialStatus = credentialVerificationSummary.getCredentialStatus();
+        }
 
         SchemaAndSignatureCheckDto schemaAndSignatureCheck = populateSchemaAndSignature(verificationResult);
         if (schemaAndSignatureCheck.isValid()) {

@@ -2,6 +2,7 @@ import React from "react";
 import { useTranslation } from "react-i18next";
 import {claim, VcStatus, VpSubmissionResultInt} from "../../../../types/data-types";
 import { useVerifyFlowSelector } from "../../../../redux/features/verification/verification.selector";
+import { getTotalCredentialCount } from "../../../../utils/commonUtils";
 import {
   backgroundColorMapping,
   borderColorMapping,
@@ -19,7 +20,11 @@ const VpVerifyResultSummary: React.FC<VpVerifyResultSummaryProps> = ({
 }) => {
   const { t } = useTranslation("Verify");
   const originalSelectedCredentials = useVerifyFlowSelector((state) => state.originalSelectedCredentials);
-  const NoOfClaims = originalSelectedCredentials.length;
+  const NoOfClaims = getTotalCredentialCount(
+    verifiedVcs,
+    unverifiedCredentials,
+    originalSelectedCredentials,
+  );
   const NoOfValid: number = verifiedVcs.filter(
     (vc) => vc.vcStatus === "SUCCESS"
   ).length;

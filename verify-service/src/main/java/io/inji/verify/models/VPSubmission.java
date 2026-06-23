@@ -1,16 +1,19 @@
 package io.inji.verify.models;
 
+import java.sql.Timestamp;
+
+import io.inji.verify.dto.submission.PresentationSubmissionDto;
 import io.inji.verify.serialization.impl.PresentationSubmissionDtoConverter;
 import jakarta.persistence.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.jose.shaded.gson.annotations.SerializedName;
-import io.inji.verify.dto.submission.PresentationSubmissionDto;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import java.sql.Timestamp;
 
 @Table(name = "vp_submission")
 @Getter

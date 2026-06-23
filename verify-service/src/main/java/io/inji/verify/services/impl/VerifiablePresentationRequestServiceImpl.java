@@ -18,16 +18,14 @@ import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.client.ClientMetadataDto;
 import io.inji.verify.dto.core.ErrorDto;
-import io.inji.verify.dto.presentation.VPDefinitionResponseDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.enums.VPRequestStatus;
 import io.inji.verify.exception.JWTCreationException;
-import io.inji.verify.exception.PresentationDefinitionNotFoundException;
 import io.inji.verify.exception.VPRequestNotFoundException;
+import io.inji.verify.exception.VPRequestValidationException;
 import io.inji.verify.models.AuthorizationRequestCreateResponse;
 import io.inji.verify.models.VPSubmission;
 import io.inji.verify.repository.AuthorizationRequestCreateResponseRepository;
-import io.inji.verify.repository.PresentationDefinitionRepository;
 import io.inji.verify.repository.VPSubmissionRepository;
 import io.inji.verify.services.KeyManagementService;
 import io.inji.verify.shared.Constants;
@@ -38,26 +36,28 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.async.DeferredResult;
 import java.text.ParseException;
+import java.util.regex.Pattern;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
-import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.Date;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Value;
-import static io.inji.verify.shared.Constants.VP_FORMATS;
+import static io.inji.verify.shared.Constants.VP_FORMATS_SUPPORTED;
 
 @Service
 @Slf4j
 public class VerifiablePresentationRequestServiceImpl implements VerifiablePresentationRequestService {
 
-    final PresentationDefinitionRepository presentationDefinitionRepository;
     final AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository;
     final VPSubmissionRepository vpSubmissionRepository;
     final KeyManagementService<OctetKeyPair> keyManagementService;
+    final ObjectMapper objectMapper;
 
     @Value("${inji.vp-request.long-polling-timeout}")
     Long defaultTimeout;
@@ -68,39 +68,53 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     @Value("${inji.did.verify.public.key.uri}")
     String verifyPublicKeyURI;
 
-    HashMap<String, DeferredResult<VPRequestStatusDto>> vpRequestStatusListeners = new HashMap<>();
+    ConcurrentHashMap<String, DeferredResult<VPRequestStatusDto>> vpRequestStatusListeners = new ConcurrentHashMap<>();
 
-    public VerifiablePresentationRequestServiceImpl(PresentationDefinitionRepository presentationDefinitionRepository, AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository, VPSubmissionRepository vpSubmissionRepository, KeyManagementService<OctetKeyPair> keyManagementService) {
-        this.presentationDefinitionRepository = presentationDefinitionRepository;
+    private static final Pattern NONCE_PATTERN = Pattern.compile("^[A-Za-z0-9\\-._~]{16,}$");
+
+    public VerifiablePresentationRequestServiceImpl(
+            AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository,
+            VPSubmissionRepository vpSubmissionRepository,
+            KeyManagementService<OctetKeyPair> keyManagementService,
+            ObjectMapper objectMapper) {
         this.authorizationRequestCreateResponseRepository = authorizationRequestCreateResponseRepository;
         this.vpSubmissionRepository = vpSubmissionRepository;
         this.keyManagementService = keyManagementService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
-    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate) throws PresentationDefinitionNotFoundException {
+    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate) {
         log.info("Creating authorization request");
         String transactionId = vpRequestCreate.getTransactionId() != null ? vpRequestCreate.getTransactionId() : Utils.generateID(Constants.TRANSACTION_ID_PREFIX);
         String requestId = Utils.generateID(Constants.REQUEST_ID_PREFIX);
         long expiresAt = Instant.now().plusSeconds(Constants.DEFAULT_EXPIRY).toEpochMilli();
-        String nonce = vpRequestCreate.getNonce() != null ? vpRequestCreate.getNonce() : SecurityUtils.generateNonce();
-        String responseUri = verifyServiceBaseUrl + Constants.RESPONSE_SUBMISSION_URI_ROOT + Constants.RESPONSE_SUBMISSION_URI;
-        boolean acceptVPWithoutHolderProof = vpRequestCreate.isAcceptVPWithoutHolderProof();
-        boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
+        String nonce;
+        if (StringUtils.hasText(vpRequestCreate.getNonce())) {
+            if (!NONCE_PATTERN.matcher(vpRequestCreate.getNonce()).matches()) {
+                throw new VPRequestValidationException(ErrorCode.NONCE_INVALID);
+            }
+            nonce = vpRequestCreate.getNonce();
+        } else {
+            nonce = SecurityUtils.generateNonce();
+        }
+        String responseUri = verifyServiceBaseUrl + Constants.VP_RESPONSE_SUBMISSION_URI;
 
-        AuthorizationRequestResponseDto authorizationRequestResponseDto = Optional.ofNullable(vpRequestCreate.getPresentationDefinitionId())
-                .map(presentationDefinitionId -> presentationDefinitionRepository.findById(presentationDefinitionId)
-                .map(presentationDefinition -> {
-                    VPDefinitionResponseDto vpDefinitionResponseDto = new VPDefinitionResponseDto(presentationDefinition.getId(), presentationDefinition.getInputDescriptors(), presentationDefinition.getName(), presentationDefinition.getPurpose(), presentationDefinition.getFormat(), presentationDefinition.getSubmissionRequirements());
-                    return new AuthorizationRequestResponseDto(vpRequestCreate.getClientId(), presentationDefinition.getURL(), vpDefinitionResponseDto, nonce, responseUri, acceptVPWithoutHolderProof, responseCodeValidationRequired);
-                })
-                .orElseThrow(PresentationDefinitionNotFoundException::new))
-                .orElseGet(() -> new AuthorizationRequestResponseDto(vpRequestCreate.getClientId(), null, vpRequestCreate.getPresentationDefinition(), nonce, responseUri, acceptVPWithoutHolderProof, responseCodeValidationRequired));
+        boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
+        AuthorizationRequestResponseDto authorizationRequestResponseDto = new AuthorizationRequestResponseDto(
+                vpRequestCreate.getClientId(),
+                vpRequestCreate.getDcqlQuery(),
+                null, // presentationDefinition is deprecated and should not be used, set to null for backward compatibility
+                nonce,
+                responseUri,
+                false, //acceptVPWithoutHolderProof is deprecated and should not be used, set to false for backward compatibility
+                responseCodeValidationRequired
+        );
 
         AuthorizationRequestCreateResponse authorizationRequestCreateResponse = new AuthorizationRequestCreateResponse(requestId, transactionId, authorizationRequestResponseDto, expiresAt);
         authorizationRequestCreateResponseRepository.save(authorizationRequestCreateResponse);
         log.info("Authorization request created");
-        if (vpRequestCreate.getClientId().startsWith("did")) {
+        if (vpRequestCreate.getClientId().startsWith("decentralized_identifier")) {
             String requestUri = verifyServiceBaseUrl + Constants.VP_REQUEST_URI;
             return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), null, authorizationRequestCreateResponse.getExpiresAt(), "%s/%s".formatted(requestUri, authorizationRequestCreateResponse.getRequestId()));
         }
@@ -173,6 +187,17 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                     }
 
                     result.onTimeout(() -> result.setResult(getCurrentRequestStatus(requestId)));
+                    // cleanup on timeout
+                    result.onTimeout(() -> {
+                        vpRequestStatusListeners.remove(requestId);
+                        result.setResult(getCurrentRequestStatus(requestId));
+                    });
+
+                    // cleanup on completion
+                    result.onCompletion(() ->
+                            vpRequestStatusListeners.remove(requestId)
+                    );
+                    
                     registerVpRequestStatusListener(requestId, result);
                     return result;
                 })
@@ -188,7 +213,8 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         return authorizationRequestCreateResponseRepository
                 .findById(requestId)
                 .map(authorizationRequestCreateResponse -> {
-                    String verifierDid = authorizationRequestCreateResponse.getAuthorizationDetails().getClientId();
+                    AuthorizationRequestResponseDto details = authorizationRequestCreateResponse.getAuthorizationDetails();
+                    String verifierDid = details.getClientId();
                     String state = authorizationRequestCreateResponse.getRequestId();
                     return createAndSignAuthorizationRequestJwt(verifierDid, authorizationRequestCreateResponse.getAuthorizationDetails(), state);
                 })
@@ -199,8 +225,9 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
         try {
 
-            JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                    .issuer(verifierDid)
+            String issuer = verifierDid != null ? verifierDid.replaceFirst("^decentralized_identifier:", "") : verifierDid;
+            JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
+                    .issuer(issuer)
                     .issueTime(Date.from(Instant.now()))
                     .claim("client_id", verifierDid)
                     .jwtID(UUID.randomUUID().toString())
@@ -208,17 +235,22 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                     .claim("response_mode", Constants.RESPONSE_MODE)
                     .claim("nonce", authorizationRequest.getNonce())
                     .claim("state", state)
-                    .claim("response_uri", authorizationRequest.getResponseUri())
-                    .claim("client_metadata", new ClientMetadataDto(verifierDid,VP_FORMATS))
-                    .build();
-            if (authorizationRequest.getPresentationDefinitionUri() != null) {
+                    .claim("response_uri", authorizationRequest.getResponseUri());
+
+            if (verifierDid != null && verifierDid.startsWith("decentralized_identifier")) {
+                claimsBuilder.claim(
+                        "client_metadata",
+                        new ClientMetadataDto(VP_FORMATS_SUPPORTED)
+                );
+            }
+
+            JWTClaimsSet claimsSet = claimsBuilder.build();
+
+            // DCQL-only: never emit presentation_definition / presentation_definition_uri claims (spec).
+            if (authorizationRequest.getDcqlQuery() != null) {
+                String dcqlQueryJson = objectMapper.writeValueAsString(authorizationRequest.getDcqlQuery());
                 claimsSet = new JWTClaimsSet.Builder(claimsSet)
-                        .claim("presentation_definition_uri", authorizationRequest.getPresentationDefinitionUri())
-                        .build();
-            } else if (authorizationRequest.getPresentationDefinition() != null) {
-                String presentationDefinitionJson = new ObjectMapper().writeValueAsString(authorizationRequest.getPresentationDefinition());
-                claimsSet = new JWTClaimsSet.Builder(claimsSet)
-                        .claim("presentation_definition", JSONObjectUtils.parse(presentationDefinitionJson))
+                        .claim("dcql_query", JSONObjectUtils.parse(dcqlQueryJson))
                         .build();
             }
 

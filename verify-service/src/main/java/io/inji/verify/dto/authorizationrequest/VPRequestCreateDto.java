@@ -1,6 +1,7 @@
 package io.inji.verify.dto.authorizationrequest;
 
-import io.inji.verify.dto.presentation.VPDefinitionResponseDto;
+import io.inji.verify.dto.dcql.DCQLQueryDto;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -10,15 +11,20 @@ import lombok.Getter;
 @AllArgsConstructor
 @Getter
 @NotNull
+@Schema(description = "Represents the data required to create a VP request, including client information and the DCQL query for credential matching.")
 public class VPRequestCreateDto {
-    @NotNull(message = "Client Id must not be null")
-    @NotBlank(message = "Client Id must not be empty")
+    @NotBlank(message = "CLIENT_ID_REQUIRED")
+    @Schema(description = "Unique identifier for the client making the VP request.")
     String clientId;
+    @Schema(description = "Transaction identifier for the VP request.")
     String transactionId;
-    String presentationDefinitionId;
+    @Schema(description = "Optional nonce for the VP request. If omitted, a cryptographically random nonce is generated. When provided, must contain only ASCII URL-safe characters (A-Z, a-z, 0-9, -, ., _, ~) and be at least 16 characters.")
     String nonce;
     @Valid
-    VPDefinitionResponseDto presentationDefinition;
-    boolean acceptVPWithoutHolderProof;
+    @NotNull(message = "DCQL_QUERY_REQUIRED")
+    @Schema(description = "DCQL query defining the criteria for credential matching in the VP request.")
+    private DCQLQueryDto dcqlQuery;
+    @Schema(description = "Indicates whether response code validation is required.")
     boolean responseCodeValidationRequired;
+
 }

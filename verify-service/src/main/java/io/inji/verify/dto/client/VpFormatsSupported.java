@@ -7,12 +7,16 @@ import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-public class VpFormats {
-    @JsonProperty("ldp_vp")
-    @SerializedName("ldp_vp")
-    private LdpVp ldpVp;
+public class VpFormatsSupported {
+    @JsonProperty("ldp_vc")
+    @SerializedName("ldp_vc")
+    private LdpVc ldpVc;
 
     @JsonProperty("vc+sd-jwt")
     @SerializedName("vc+sd-jwt")
     private SdJwt sdJwt;
+
+    @JsonProperty("dc+sd-jwt")
+    @SerializedName("dc+sd-jwt")
+    private SdJwt dcSdJwt;
 }

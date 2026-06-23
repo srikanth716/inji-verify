@@ -1,7 +1,7 @@
 package io.inji.verify.shared;
 
-import io.inji.verify.dto.client.LdpVp;
-import io.inji.verify.dto.client.VpFormats;
+import io.inji.verify.dto.client.LdpVc;
+import io.inji.verify.dto.client.VpFormatsSupported;
 import io.inji.verify.dto.client.SdJwt;
 
 import java.util.Arrays;
@@ -20,10 +20,8 @@ public final class Constants {
 
     public static final int DEFAULT_EXPIRY = 300;
 
-    public static final String RESPONSE_SUBMISSION_URI_ROOT = "/vp-submission";
-    public static final String RESPONSE_SUBMISSION_URI = "/direct-post";
-    public static final String VP_DEFINITION_URI = "/vp-definition/";
-    public static final String VP_REQUEST_URI = "/vp-request";
+    public static final String VP_RESPONSE_SUBMISSION_URI = "/v2/vp-submission/direct-post";
+    public static final String VP_REQUEST_URI = "/v2/vp-request";
     public static final String RESPONSE_TYPE =  "vp_token";
     public static final String RESPONSE_MODE =  "direct_post";
     public static final String COOKIE_NAME = "transaction_id";
@@ -33,12 +31,23 @@ public final class Constants {
     public static final String RSA_SIGNATURE_2018 = "RsaSignature2018";
     public static final String ED25519_SIGNATURE_2018 = "Ed25519Signature2018";
     public static final String ED25519_SIGNATURE_2020 = "Ed25519Signature2020";
-    public static final VpFormats VP_FORMATS = new VpFormats(new LdpVp(Arrays.asList(
+    public static final VpFormatsSupported VP_FORMATS_SUPPORTED = new VpFormatsSupported(new LdpVc(Arrays.asList(
             ED25519_SIGNATURE_2018,
             ED25519_SIGNATURE_2020,
             RSA_SIGNATURE_2018
     )), new SdJwt(SD_JWT_SUPPORTED_ALGORITHMS,
+            SD_JWT_SUPPORTED_ALGORITHMS), 
+        new SdJwt(SD_JWT_SUPPORTED_ALGORITHMS,
             SD_JWT_SUPPORTED_ALGORITHMS));
+
+    // Credential formats
+    public static final String FORMAT_LDP_VC = "ldp_vc";
+    public static final String FORMAT_DC_SD_JWT = "dc+sd-jwt";
+    public static final String FORMAT_VC_SD_JWT = "vc+sd-jwt";
+
+    // LDP VC type values
+    public static final String LDP_TYPE_VERIFIABLE_PRESENTATION = "VerifiablePresentation";
+    public static final String LDP_TYPE_VERIFIABLE_CREDENTIAL = "VerifiableCredential";
 
     // JSON KEYS
     public static final String KEY_PROOF = "proof";
@@ -47,6 +56,7 @@ public final class Constants {
     public static final String KEY_VERIFICATION_METHOD = "verificationMethod";
     public static final String KEY_VERIFIABLE_CREDENTIAL = "verifiableCredential";
     public static final String KEY_CREDENTIAL = "credential";
+    public static final String KEY_CREDENTIAL_SUBJECT = "credentialSubject";
 
     // STATUS PURPOSE
     public static final String STATUS_PURPOSE_REVOKED = "revocation";

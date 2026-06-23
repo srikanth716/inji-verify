@@ -83,7 +83,8 @@ export interface claim {
   type: string;
   logo: string;
   essential?: boolean;
-  definition: PresentationDefinition;
+  dcqlQuery: DcqlQuery;
+  purpose?: string;
   clientIdScheme?: string;
 }
 
@@ -127,7 +128,7 @@ export type VerifyState = {
   unVerifiedCredentials: claim[];
   sharingType: VCShareType;
   isPartiallyShared: boolean;
-  presentationDefinition: PresentationDefinition;
+  dcqlQuery: DcqlQuery;
   sdkInstanceKey: number;
   SelectWalletPanel: boolean;
   selectedWalletId?: string;
@@ -237,4 +238,50 @@ export interface CredentialResult {
         error: any;
     }[];
     claims?: Record<string, any>;
+}
+
+export type OverallVPStatus = "SUCCESS" | "INVALID";
+
+export interface VpSummarisedVerificationResponse {
+  vcResults: {
+      vc: string  | Record<string, unknown>;
+      vcStatus: VcStatus;
+  }[];
+  vpResultStatus: OverallVPStatus;
+}
+
+export type MatchingVc = {
+  vc: LdpVc | object;
+  vcStatus: VcStatus;
+};
+
+export interface DcqlClaimQuery {
+  id?: string;
+  path: (string | number | null)[];
+  values?: unknown[];
+}
+
+export interface DcqlCredentialMeta {
+  vct_values?: string[];
+  type_values?: string[][];
+}
+
+export interface DcqlCredentialQuery {
+  id: string;
+  format: string;
+  meta: DcqlCredentialMeta;
+  multiple?: boolean;
+  require_cryptographic_holder_binding?: boolean;
+  claims?: DcqlClaimQuery[];
+  claim_sets?: string[][];
+}
+
+export interface DcqlCredentialSetQuery {
+  options: string[][];
+  required?: boolean;
+}
+
+export interface DcqlQuery {
+  credentials: DcqlCredentialQuery[];
+  credential_sets?: DcqlCredentialSetQuery[];
 }

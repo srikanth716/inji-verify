@@ -24,13 +24,95 @@ export interface VpSummarisedVerificationResponse {
     vpResultStatus: OverallVPStatus;
 }
 
+/**
+ * A single claim requested from a credential.
+ */
+export interface DcqlClaimQuery {
+  /** Required if claim_sets is used. Used to reference the claim in claim_sets. */
+  id?: string;
+  /** Path pointer to navigate the credential structure (JSON pointer segments). */
+  path: string[];
+  /** Array of allowed values. Claim is returned only if its value matches one of these. */
+  values?: unknown[];
+}
+
+/**
+ * Trusted authority filter for credential issuers.
+ */
+export interface DcqlTrustedAuthority {
+  /** Authority filter type (e.g. aki, etsi_tl, openid_federation; extensible per DCQL). */
+  type: string;
+  values: string[];
+}
+
+/**
+ * Format-specific metadata constraints for a credential query.
+ */
+export interface DcqlCredentialMeta {
+  /** SD-JWT VC: allowed credential type identifiers. */
+  vct_values?: string[];
+  /** W3C VC (JSON-LD): expanded type values. */
+  type_values?: string[][];
+}
+
+/**
+ * A single credential query describing what the Verifier is requesting.
+ */
+export interface DcqlCredentialQuery {
+  /** Unique identifier for this credential within the request and response. */
+  id: string;
+  /** Credential format (e.g., "dc+sd-jwt", "vc+sd-jwt"). */
+  format: string;
+  /** Whether multiple credentials of this type can be returned. Defaults to false. */
+  multiple?: boolean;
+  /** Format-specific constraints (required, can be empty). */
+  meta: DcqlCredentialMeta;
+  /** Trusted issuer authorities filter. */
+  trusted_authorities?: DcqlTrustedAuthority[];
+  /** Whether proof of possession is required. Defaults to true. */
+  require_cryptographic_holder_binding?: boolean;
+  /** Individual data points requested from the credential. */
+  claims?: DcqlClaimQuery[];
+  /**
+   * Acceptable combinations of claims (arrays of claim ids).
+   * Each inner array represents one valid combination.
+   * Wallet evaluates in order and returns the first satisfiable set.
+   */
+  claim_sets?: string[][];
+}
+
+/**
+ * Credential set query defining logical combinations of requested credentials.
+ */
+export interface DcqlCredentialSetQuery {
+  /**
+   * Array of arrays of credential ids.
+   * Each inner array = one valid combination (AND within, OR across).
+   */
+  options: string[][];
+  /** Whether this set is required. Defaults to true. */
+  required?: boolean;
+}
+
+/**
+ * Top-level DCQL (Digital Credentials Query Language) query object.
+ * Used by a Verifier to request specific credentials from a Wallet.
+ */
+export interface DcqlQuery {
+  /** List of credential queries describing what is being requested. */
+  credentials: DcqlCredentialQuery[];
+  /**
+   * Rules about acceptable credential combinations.
+   * If omitted, all credentials in the `credentials` array are required.
+   */
+  credential_sets?: DcqlCredentialSetQuery[];
+}
+
 export interface VPRequestBody {
   clientId: string;
   nonce: string;
   transactionId?: string;
-  presentationDefinitionId?: string;
-  presentationDefinition?: PresentationDefinition;
-  acceptVPWithoutHolderProof?: boolean;
+  dcqlQuery: DcqlQuery;
   /**
    * When true, the verifier backend will generate a short-lived single-use `response_code`
    * and return it via redirect for same-device web-wallet flows.
@@ -39,21 +121,6 @@ export interface VPRequestBody {
    */
   responseCodeValidationRequired?: boolean;
 }
-
-type ExclusivePresentationDefinition =
-  /**
-   * ID of the presentation definition used for verification.
-   * Required for some verification flows.
-   */
-  | { presentationDefinitionId: string; presentationDefinition?: never }
-  /**
-   * The full presentation definition JSON string.
-   * If provided, it will be used instead of fetching from the backend.
-   */
-  | {
-      presentationDefinition?: PresentationDefinition;
-      presentationDefinitionId?: never;
-    };
 
 type ExclusiveCallbacks =
   /**
@@ -70,29 +137,13 @@ type ExclusiveCallbacks =
       onVPReceived?: never;
     };
 
-interface InputDescriptor {
-  id: string;
-  format?: {
-    ldp_vc: {
-      proof_type: string[];
-    };
-  };
-  constraints?: {};
-}
+export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
+  /**
+   * DCQL query object sent to the verifier backend for OpenID4VP 1.0.
+   * Must contain a `credentials` array describing the requested credentials.
+   */
+  dcqlQuery: DcqlQuery;
 
-export interface PresentationDefinition {
-  id?: string;
-  purpose: string;
-  format?: {
-    ldp_vc: {
-      proof_type: string[];
-    };
-  };
-  input_descriptors: InputDescriptor[];
-}
-
-export type OpenID4VPVerificationProps = ExclusivePresentationDefinition &
-  ExclusiveCallbacks & {
   /**
    React element that triggers the verification process (e.g., a button).
    If not provided, the component may automatically start the process.
@@ -147,12 +198,6 @@ export type OpenID4VPVerificationProps = ExclusivePresentationDefinition &
    * This is a required field to ensure proper error handling.
    */
   onError: (error: AppError) => void;
-
-    /**
-     Indicates whether to accept VP submissions without holder proof.
-     When true, allows unsigned VPs (VPs without proof).
-     */
-    acceptVPWithoutHolderProof?: boolean;
 
     /**
      The base URL of the wallet.

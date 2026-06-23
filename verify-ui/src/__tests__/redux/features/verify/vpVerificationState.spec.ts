@@ -8,22 +8,22 @@ import vpVerificationReducer, {
 } from "../../../../redux/features/verify/vpVerificationState";
 import { VCShareType } from "../../../../types/data-types";
 import {getVerifiableClaims, VerificationSteps} from "../../../../utils/config";
-import {calculateUnverifiedClaims, calculateVerifiedClaims, getCredentialType} from "../../../../utils/commonUtils";
+import {calculateUnverifiedClaims} from "../../../../utils/commonUtils";
+
+const mockDcqlQuery = {
+    credentials: [{ id: "desc1", format: "dc+sd-jwt", meta: {} }],
+};
 
 jest.mock("../../../../utils/config", () => ({
     ...jest.requireActual("../../../../utils/config"),
     getVerifiableClaims: jest.fn(() => [
-        { id: "1", type: "Type1", essential: true, definition: { input_descriptors: [{ id: "desc1" }] } },
-        { id: "2", type: "Type2", essential: false, definition: { input_descriptors: [{ id: "desc2" }] } }
+        { id: "1", type: "Type1", essential: true, dcqlQuery: mockDcqlQuery },
+        { id: "2", type: "Type2", essential: false, dcqlQuery: mockDcqlQuery },
     ])
 }));
 
 jest.mock("../../../../utils/commonUtils", () => ({
     calculateUnverifiedClaims: jest.fn(() => []),
-    calculateVerifiedClaims: jest.fn(() => []),
-    getCredentialType: jest.fn((vc) =>
-        Array.isArray(vc?.type) ? vc.type[0] : vc?.type || "unknown"
-    ),
 }));
 
 describe("vpVerification slice", () => {
@@ -33,8 +33,8 @@ describe("vpVerification slice", () => {
                 id: "2",
                 type: "Type2",
                 essential: false,
-                definition: {
-                    input_descriptors: [{ id: "desc2" }],
+                dcqlQuery: {
+                    credentials: [{ id: "desc2", format: "dc+sd-jwt", meta: {} }],
                 },
             },
         ] as any;
@@ -44,10 +44,7 @@ describe("vpVerification slice", () => {
             selectedCredentials: [],
             originalSelectedCredentials: [],
             unVerifiedCredentials: [],
-            presentationDefinition: {
-                id: "test",
-                input_descriptors: [{ id: "desc1" }, { id: "desc2" }],
-            },
+            dcqlQuery: mockDcqlQuery,
         } as any;
 
         const state = vpVerificationReducer(
@@ -65,16 +62,16 @@ describe("vpVerification slice", () => {
                 id: "1",
                 type: "Type1",
                 essential: true,
-                definition: {
-                    input_descriptors: [{ id: "desc1" }],
+                dcqlQuery: {
+                    credentials: [{ id: "desc1", format: "dc+sd-jwt", meta: {} }],
                 },
             },
             {
                 id: "2",
                 type: "Type2",
                 essential: true,
-                definition: {
-                    input_descriptors: [{ id: "desc2" }],
+                dcqlQuery: {
+                    credentials: [{ id: "desc2", format: "dc+sd-jwt", meta: {} }],
                 },
             },
         ]);
@@ -89,10 +86,7 @@ describe("vpVerification slice", () => {
             originalSelectedCredentials: [],
             verificationSubmissionResult: [],
             unVerifiedCredentials: [],
-            presentationDefinition: {
-                id: "test",
-                input_descriptors: [{ id: "desc1" }, { id: "desc2" }],
-            },
+            dcqlQuery: mockDcqlQuery,
         } as any;
 
         const state = vpVerificationReducer(preparedState, setSelectCredential());
@@ -129,16 +123,13 @@ describe("vpVerification slice", () => {
                 id: "1",
                 type: "Type1",
                 essential: true,
-                definition: { input_descriptors: [{ id: "desc1" }] },
+                dcqlQuery: mockDcqlQuery,
             },
         ] as any;
 
         const initialState = {
             ...vpVerificationReducer(undefined, { type: "@@INIT" }),
-            presentationDefinition: {
-                id: "test",
-                input_descriptors: [{ id: "desc1" }],
-            },
+            dcqlQuery: mockDcqlQuery,
         } as any;
 
         const state = vpVerificationReducer(
@@ -152,23 +143,17 @@ describe("vpVerification slice", () => {
     });
 
     test("should handle verificationSubmissionComplete (full success)", () => {
-        (calculateVerifiedClaims as jest.Mock).mockReturnValue([
+        (calculateUnverifiedClaims as jest.Mock).mockReturnValue([]);
+
+        const verificationResult = [
             {
-                credentialId: "1",
-                credentialType: "Type1",
                 vc: {
                     id: "1",
                     type: ["VerifiableCredential", "Type1"],
                 },
                 vcStatus: "SUCCESS",
             },
-        ]);
-
-        (calculateUnverifiedClaims as jest.Mock).mockReturnValue([]);
-
-        (getCredentialType as jest.Mock).mockImplementation((vc: any) => {
-            return vc?.type?.[1] || vc?.type || "";
-        });
+        ];
 
         const initialState = {
             ...vpVerificationReducer(undefined, { type: "@@INIT" }),
@@ -178,7 +163,7 @@ describe("vpVerification slice", () => {
                     id: "1",
                     type: "Type1",
                     essential: true,
-                    definition: { input_descriptors: [{ id: "desc1" }] },
+                    dcqlQuery: mockDcqlQuery,
                 },
             ],
             originalSelectedCredentials: [
@@ -186,31 +171,18 @@ describe("vpVerification slice", () => {
                     id: "1",
                     type: "Type1",
                     essential: true,
-                    definition: { input_descriptors: [{ id: "desc1" }] },
+                    dcqlQuery: mockDcqlQuery,
                 },
             ],
             verificationSubmissionResult: [],
             unVerifiedCredentials: [],
             isPartiallyShared: false,
             flowType: "crossDevice",
-            presentationDefinition: {
-                id: "test",
-                input_descriptors: [{ id: "desc1" }],
-            },
+            dcqlQuery: mockDcqlQuery,
         } as any;
 
         const action = verificationSubmissionComplete({
-            verificationResult: [
-                {
-                    credentialId: "1",
-                    credentialType: "Type1",
-                    vc: {
-                        id: "1",
-                        type: ["VerifiableCredential", "Type1"],
-                    },
-                    vcStatus: "SUCCESS",
-                },
-            ],
+            verificationResult,
         } as any);
 
         const state = vpVerificationReducer(initialState, action);
@@ -219,16 +191,51 @@ describe("vpVerification slice", () => {
         expect(state.isPartiallyShared).toBe(false);
         expect(state.unVerifiedCredentials).toEqual([]);
         expect(state.activeScreen).toBe(VerificationSteps.VERIFY.DisplayResult);
-        expect(state.verificationSubmissionResult).toEqual([
+        expect(state.verificationSubmissionResult).toEqual(verificationResult);
+    });
+
+    test("should append all service credentials without deduplicating by type", () => {
+        (calculateUnverifiedClaims as jest.Mock).mockReturnValue([]);
+
+        const firstSubmission = [
             {
-                credentialId: "1",
-                credentialType: "Type1",
                 vc: {
                     id: "1",
-                    type: ["VerifiableCredential", "Type1"],
+                    type: ["VerifiableCredential", "InsuranceCredential"],
                 },
                 vcStatus: "SUCCESS",
             },
+        ];
+        const secondSubmission = [
+            {
+                vc: {
+                    id: "2",
+                    type: ["VerifiableCredential", "InsuranceCredential"],
+                },
+                vcStatus: "SUCCESS",
+            },
+        ];
+
+        const initialState = {
+            ...vpVerificationReducer(undefined, { type: "@@INIT" }),
+            method: "VERIFY",
+            selectedCredentials: [],
+            originalSelectedCredentials: [],
+            verificationSubmissionResult: firstSubmission,
+            unVerifiedCredentials: [],
+            isPartiallyShared: false,
+            flowType: "crossDevice",
+            dcqlQuery: mockDcqlQuery,
+        } as any;
+
+        const state = vpVerificationReducer(
+            initialState,
+            verificationSubmissionComplete({ verificationResult: secondSubmission } as any)
+        );
+
+        expect(state.verificationSubmissionResult).toEqual([
+            ...firstSubmission,
+            ...secondSubmission,
         ]);
     });
 

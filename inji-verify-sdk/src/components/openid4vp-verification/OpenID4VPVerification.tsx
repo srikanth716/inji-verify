@@ -35,8 +35,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   triggerElement,
   verifyServiceUrl,
   protocol,
-  presentationDefinitionId,
-  presentationDefinition,
+  dcqlQuery,
   transactionId,
   onVPReceived,
   onVPProcessed,
@@ -45,7 +44,6 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   onError,
   clientId,
   isSameDeviceFlowEnabled = true,
-  acceptVPWithoutHolderProof = false,
   webWalletBaseUrl,
   vpVerificationRequest,
   summariseResults = true
@@ -55,15 +53,13 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   const isActiveRef = useRef(false);
   const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasFetchedVPResultRef = useRef(false);
-  const sessionStateRef = useRef<SessionState>({
-    requestId: "",
-  });
+  const sessionStateRef = useRef<SessionState>({requestId: ""});
 
   const shouldShowQRCode = !loading && qrCodeData;
 
   const DEFAULT_PROTOCOL = "openid4vp://";
 
-  const VPFormat = useMemo(
+  const VPFormatsSupported = useMemo(
     () => ({
       ldp_vp: {
         proof_type: [
@@ -71,6 +67,10 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
           "Ed25519Signature2020",
           "RsaSignature2018",
         ],
+      },
+      "dc+sd-jwt": {
+        "sd-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
+        "kb-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
       },
       "vc+sd-jwt": {
         "sd-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
@@ -110,24 +110,18 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         params.set("response_type", data.authorizationDetails.responseType);
         params.set("nonce", data.authorizationDetails.nonce);
         params.set("response_uri", data.authorizationDetails.responseUri);
-        if (data.authorizationDetails.presentationDefinitionUri) {
+        if (data.authorizationDetails.dcqlQuery) {
+          params.set("dcql_query", JSON.stringify(data.authorizationDetails.dcqlQuery));
+        }
+        if(clientId.startsWith("decentralized_identifier:")) {
           params.set(
-            "presentation_definition_uri",
-            data.authorizationDetails.presentationDefinitionUri
-          );
-        } else {
-          params.set(
-            "presentation_definition",
-            JSON.stringify(data.authorizationDetails.presentationDefinition)
+            "client_metadata",
+            JSON.stringify({
+              client_name: clientId,
+              vp_formats_supported: VPFormatsSupported,
+            })
           );
         }
-        params.set(
-          "client_metadata",
-          JSON.stringify({
-            client_name: clientId,
-            vp_formats: VPFormat,
-          })
-        );
       }
       return params.toString();
     },
@@ -247,11 +241,9 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
 
       const data = await vpSessionRequest(
         verifyServiceUrl,
+        dcqlQuery,
         clientId,
         transactionId ?? undefined,
-        presentationDefinitionId,
-        presentationDefinition,
-        acceptVPWithoutHolderProof,
         responseCodeValidationRequired,
       );
 
@@ -271,8 +263,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   }, [
     verifyServiceUrl,
     transactionId,
-    presentationDefinitionId,
-    presentationDefinition,
+    dcqlQuery,
     getPresentationDefinitionParams,
     onError,
     clientId
@@ -356,15 +347,8 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   }, []);
 
   useEffect(() => {
-    if (!presentationDefinitionId && !presentationDefinition) {
-      throw new Error(
-        "Either presentationDefinitionId or presentationDefinition must be provided, but not both"
-      );
-    }
-    if (presentationDefinitionId && presentationDefinition) {
-      throw new Error(
-        "Both presentationDefinitionId and presentationDefinition cannot be provided simultaneously"
-      );
+    if (!dcqlQuery) {
+      throw new Error("dcqlQuery must be provided");
     }
     if (!onVPReceived && !onVPProcessed) {
       throw new Error(
@@ -388,8 +372,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     onQrCodeExpired,
     onVPProcessed,
     onVPReceived,
-    presentationDefinition,
-    presentationDefinitionId,
+    dcqlQuery,
     triggerElement,
   ]);
 
