@@ -89,7 +89,6 @@
   "overrides": {
     "nth-check": "2.0.1",
     "sucrase": "3.34.0",
-    "underscore": "1.13.8",
-    "serialize-javascript": "7.0.5"
+    "underscore": "1.13.8"
   }
 }
