@@ -117,7 +117,6 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
           params.set(
             "client_metadata",
             JSON.stringify({
-              client_name: clientId,
               vp_formats_supported: VPFormatsSupported,
             })
           );
