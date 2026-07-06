@@ -215,7 +215,7 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
                 .stream()
                 .filter(cq -> cq.getId().equals(queryId))
                 .findFirst()
-                .map(cq -> cq.isRequire_cryptographic_holder_binding())
+                .map(cq -> !Boolean.FALSE.equals(cq.getRequire_cryptographic_holder_binding()))
                 .orElseGet(() -> {
                     log.warn("No DCQL credential entry found for queryId '{}' in stored VP token; defaulting require_cryptographic_holder_binding to true", queryId);
                     return true;
