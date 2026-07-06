@@ -113,7 +113,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         if (data.authorizationDetails.dcqlQuery) {
           params.set("dcql_query", JSON.stringify(data.authorizationDetails.dcqlQuery));
         }
-        if(clientId.startsWith("decentralized_identifier:")) {
+        if(clientId.startsWith("decentralized_identifier:") || clientId.startsWith("redirect_uri:")) {
           params.set(
             "client_metadata",
             JSON.stringify({
