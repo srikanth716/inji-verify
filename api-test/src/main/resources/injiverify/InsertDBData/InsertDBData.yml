@@ -1,11 +1,24 @@
 InsertDBData:
-   InjiVerify_InsertDBData_For_PresentationDefinitionId_Valid_smoke:
+   InjiVerify_InsertDBData_For_AuthorizationRequestDetails_Valid_smoke:
       endPoint: no endpoint
-      uniqueIdentifier: TC_DBDependent_InsertQuery_01
-      description: Inserting data in verify.presentation_definition table to authenticate and get PresentationDefinitionId
+      uniqueIdentifier: TC_DBDependent_InsertQuery_02
+      description: Insert authorization_request_details data for VP submission tests
       role: idrepo
       restMethod: post
-      inputTemplate: injiverify/InsertDBData/InsertpresentationDefinitionIdData
+      inputTemplate: injiverify/InsertDBData/InsertAuthorizationRequestDetailsData
+      outputTemplate: injiverify/InsertDBData/InsertDBDataResult
+      input: '{
+}'
+      output: '{
+}'
+
+   InjiVerify_InsertDBData_For_VpSubmission_Valid_smoke:
+      endPoint: no endpoint
+      uniqueIdentifier: TC_DBDependent_InsertQuery_03
+      description: Insert vp_submission data for VP submission tests
+      role: idrepo
+      restMethod: post
+      inputTemplate: injiverify/InsertDBData/InsertVpSubmissionData
       outputTemplate: injiverify/InsertDBData/InsertDBDataResult
       input: '{
 }'
