@@ -3,7 +3,7 @@
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 -- -------------------------------------------------------------------------------------------------
--- Upgrade Script : v0.18.0 to v1.0.0
+-- Upgrade Script : v0.18.2 to v1.0.0
 -- Release name   : 1.0.0-alpha.1
 -- Database       : inji_verify
 -- Purpose        : Apply schema changes introduced in version 1.0.0
