@@ -3,11 +3,7 @@
 -- file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 -- -------------------------------------------------------------------------------------------------
--- Rollback Script: v0.18.2 to v0.18.1
+-- Rollback Script: v0.18.1 to v0.18.2
 -- Database       : inji_verify
--- Purpose        : Revert schema changes introduced in version 0.18.2
--- -------------------------------------------------------------------------------------------------
-
-\c inji_verify
-
+-- Purpose        : No schema changes in this release
 -- -------------------------------------------------------------------------------------------------
