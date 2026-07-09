@@ -7,8 +7,22 @@ import { vcSubmissionBody, VCVerificationV2Request, VCVerificationV2Response} fr
 import { QrData } from "../types/OVPSchemeQrData";
 import { isCWT } from "./cborUtils";
 
+const base64UrlEncode = (bytes: Uint8Array): string =>
+  btoa(String.fromCharCode.apply(null, Array.from(bytes)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+
 const generateNonce = (): string => {
-  return btoa(Date.now().toString());
+  if (!window.crypto?.getRandomValues) {
+    throw new Error(
+      "Web Crypto API is required. This SDK supports only browsers with crypto.getRandomValues()."
+    );
+  }
+
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  return base64UrlEncode(bytes);
 };
 
 export const vcVerificationV2 = async (credential: unknown, url: string, config?: VCVerificationV2Request): Promise<VCVerificationV2Response> => {
