@@ -32,3 +32,28 @@ The link to set up guide can be found [here](../Readme.md).
 ##### API docs
 
 The API docs are published in Stoplight, which can be found [here](https://mosip.stoplight.io/docs/inji-verify/branches/main).
+
+#### Using verify-service as a Library Dependency
+
+`verify-service` publishes a plain JAR (without bundled dependencies) that can be consumed by other Maven projects.
+
+Add the following to your `pom.xml`:
+
+**Dependency:**
+```xml
+<dependency>
+    <groupId>io.inji.verify</groupId>
+    <artifactId>verify-service</artifactId>
+    <version>${verify-service.version}</version>
+</dependency>
+```
+
+**Repositories:**
+
+Some transitive dependencies are not available on Maven Central. Ensure the following repositories are configured in your `pom.xml` or `settings.xml`:
+
+- **Sonatype (INJI snapshots)** — for `io.inji` artifacts (`vcverifier-jar`, `pixelpass-jar`)
+- **Danubetech** — for `ld-signatures-java` and `jsonld-common-java`
+- **Google Maven** — for `com.android.identity:identity-credential`
+
+Maven will automatically resolve all transitive dependencies from the published POM.
