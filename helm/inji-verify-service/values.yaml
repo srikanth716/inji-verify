@@ -454,4 +454,3 @@ istio:
   gateways:
     - istio-system/internal
   prefix: "{{ .Values.contextPath }}"
-Show less
