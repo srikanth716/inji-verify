@@ -214,3 +214,52 @@ Scenario: Verify VP verification same device flow
     And User clicks consent and share button
     And VP result for partial sharing
 
+  @smoke @verifyingVpVerification @credentialAutoSelect
+  Scenario: Verify essential credential from config.json is auto selected
+    Given User gets the title of the page
+    Then Validate the title of the page
+    And Click on vp verification tab
+    And Verify click on request verifiable credentials button
+    And Verify Verifiable Credential Panel label
+    Then Essential credential from config is auto selected
+    And Non essential credentials from config are not auto selected
+
+  @smoke @verifyingVpVerification @credentialAutoSelect
+  Scenario: Verify QR code generation with auto selected essential credential
+    Given User gets the title of the page
+    Then Validate the title of the page
+    And Click on vp verification tab
+    And Verify click on request verifiable credentials button
+    And Verify Verifiable Credential Panel label
+    Then Essential credential from config is auto selected
+    And Verify Click on Generate QR Code button
+    And Verify QR code generated
+
+  @smoke @verifyingVpVerification @credentialAutoSelect
+  Scenario: Verify user can override auto selected credential from config.json
+    Given User gets the title of the page
+    Then Validate the title of the page
+    And Click on vp verification tab
+    And Verify click on request verifiable credentials button
+    And Verify Verifiable Credential Panel label
+    Then Essential credential from config is auto selected
+    And Uncheck MOSIP ID
+    And Select Health Insurance
+    And Health Insurance is selected and MOSIP ID is unselected
+    And Verify Click on Generate QR Code button
+    And Verify QR code generated
+
+  @smoke @verifyingVpVerification @credentialAutoSelect
+  Scenario: Verify multi credential selection on top of auto selected essential credential
+    Given User gets the title of the page
+    Then Validate the title of the page
+    And Click on vp verification tab
+    And Verify click on request verifiable credentials button
+    And Verify Verifiable Credential Panel label
+    Then Essential credential from config is auto selected
+    And Select Health Insurance
+    And Select Land Registry
+    And Select Life Insurance
+    And Verify Click on Generate QR Code button
+    And Verify QR code generated
+

@@ -2116,7 +2116,7 @@ public class StepDef extends BaseSteps {
 	@When("User click on Health Insurance check box")
 	public void userClickOnHealthInsuranceCheckBox() {
 	    try {
-	        vpverification.clickOnHealthInsurance();
+	        vpverification.clickOnHealthInsuranceChecklist();
 	        test.log(Status.PASS, "Successfully clicked on Health Insurance check box.");
 	    } catch (NoSuchElementException e) {
 	        logFailure(test, driver, "Element not found while clicking Health Insurance check box", e);
@@ -2144,7 +2144,7 @@ public class StepDef extends BaseSteps {
 	@When("User click on Life Insurance VC check box")
 	public void userClickOnLifeInsuranceCheckBox() {
 	    try {
-	        vpverification.clickOnLifeInsurance();
+	        vpverification.clickOnLifeInsuranceChecklist();
 	        test.log(Status.PASS, "Successfully clicked on Life Insurance VC check box.");
 	    } catch (NoSuchElementException e) {
 	        logFailure(test, driver, "Element not found while clicking Life Insurance VC check box", e);
@@ -2894,6 +2894,57 @@ public void verifyUploadButtonVisibleAfter2MinsIdle() {
 	        throw e;
 	    } catch (Exception e) {
 	        logFailure(test, driver, "Unexpected error occurred while selecting the Land Registry option", e);
+	        throw e;
+	    }
+	}
+
+	@Then("Select Life Insurance")
+	public void selectLifeInsurance() {
+	    try {
+	        vpverification.clickOnLifeInsuranceChecklist();
+	        test.log(Status.PASS, "Successfully selected the Life Insurance option.");
+	    } catch (NoSuchElementException e) {
+	        logFailure(test, driver, "Element not found while selecting the Life Insurance option", e);
+	        throw e;
+	    } catch (Exception e) {
+	        logFailure(test, driver, "Unexpected error occurred while selecting the Life Insurance option", e);
+	        throw e;
+	    }
+	}
+
+	@Then("Essential credential from config is auto selected")
+	public void essentialCredentialFromConfigIsAutoSelected() {
+	    try {
+	        String essentialName = api.VerifiableClaimsConfigManager.getEssentialCredentialName();
+	        Assert.assertTrue(vpverification.isEssentialCredentialSelected(),
+	                "Essential credential '" + essentialName + "' from config.json should be auto-selected");
+	        test.log(Status.PASS, "Essential credential from config.json is auto-selected: " + essentialName);
+	    } catch (AssertionError e) {
+	        logFailure(test, driver, "Essential credential from config.json was not auto-selected", e);
+	        throw e;
+	    } catch (Exception e) {
+	        logFailure(test, driver, "Unexpected error while verifying essential credential auto-selection", e);
+	        throw e;
+	    }
+	}
+
+	@Then("Non essential credentials from config are not auto selected")
+	public void nonEssentialCredentialsFromConfigAreNotAutoSelected() {
+	    try {
+	        Assert.assertFalse(vpverification.isHealthInsuranceSelected(),
+	                "Health Insurance should not be auto-selected");
+	        Assert.assertFalse(vpverification.isLifeInsuranceSelected(),
+	                "Life Insurance should not be auto-selected");
+	        Assert.assertFalse(vpverification.isLandRegistrySelected(),
+	                "Land Registry should not be auto-selected");
+	        Assert.assertFalse(vpverification.isSdJwtSelected(),
+	                "SD JWT should not be auto-selected");
+	        test.log(Status.PASS, "Non-essential credentials from config.json are not auto-selected");
+	    } catch (AssertionError e) {
+	        logFailure(test, driver, "Unexpected auto-selection of non-essential credentials", e);
+	        throw e;
+	    } catch (Exception e) {
+	        logFailure(test, driver, "Unexpected error while verifying non-essential credential selection", e);
 	        throw e;
 	    }
 	}
