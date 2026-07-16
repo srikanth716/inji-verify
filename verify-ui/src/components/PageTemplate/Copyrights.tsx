@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import { Pages } from "../../utils/config";
 
-function Copyrights(props: any) {
+function Copyrights() {
     const {t} = useTranslation("CopyRight");
     const { pathname } = useLocation();
     const isOfflinePage = pathname === Pages.Offline;
