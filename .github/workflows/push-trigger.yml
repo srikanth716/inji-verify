@@ -48,7 +48,7 @@ jobs:
       
   sonar-analysis-inji-verify-service:
     if: "${{  github.event_name != 'pull_request' }}"
-    uses: mosip/kattu/.github/workflows/maven-sonar-analysis-new.yml@dsd9685
+    uses: mosip/kattu/.github/workflows/maven-sonar-analysis-new.yml@develop
     with:
       SERVICE_LOCATION: verify-service
     secrets:
@@ -58,7 +58,7 @@ jobs:
       ORG_KEY: ${{ secrets.ORG_KEY }}
 
   build-inji-verify-service:
-    uses: mosip/kattu/.github/workflows/maven-build.yml@master-java21
+    uses: mosip/kattu/.github/workflows/maven-build.yml@gpgupdate-masterj21
     with:
       SERVICE_LOCATION: ./
       BUILD_ARTIFACT: inji-verify-service
@@ -74,7 +74,7 @@ jobs:
   publish_to_nexus:
     if: "${{ !contains(github.ref, 'master') && github.event_name != 'pull_request' }}"
     needs: build-inji-verify-service
-    uses: mosip/kattu/.github/workflows/maven-publish-to-nexus.yml@master-java21
+    uses: mosip/kattu/.github/workflows/maven-publish-to-nexus.yml@gpgupdate-masterj21
     with:
       SERVICE_LOCATION: ./
     secrets:
