@@ -24,7 +24,7 @@ jobs:
             PLATFORMS: "linux/amd64"
       fail-fast: false
     name: ${{ matrix.SERVICE_NAME }}
-    uses: mosip/kattu/.github/workflows/docker-build.yml@master
+    uses: mosip/kattu/.github/workflows/docker-build.yml@gpgupdate-master
     with:
       SERVICE_LOCATION: ${{ matrix.SERVICE_LOCATION }}
       SERVICE_NAME: ${{ matrix.SERVICE_NAME }}
@@ -66,6 +66,7 @@ jobs:
       SERVICE_LOCATION: ./
       BUILD_ARTIFACT: inji-verify-service
       MAVEN_NON_EXEC_ARTIFACTS : "verify-service*.jar"
+      LICENSE_NAME: 'Apache 2.0'
     secrets:
       OSSRH_USER: ${{ secrets.OSSRH_INJI_USER }}
       OSSRH_SECRET: ${{ secrets.OSSRH_INJI_SECRET }}
@@ -100,7 +101,7 @@ jobs:
               SQUASH_LAYERS: '7'
         fail-fast: false
       name: ${{ matrix.SERVICE_NAME }}
-      uses: mosip/kattu/.github/workflows/docker-build.yml@master-java21
+      uses: mosip/kattu/.github/workflows/docker-build.yml@gpgupdate-masterj21
       with:
         SERVICE_LOCATION: ${{ matrix.SERVICE_LOCATION }}
         SERVICE_NAME: ${{ matrix.SERVICE_NAME }}
@@ -113,15 +114,17 @@ jobs:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
         
   build-maven-apitest-inji-verify:
-    uses: mosip/kattu/.github/workflows/maven-build.yml@master-java21
+    uses: mosip/kattu/.github/workflows/maven-build.yml@gpgupdate-masterj21
     with:
       SERVICE_LOCATION: ./api-test
       BUILD_ARTIFACT: apitest-inji-verify
+      LICENSE_NAME: 'Apache 2.0'
     secrets:
       OSSRH_USER: ${{ secrets.OSSRH_USER }}
       OSSRH_SECRET: ${{ secrets.OSSRH_SECRET }}
       OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
       GPG_SECRET: ${{ secrets.GPG_SECRET }}
+      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
 
   build-apitest-inji-verify-local:
@@ -181,7 +184,7 @@ jobs:
             ONLY_DOCKER: true
       fail-fast: false
     name: ${{ matrix.SERVICE_NAME }}
-    uses: mosip/kattu/.github/workflows/docker-build.yml@master-java21
+    uses: mosip/kattu/.github/workflows/docker-build.yml@gpgupdate-masterj21
     with:
       SERVICE_LOCATION: ${{ matrix.SERVICE_LOCATION }}
       SERVICE_NAME: ${{ matrix.SERVICE_NAME }}
@@ -194,15 +197,17 @@ jobs:
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
       
   build-maven-ui-test:
-    uses: mosip/kattu/.github/workflows/maven-build.yml@master-java21
+    uses: mosip/kattu/.github/workflows/maven-build.yml@gpgupdate-masterj21
     with:
       SERVICE_LOCATION: ./ui-test
       BUILD_ARTIFACT: ui-test
+      LICENSE_NAME: 'Apache 2.0'
     secrets:
       OSSRH_USER: ${{ secrets.OSSRH_USER }}
       OSSRH_SECRET: ${{ secrets.OSSRH_SECRET }}
       OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
       GPG_SECRET: ${{ secrets.GPG_SECRET }}
+      GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
 
   build-ui-test-local:
@@ -270,7 +275,7 @@ jobs:
             BUILD_ARTIFACT: 'ui-test-local'
       fail-fast: false
     name: ${{ matrix.SERVICE_NAME }}
-    uses: mosip/kattu/.github/workflows/docker-build.yml@master-java21
+    uses: mosip/kattu/.github/workflows/docker-build.yml@gpgupdate-masterj21
     with:
       SERVICE_LOCATION: ${{ matrix.SERVICE_LOCATION }}
       SERVICE_NAME: ${{ matrix.SERVICE_NAME }}
