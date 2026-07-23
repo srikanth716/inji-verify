@@ -24,7 +24,7 @@
     "url": "https://github.com/inji/inji-verify.git"
   },
   "author": "INJI",
-  "license": "MPL-2.0",
+  "license": "Apache-2.0",
   "keywords": [
     "react",
     "react-component",
