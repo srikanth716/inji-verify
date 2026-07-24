@@ -105,6 +105,42 @@ public final class VerifiableClaimsConfigManager {
         throw new RuntimeException("No essential credential found in config.json");
     }
 
+    /**
+     * Resolves a Cucumber/step argument to the UI display name.
+     * Accepts either a {@code uiAuto.credential.*} property key (e.g. {@code healthInsurance})
+     * or the config.json display name (e.g. {@code Health Insurance}).
+     */
+    public static String resolveCredentialName(String keyOrDisplayName) {
+        ensureInitialized();
+        if (keyOrDisplayName == null || keyOrDisplayName.trim().isEmpty()) {
+            throw new RuntimeException("Credential name/key must not be blank");
+        }
+        String trimmed = keyOrDisplayName.trim();
+        String propertyId = InjiVerifyConfigManager.getproperty(CREDENTIAL_KEY_PREFIX + trimmed);
+        if (propertyId != null && !propertyId.trim().isEmpty()) {
+            return getCredentialNameById(propertyId.trim());
+        }
+        for (String displayName : credentialIdToName.values()) {
+            if (displayName.equalsIgnoreCase(trimmed)) {
+                return displayName;
+            }
+        }
+        throw new RuntimeException("Unknown credential '" + trimmed
+                + "'. Use a uiAuto.credential.* key or a display name from config.json verifiableClaims.");
+    }
+
+    public static java.util.List<String> getNonEssentialCredentialNames() {
+        ensureInitialized();
+        String essentialName = getEssentialCredentialName();
+        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
+        for (String displayName : credentialIdToName.values()) {
+            if (!displayName.equals(essentialName)) {
+                names.add(displayName);
+            }
+        }
+        return java.util.Collections.unmodifiableList(new java.util.ArrayList<>(names));
+    }
+
     private static void ensureInitialized() {
         if (!initialized) {
             init();

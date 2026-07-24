@@ -26,9 +26,9 @@ Feature: Inji Verify vpVerification testing
     #And Click on right arrow
     And Click on vp verification tab
     And Verify click on request verifiable credentials button
-    And Uncheck MOSIP ID
-    And Select Health Insurance
-    And Health Insurance is selected and MOSIP ID is unselected
+    And Uncheck credential "mosipId"
+    And Select credential "healthInsurance"
+    And Credential "healthInsurance" is selected and credential "mosipId" is not selected
     And Verify Click on open wallet button
     And User selects configured inji-web wallet in verifier
     And User clicks on Proceed button
@@ -80,9 +80,9 @@ Feature: Inji Verify vpVerification testing
     And Click on vp verification tab
     And Verify click on request verifiable credentials button
     And Verify Verifiable Credential Panel label
-    And Uncheck MOSIP ID
-    And Select Health Insurance
-    And Select Land Registry
+    And Uncheck credential "mosipId"
+    And Select credential "healthInsurance"
+    And Select credential "landRegistry"
     And Verify Click on Generate QR Code button
     And Verify QR code generated
     And Click on vp verification tab
@@ -115,13 +115,13 @@ Scenario: Verify VP verification same device flow
     And Verify click on request verifiable credentials button
     And Verify Verifiable Credential Panel label
     And User enter the credential type "<credential type>"
-    And Select SD JWT VC
+    And Select credential "sdJwt"
     And Verify Click on Generate QR Code button
     And Verify QR code generated
     And Click on vp verification tab
     And Verify click on request verifiable credentials button
     And Verify Verifiable Credential Panel label
-    And Select Health Insurance
+    And Select credential "healthInsurance"
     And Verify Click on Generate QR Code button
     And Verify QR code generated
     
@@ -171,9 +171,9 @@ Scenario: Verify VP verification same device flow
     Given User gets the title of the page
     Then Click on vp verification tab
     And Verify click on request verifiable credentials button
-    And Uncheck MOSIP ID
-    And Select Health Insurance
-    And Health Insurance is selected and MOSIP ID is unselected
+    And Uncheck credential "mosipId"
+    And Select credential "healthInsurance"
+    And Credential "healthInsurance" is selected and credential "mosipId" is not selected
     And Verify Click on open wallet button
     And User selects configured inji-web wallet in verifier
     And User clicks on Proceed button
@@ -204,8 +204,8 @@ Scenario: Verify VP verification same device flow
     Given User gets the title of the page
     Then Click on vp verification tab
     And Verify click on request verifiable credentials button
-    And Select Health Insurance
-    #And Health Insurance is selected and MOSIP ID is unselected
+    And Select credential "healthInsurance"
+    #And Credential "healthInsurance" is selected and credential "mosipId" is not selected
     And Verify Click on open wallet button
     And User selects configured inji-web wallet in verifier
     And User clicks on Proceed button
@@ -243,9 +243,9 @@ Scenario: Verify VP verification same device flow
     And Verify click on request verifiable credentials button
     And Verify Verifiable Credential Panel label
     Then Essential credential from config is auto selected
-    And Uncheck MOSIP ID
-    And Select Health Insurance
-    And Health Insurance is selected and MOSIP ID is unselected
+    And Uncheck credential "mosipId"
+    And Select credential "healthInsurance"
+    And Credential "healthInsurance" is selected and credential "mosipId" is not selected
     And Verify Click on Generate QR Code button
     And Verify QR code generated
 
@@ -257,9 +257,9 @@ Scenario: Verify VP verification same device flow
     And Verify click on request verifiable credentials button
     And Verify Verifiable Credential Panel label
     Then Essential credential from config is auto selected
-    And Select Health Insurance
-    And Select Land Registry
-    And Select Life Insurance
+    And Select credential "healthInsurance"
+    And Select credential "landRegistry"
+    And Select credential "lifeInsurance"
     And Verify Click on Generate QR Code button
     And Verify QR code generated
 

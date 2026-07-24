@@ -270,10 +270,6 @@ public class VpVerification extends BasePage {
 		return isElementIsVisible(driver, VPverificationstep3LabelAfter);
 	}
 
-	public boolean isMosipTypeCredentialVisible() {
-		return isCredentialTypeVisible(api.VerifiableClaimsConfigManager.getCredentialName("mosipId"));
-	}
-
 	public void clickOnSortButton() {
 		clickOnElement(driver, SortButton);
 	}
@@ -282,32 +278,12 @@ public class VpVerification extends BasePage {
 		clickOnElement(driver, GenerateQrCodeButton);
 	}
 
-	public void clickOnMosipIdChecklist() {
-		clickOnCredentialChecklist(api.VerifiableClaimsConfigManager.getCredentialName("mosipId"));
-	}
-
-	public void clickOnHealthInsuranceChecklist() {
-		clickOnCredentialChecklist(api.VerifiableClaimsConfigManager.getCredentialName("healthInsurance"));
-	}
-
-	public void clickOnLifeInsuranceChecklist() {
-		clickOnCredentialChecklist(api.VerifiableClaimsConfigManager.getCredentialName("lifeInsurance"));
-	}
-
-	public void clickOnSDJwtVCChecklist() {
-		clickOnCredentialChecklist(api.VerifiableClaimsConfigManager.getCredentialName("sdJwt"));
-	}
-
 	public void clickOnWalletButton() {
 		clickOnElement(driver, WalletButton);
 	}
 
 	public void clickOnProceedButton() {
 		clickOnElement(driver, ProceedButton);
-	}
-
-	public void clickOnLandRegistryChecklist() {
-		clickOnCredentialChecklist(api.VerifiableClaimsConfigManager.getCredentialName("landRegistry"));
 	}
 
 	public void clickOnSortAtoZButton() {
@@ -404,30 +380,6 @@ public class VpVerification extends BasePage {
 		} catch (org.openqa.selenium.TimeoutException e) {
 			return false;
 		}
-	}
-
-	public boolean isHealthInsuranceSelected() {
-		return isCredentialSelected(api.VerifiableClaimsConfigManager.getCredentialName("healthInsurance"));
-	}
-
-	public boolean isMosipIdSelected() {
-		return isCredentialSelected(api.VerifiableClaimsConfigManager.getCredentialName("mosipId"));
-	}
-
-	public boolean isLandRegistrySelected() {
-		return isCredentialSelected(api.VerifiableClaimsConfigManager.getCredentialName("landRegistry"));
-	}
-
-	public boolean isLifeInsuranceSelected() {
-		return isCredentialSelected(api.VerifiableClaimsConfigManager.getCredentialName("lifeInsurance"));
-	}
-
-	public boolean isSdJwtSelected() {
-		return isCredentialSelected(api.VerifiableClaimsConfigManager.getCredentialName("sdJwt"));
-	}
-
-	public boolean isEssentialCredentialSelected() {
-		return isCredentialSelected(api.VerifiableClaimsConfigManager.getEssentialCredentialName());
 	}
 
 	public boolean isCredentialSelected(String credentialName) {
