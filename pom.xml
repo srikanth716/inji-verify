@@ -19,8 +19,8 @@
     <packaging>pom</packaging>
     <licenses>
         <license>
-            <name>MPL 2.0</name>
-            <url>https://www.mozilla.org/en-US/MPL/2.0/</url>
+            <name>Apache 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
         </license>
     </licenses>
 
@@ -121,7 +121,6 @@
         <vcverifier-jar.version>1.9.0-SNAPSHOT</vcverifier-jar.version>
         <json.version>20240303</json.version>
         <bouncycastle.version>1.78</bouncycastle.version>
-        <java-jwt.version>4.5.2</java-jwt.version>
         <jandex.version>3.6.0</jandex.version>
         <titanium-json-ld.version>1.7.0</titanium-json-ld.version>
         <tink.version>1.16.0</tink.version>
