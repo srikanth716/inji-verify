@@ -1,21 +1,21 @@
 package api;
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+import javax.ws.rs.core.MediaType;
+
 import org.apache.log4j.Logger;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.mosip.testrig.apirig.utils.RestClient;
+import io.restassured.response.Response;
 
 /**
  * Loads verify-ui {@code config.json} and resolves credential display names used in VP selection UI.
@@ -30,6 +30,7 @@ public final class VerifiableClaimsConfigManager {
 
     private static volatile boolean initialized;
     private static volatile Map<String, String> credentialIdToName = Collections.emptyMap();
+    private static volatile String essentialCredentialId;
 
     private VerifiableClaimsConfigManager() {
     }
@@ -41,15 +42,16 @@ public final class VerifiableClaimsConfigManager {
         try {
             JsonNode config = loadConfigJson();
             try {
-                credentialIdToName = buildCredentialIdToNameMap(config);
+                applyConfig(config);
             } catch (RuntimeException remoteOrPrimaryFailure) {
                 // Remote config may return 200 with a different/empty schema; fall back to bundled config.
                 LOGGER.warn("Primary config.json could not be used (" + remoteOrPrimaryFailure.getMessage()
                         + "). Falling back to classpath resource.");
-                credentialIdToName = buildCredentialIdToNameMap(readJsonFromClasspath(FALLBACK_CONFIG_RESOURCE));
+                applyConfig(readJsonFromClasspath(FALLBACK_CONFIG_RESOURCE));
             }
             initialized = true;
-            LOGGER.info("Loaded " + credentialIdToName.size() + " verifiable claim(s) from config.json");
+            LOGGER.info("Loaded " + credentialIdToName.size() + " verifiable claim(s) from config.json"
+                    + (essentialCredentialId != null ? "; essential=" + essentialCredentialId : ""));
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize verifiable claims config", e);
         }
@@ -76,15 +78,26 @@ public final class VerifiableClaimsConfigManager {
 
     public static String getEssentialCredentialName() {
         ensureInitialized();
-        String configuredKey = InjiVerifyConfigManager.getproperty("uiAuto.credential.essential");
-        if (configuredKey != null && !configuredKey.trim().isEmpty()) {
-            if (credentialIdToName.containsKey(configuredKey.trim())) {
-                return credentialIdToName.get(configuredKey.trim());
+
+        // Prefer config.json's own essential:true marker so tests track app config.
+        if (essentialCredentialId != null && !essentialCredentialId.trim().isEmpty()) {
+            String propertyId = InjiVerifyConfigManager.getproperty("uiAuto.credential.essential");
+            if (propertyId != null && !propertyId.trim().isEmpty()
+                    && !propertyId.trim().equals(essentialCredentialId.trim())) {
+                LOGGER.warn("uiAuto.credential.essential='" + propertyId.trim()
+                        + "' differs from config.json essential credential id='" + essentialCredentialId.trim()
+                        + "'. Using config.json value.");
             }
-            return getCredentialName(configuredKey.trim());
+            return getCredentialNameById(essentialCredentialId.trim());
         }
+
+        // Fall back to property as a DCQL credential id (not a short key suffix).
+        String configuredId = InjiVerifyConfigManager.getproperty("uiAuto.credential.essential");
+        if (configuredId != null && !configuredId.trim().isEmpty()) {
+            return getCredentialNameById(configuredId.trim());
+        }
+
         for (Map.Entry<String, String> entry : credentialIdToName.entrySet()) {
-            // essential credential is typically mosip_verifiable_credential_id in default config
             if ("mosip_verifiable_credential_id".equals(entry.getKey())) {
                 return entry.getValue();
             }
@@ -98,10 +111,21 @@ public final class VerifiableClaimsConfigManager {
         }
     }
 
+    private static void applyConfig(JsonNode config) {
+        MapBuildResult result = buildCredentialIdToNameMap(config);
+        credentialIdToName = result.idToName;
+        essentialCredentialId = result.essentialCredentialId;
+    }
+
     private static JsonNode loadConfigJson() throws IOException {
         String configuredUrl = InjiVerifyConfigManager.getproperty("uiAuto.configJsonUrl");
         if (configuredUrl != null && !configuredUrl.trim().isEmpty()) {
-            return readJsonFromUrl(configuredUrl.trim());
+            try {
+                return readJsonFromUrl(configuredUrl.trim());
+            } catch (IOException e) {
+                LOGGER.warn("Unable to fetch config.json from uiAuto.configJsonUrl. Falling back to classpath resource. "
+                        + e.getMessage());
+            }
         }
 
         String injiVerifyUrl = InjiVerifyConfigManager.getInjiVerifyUi();
@@ -122,19 +146,24 @@ public final class VerifiableClaimsConfigManager {
     }
 
     private static JsonNode readJsonFromUrl(String configUrl) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) new URL(configUrl).openConnection();
-        connection.setRequestMethod("GET");
-        connection.setConnectTimeout(15000);
-        connection.setReadTimeout(15000);
-        connection.setRequestProperty("Accept", "application/json");
-
-        int responseCode = connection.getResponseCode();
-        if (responseCode != HttpURLConnection.HTTP_OK) {
-            throw new IOException("Failed to fetch config.json from " + configUrl + ". HTTP status: " + responseCode);
-        }
-
-        try (InputStream inputStream = connection.getInputStream()) {
-            return OBJECT_MAPPER.readTree(inputStream);
+        try {
+            Response response = RestClient.getRequest(configUrl, MediaType.APPLICATION_JSON, MediaType.APPLICATION_JSON);
+            if (response == null) {
+                throw new IOException("Empty response fetching config.json from " + configUrl);
+            }
+            int statusCode = response.getStatusCode();
+            if (statusCode != 200) {
+                throw new IOException("Failed to fetch config.json from " + configUrl + ". HTTP status: " + statusCode);
+            }
+            String body = response.getBody() != null ? response.getBody().asString() : null;
+            if (body == null || body.trim().isEmpty()) {
+                throw new IOException("Empty body fetching config.json from " + configUrl);
+            }
+            return OBJECT_MAPPER.readTree(body);
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException("Failed to fetch config.json from " + configUrl + ": " + e.getMessage(), e);
         }
     }
 
@@ -148,13 +177,14 @@ public final class VerifiableClaimsConfigManager {
         }
     }
 
-    private static Map<String, String> buildCredentialIdToNameMap(JsonNode config) {
+    private static MapBuildResult buildCredentialIdToNameMap(JsonNode config) {
         JsonNode verifiableClaims = config.path("verifiableClaims");
         if (!verifiableClaims.isArray()) {
             throw new RuntimeException("config.json is missing verifiableClaims array");
         }
 
         Map<String, String> idToName = new HashMap<>();
+        String essentialId = null;
         Iterator<JsonNode> claims = verifiableClaims.elements();
         while (claims.hasNext()) {
             JsonNode claim = claims.next();
@@ -167,10 +197,27 @@ public final class VerifiableClaimsConfigManager {
             if (!credentials.isArray()) {
                 continue;
             }
+            boolean claimIsEssential = claim.path("essential").asBoolean(false);
             for (JsonNode credential : credentials) {
                 String credentialId = credential.path("id").asText(null);
-                if (credentialId != null && !credentialId.trim().isEmpty()) {
-                    idToName.put(credentialId.trim(), displayName.trim());
+                if (credentialId == null || credentialId.trim().isEmpty()) {
+                    continue;
+                }
+                String trimmedId = credentialId.trim();
+                String trimmedName = displayName.trim();
+                String previousName = idToName.put(trimmedId, trimmedName);
+                if (previousName != null && !previousName.equals(trimmedName)) {
+                    LOGGER.warn("Duplicate DCQL credential id '" + trimmedId
+                            + "' in config.json verifiableClaims. Overwriting display name '"
+                            + previousName + "' with '" + trimmedName + "'.");
+                }
+                if (claimIsEssential) {
+                    if (essentialId != null && !essentialId.equals(trimmedId)) {
+                        LOGGER.warn("Multiple essential:true claims in config.json. Keeping '"
+                                + essentialId + "', ignoring '" + trimmedId + "'.");
+                    } else {
+                        essentialId = trimmedId;
+                    }
                 }
             }
         }
@@ -178,11 +225,22 @@ public final class VerifiableClaimsConfigManager {
         if (idToName.isEmpty()) {
             throw new RuntimeException("No credential definitions found in config.json verifiableClaims");
         }
-        return Collections.unmodifiableMap(idToName);
+        return new MapBuildResult(Collections.unmodifiableMap(idToName), essentialId);
+    }
+
+    private static final class MapBuildResult {
+        private final Map<String, String> idToName;
+        private final String essentialCredentialId;
+
+        private MapBuildResult(Map<String, String> idToName, String essentialCredentialId) {
+            this.idToName = idToName;
+            this.essentialCredentialId = essentialCredentialId;
+        }
     }
 
     static void resetForTests() {
         initialized = false;
         credentialIdToName = Collections.emptyMap();
+        essentialCredentialId = null;
     }
 }

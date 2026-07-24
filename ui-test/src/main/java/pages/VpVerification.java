@@ -163,7 +163,9 @@ public class VpVerification extends BasePage {
 
 	public void clickOnVerifiableCredentialsButton() {
 		openVerifiableCredentialsPanel();
-		waitForCredentialOptionsToLoad();
+		// Re-open recovery is first-open only. Later selection/assertion helpers must not
+		// close/reopen the panel or they would discard multi-select checkbox state.
+		ensureCredentialOptionsLoadedOnOpen();
 	}
 
 	private void openVerifiableCredentialsPanel() {
@@ -195,29 +197,33 @@ public class VpVerification extends BasePage {
 	/**
 	 * Claims are loaded asynchronously from config.json. Opening the panel before that
 	 * finishes leaves an empty list that does not refresh. Re-open until rows appear.
+	 * Only used on first open — not from per-credential guards after selections start.
+	 */
+	private void ensureCredentialOptionsLoadedOnOpen() {
+		By credentialRow = By.xpath("//li[contains(@id,'-ItemBox')]");
+		int rowWaitSeconds = Math.max(8, getTimeout() / 3);
+		utils.WaitUtil.retryWithRecovery(
+				() -> utils.WaitUtil.waitForPresence(driver, credentialRow, rowWaitSeconds),
+				() -> {
+					if (!driver.findElements(By.id("selection-panel-back-button")).isEmpty()) {
+						clickOnGoBack();
+					}
+					new WebDriverWait(driver, Duration.ofSeconds(getTimeout()))
+							.until(ExpectedConditions.elementToBeClickable(verifiableCredentialsButton));
+					openVerifiableCredentialsPanel();
+					new WebDriverWait(driver, Duration.ofSeconds(getTimeout()))
+							.until(ExpectedConditions.visibilityOf(verifiableCredentialPanel));
+				},
+				4);
+	}
+
+	/**
+	 * Waits for any credential row to be present without closing/reopening the panel.
+	 * Safe to call after checkboxes have already been selected.
 	 */
 	public void waitForCredentialOptionsToLoad() {
 		By credentialRow = By.xpath("//li[contains(@id,'-ItemBox')]");
-		int maxAttempts = 4;
-		for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-			try {
-				new WebDriverWait(driver, Duration.ofSeconds(Math.max(8, getTimeout() / 3)))
-						.until(ExpectedConditions.presenceOfElementLocated(credentialRow));
-				return;
-			} catch (org.openqa.selenium.TimeoutException e) {
-				if (attempt == maxAttempts) {
-					throw e;
-				}
-				if (!driver.findElements(By.id("selection-panel-back-button")).isEmpty()) {
-					clickOnGoBack();
-				}
-				new WebDriverWait(driver, Duration.ofSeconds(getTimeout()))
-						.until(ExpectedConditions.elementToBeClickable(verifiableCredentialsButton));
-				openVerifiableCredentialsPanel();
-				new WebDriverWait(driver, Duration.ofSeconds(getTimeout()))
-						.until(ExpectedConditions.visibilityOf(verifiableCredentialPanel));
-			}
-		}
+		utils.WaitUtil.waitForPresence(driver, credentialRow, Math.max(8, getTimeout() / 3));
 	}
 
 	public String isVerifiableCredentialSelectionPannelDisplayed() {
@@ -387,10 +393,17 @@ public class VpVerification extends BasePage {
 
 	public boolean isCredentialTypeVisible(String credentialName) {
 		waitForCredentialOptionsToLoad();
-		return !driver.findElements(By.xpath(
+		By locator = By.xpath(
 				"//li[@id=" + toXPathLiteral(credentialName + "-ItemBox") + "] | "
 						+ "//span[contains(@class, 'text-smallTextSize') and contains(text(), "
-						+ toXPathLiteral(credentialName) + ")]")).isEmpty();
+						+ toXPathLiteral(credentialName) + ")]");
+		try {
+			new WebDriverWait(driver, Duration.ofSeconds(getTimeout()))
+					.until(ExpectedConditions.visibilityOfElementLocated(locator));
+			return true;
+		} catch (org.openqa.selenium.TimeoutException e) {
+			return false;
+		}
 	}
 
 	public boolean isHealthInsuranceSelected() {

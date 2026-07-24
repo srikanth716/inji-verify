@@ -243,17 +243,7 @@
                 <version>${surefire.plugin.version}</version>
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
-                    <suiteXmlFiles>
-                        <suiteXmlFile>testNgXmlFiles/TestNg.xml</suiteXmlFile>
-                    </suiteXmlFiles>
                 </configuration>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.apache.maven.surefire</groupId>
-                        <artifactId>surefire-testng</artifactId>
-                        <version>${surefire.plugin.version}</version>
-                    </dependency>
-                </dependencies>
             </plugin>
 
 
