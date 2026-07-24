@@ -449,4 +449,38 @@ describe("OpenID4VPVerification UI Tests", () => {
       expect(qrValue as string).toContain("dcql_query=");
     });
   });
+
+  it("should include verifier_info in QR code when authorization details provide it", async () => {
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        status: 201,
+        json: async () => ({
+          transactionId: "txn-verifier-info",
+          requestId: "req-verifier-info",
+          authorizationDetails: {
+            ...authorizationDetails(),
+            verifierInfo: {
+              organization_name: "Example Bank",
+              policy_uri: "https://verifier.example/privacy",
+            },
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        status: 200,
+        json: async () => ({ status: "PENDING" }),
+      }) as jest.Mock;
+
+    renderComponent({ isSameDeviceFlowEnabled: false, triggerElement });
+
+    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+    await waitFor(() => {
+      const qrValue = screen.getByTestId("ovp-qr").getAttribute("data-qr");
+      expect(qrValue).toContain("verifier_info=");
+      expect(qrValue).toContain("Example+Bank");
+      expect(qrValue).toContain("policy_uri");
+    });
+  });
 });

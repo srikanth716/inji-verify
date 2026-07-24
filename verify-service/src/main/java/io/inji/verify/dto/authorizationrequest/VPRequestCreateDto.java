@@ -26,5 +26,7 @@ public class VPRequestCreateDto {
     private DCQLQueryDto dcqlQuery;
     @Schema(description = "Indicates whether response code validation is required.")
     boolean responseCodeValidationRequired;
+    @Schema(description = "Optional verifier identity and trust metadata for the authorization request. When omitted, deployment config inji.verify.verifier-info is used if set.")
+    VerifierInfoDto verifierInfo;
 
 }

@@ -46,7 +46,8 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   isSameDeviceFlowEnabled = true,
   webWalletBaseUrl,
   vpVerificationRequest,
-  summariseResults = true
+  summariseResults = true,
+  verifierInfo,
 }) => {
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -112,6 +113,9 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         params.set("response_uri", data.authorizationDetails.responseUri);
         if (data.authorizationDetails.dcqlQuery) {
           params.set("dcql_query", JSON.stringify(data.authorizationDetails.dcqlQuery));
+        }
+        if (data.authorizationDetails.verifierInfo) {
+          params.set("verifier_info", JSON.stringify(data.authorizationDetails.verifierInfo));
         }
         if(clientId.startsWith("decentralized_identifier:") || clientId.startsWith("redirect_uri:")) {
           params.set(
@@ -244,6 +248,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         clientId,
         transactionId ?? undefined,
         responseCodeValidationRequired,
+        verifierInfo,
       );
 
       if (webWalletBaseUrl == null && !isCrossDeviceFlow) {
@@ -265,7 +270,9 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     dcqlQuery,
     getPresentationDefinitionParams,
     onError,
-    clientId
+    clientId,
+    verifierInfo,
+    webWalletBaseUrl,
   ]);
 
   const handleTriggerClick = () => {

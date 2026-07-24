@@ -16,6 +16,7 @@ import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
+import io.inji.verify.dto.authorizationrequest.VerifierInfoDto;
 import io.inji.verify.dto.client.ClientMetadataDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
@@ -48,6 +49,7 @@ import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Value;
+import jakarta.annotation.PostConstruct;
 import static io.inji.verify.shared.Constants.VP_FORMATS_SUPPORTED;
 
 @Service
@@ -68,6 +70,11 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     @Value("${inji.did.verify.public.key.uri}")
     String verifyPublicKeyURI;
 
+    @Value("${inji.verify.verifier-info:}")
+    String configuredVerifierInfoJson;
+
+    VerifierInfoDto defaultVerifierInfo;
+
     ConcurrentHashMap<String, DeferredResult<VPRequestStatusDto>> vpRequestStatusListeners = new ConcurrentHashMap<>();
 
     private static final Pattern NONCE_PATTERN = Pattern.compile("^[A-Za-z0-9\\-._~]{16,}$");
@@ -81,6 +88,29 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         this.vpSubmissionRepository = vpSubmissionRepository;
         this.keyManagementService = keyManagementService;
         this.objectMapper = objectMapper;
+    }
+
+    @PostConstruct
+    void initDefaultVerifierInfo() {
+        if (!StringUtils.hasText(configuredVerifierInfoJson)) {
+            return;
+        }
+        try {
+            VerifierInfoDto parsed = objectMapper.readValue(configuredVerifierInfoJson, VerifierInfoDto.class);
+            if (parsed.hasContent()) {
+                defaultVerifierInfo = parsed;
+            }
+        } catch (JsonProcessingException e) {
+            log.warn("Ignoring invalid inji.verify.verifier-info configuration: {}", e.getMessage());
+        }
+    }
+
+    private VerifierInfoDto resolveVerifierInfo(VPRequestCreateDto vpRequestCreate) {
+        VerifierInfoDto requestVerifierInfo = vpRequestCreate.getVerifierInfo();
+        if (requestVerifierInfo != null && requestVerifierInfo.hasContent()) {
+            return requestVerifierInfo;
+        }
+        return defaultVerifierInfo;
     }
 
     @Override
@@ -100,16 +130,15 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         }
         String responseUri = verifyServiceBaseUrl + Constants.VP_RESPONSE_SUBMISSION_URI;
 
-        boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
         AuthorizationRequestResponseDto authorizationRequestResponseDto = new AuthorizationRequestResponseDto(
                 vpRequestCreate.getClientId(),
                 vpRequestCreate.getDcqlQuery(),
                 null, // presentationDefinition is deprecated and should not be used, set to null for backward compatibility
                 nonce,
                 responseUri,
-                false, //acceptVPWithoutHolderProof is deprecated and should not be used, set to false for backward compatibility
-                responseCodeValidationRequired
-        );
+                false,
+                vpRequestCreate.isResponseCodeValidationRequired(),
+                resolveVerifierInfo(vpRequestCreate));
 
         AuthorizationRequestCreateResponse authorizationRequestCreateResponse = new AuthorizationRequestCreateResponse(requestId, transactionId, authorizationRequestResponseDto, expiresAt);
         authorizationRequestCreateResponseRepository.save(authorizationRequestCreateResponse);
@@ -242,6 +271,11 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                         "client_metadata",
                         new ClientMetadataDto(VP_FORMATS_SUPPORTED)
                 );
+            }
+
+            if (authorizationRequest.getVerifierInfo() != null && authorizationRequest.getVerifierInfo().hasContent()) {
+                String verifierInfoJson = objectMapper.writeValueAsString(authorizationRequest.getVerifierInfo());
+                claimsBuilder.claim("verifier_info", JSONObjectUtils.parse(verifierInfoJson));
             }
 
             JWTClaimsSet claimsSet = claimsBuilder.build();

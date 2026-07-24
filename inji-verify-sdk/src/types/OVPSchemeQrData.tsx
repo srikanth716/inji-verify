@@ -9,6 +9,15 @@ export interface QrData {
     responseUri: string;
     nonce: string;
     iat: number;
+    verifierInfo?: {
+      organization_name?: string;
+      policy_uri?: string;
+      attestations?: Array<{
+        type?: string;
+        issuer?: string;
+        credential?: string;
+      }>;
+    };
   };
   expiresAt: number;
   requestUri?: string;

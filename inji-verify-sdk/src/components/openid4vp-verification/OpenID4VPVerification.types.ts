@@ -108,6 +108,19 @@ export interface DcqlQuery {
   credential_sets?: DcqlCredentialSetQuery[];
 }
 
+export interface VerifierAttestation {
+  type?: string;
+  issuer?: string;
+  credential?: string;
+}
+
+export interface VerifierInfo {
+  organization_name?: string;
+  policy_uri?: string;
+  /** Opaque attestation payloads — not validated by the SDK or verifier service. */
+  attestations?: VerifierAttestation[];
+}
+
 export interface VPRequestBody {
   clientId: string;
   nonce: string;
@@ -120,6 +133,8 @@ export interface VPRequestBody {
    * Must be omitted/false for cross-device and same-device mobile-wallet (deeplink) flows.
    */
   responseCodeValidationRequired?: boolean;
+  /** Optional verifier identity/trust metadata included in the Authorization Request. */
+  verifierInfo?: VerifierInfo;
 }
 
 type ExclusiveCallbacks =
@@ -217,6 +232,12 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
     /*This attribute will decide the format of the response from SDK*/
 
     summariseResults?: boolean;
+
+    /**
+     * Optional verifier identity and trust metadata sent to the backend and included
+     * in the Authorization Request when present.
+     */
+    verifierInfo?: VerifierInfo;
 };
 
 export interface SessionState {

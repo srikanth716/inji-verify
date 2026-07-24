@@ -19,7 +19,8 @@ public class VPRequestResponseDtoTest {
                         "nonce123",
                         "url",
                         false,
-                        false);
+                        false,
+                        null);
         long expiresAt = 1687318740000L;
 
         VPRequestResponseDto vpRequestResponseDto =

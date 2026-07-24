@@ -34,4 +34,5 @@ public class AuthorizationRequestResponseDto {
     @Getter(onMethod_ = @JsonIgnore)
     private final boolean acceptVPWithoutHolderProof;
     private final boolean responseCodeValidationRequired;
+    private final VerifierInfoDto verifierInfo;
 }

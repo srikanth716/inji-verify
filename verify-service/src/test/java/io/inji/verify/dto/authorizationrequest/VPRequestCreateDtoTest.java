@@ -16,7 +16,7 @@ public class VPRequestCreateDtoTest {
         DCQLQueryDto dcqlQuery = DcqlTestFixtures.minimalDcqlDto();
 
         VPRequestCreateDto vpRequestCreateDto =
-                new VPRequestCreateDto(clientId, transactionId, nonce, dcqlQuery, false);
+                new VPRequestCreateDto(clientId, transactionId, nonce, dcqlQuery, false, null);
 
         assertEquals(clientId, vpRequestCreateDto.getClientId());
         assertEquals(transactionId, vpRequestCreateDto.getTransactionId());

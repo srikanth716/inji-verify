@@ -2,6 +2,7 @@ import {
     AppError,
     DcqlQuery,
     VPRequestBody, VPVerificationRequest,
+    VerifierInfo,
 } from "../components/openid4vp-verification/OpenID4VPVerification.types";
 import { vcSubmissionBody, VCVerificationV2Request, VCVerificationV2Response} from "../components/qrcode-verification/QRCodeVerification.types";
 import { QrData } from "../types/OVPSchemeQrData";
@@ -121,7 +122,8 @@ export const vpSessionRequest = async (
   dcqlQuery: DcqlQuery,
   clientId: string,
   txnId?: string,
-  responseCodeValidationRequired?: boolean
+  responseCodeValidationRequired?: boolean,
+  verifierInfo?: VerifierInfo,
 ) => {
   const requestBody: VPRequestBody = {
     clientId: clientId,
@@ -131,6 +133,9 @@ export const vpSessionRequest = async (
   if (txnId) requestBody.transactionId = txnId;
   if (responseCodeValidationRequired) {
     requestBody.responseCodeValidationRequired = true;
+  }
+  if (verifierInfo) {
+    requestBody.verifierInfo = verifierInfo;
   }
 
   try {

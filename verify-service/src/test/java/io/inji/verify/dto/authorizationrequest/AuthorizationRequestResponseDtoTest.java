@@ -25,7 +25,7 @@ public class AuthorizationRequestResponseDtoTest {
 
         AuthorizationRequestResponseDto responseDto =
                 new AuthorizationRequestResponseDto(
-                        clientId, DcqlTestFixtures.minimalDcqlDto(), null, nonce, responseUri, true, false);
+                        clientId, DcqlTestFixtures.minimalDcqlDto(), null, nonce, responseUri, true, false, null);
 
         assertEquals(Constants.RESPONSE_TYPE, responseDto.getResponseType());
         assertEquals(clientId, responseDto.getClientId());
@@ -39,12 +39,33 @@ public class AuthorizationRequestResponseDtoTest {
     void serializedOutputOmitsLegacyPresentationDefinitionKeys() throws Exception {
         AuthorizationRequestResponseDto dto =
                 new AuthorizationRequestResponseDto(
-                        "c1", DcqlTestFixtures.minimalDcqlDto(), null, "n", "u", false, false);
+                        "c1", DcqlTestFixtures.minimalDcqlDto(), null, "n", "u", false, false, null);
 
         JsonNode out = MAPPER.valueToTree(dto);
         assertFalse(out.has("presentation_definition"));
         assertFalse(out.has("presentation_definition_uri"));
         assertTrue(out.has("dcqlQuery"));
         assertEquals("c1", out.get("clientId").asText());
+    }
+
+    @Test
+    void serializedOutputOmitsVerifierInfoWhenNull() throws Exception {
+        AuthorizationRequestResponseDto dto =
+                new AuthorizationRequestResponseDto(
+                        "c1", DcqlTestFixtures.minimalDcqlDto(), null, "n", "u", false, false, null);
+
+        JsonNode out = MAPPER.valueToTree(dto);
+        assertFalse(out.has("verifierInfo"));
+    }
+
+    @Test
+    void serializedOutputIncludesVerifierInfoWhenPresent() throws Exception {
+        VerifierInfoDto verifierInfo = new VerifierInfoDto("Example Bank", null, null);
+        AuthorizationRequestResponseDto dto =
+                new AuthorizationRequestResponseDto(
+                        "c1", DcqlTestFixtures.minimalDcqlDto(), null, "n", "u", false, false, verifierInfo);
+
+        JsonNode out = MAPPER.valueToTree(dto);
+        assertEquals("Example Bank", out.get("verifierInfo").get("organization_name").asText());
     }
 }
