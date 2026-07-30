@@ -7,7 +7,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+import java.util.List;
+
+@NoArgsConstructor
 @AllArgsConstructor
 @Getter
 @NotNull
@@ -26,5 +30,14 @@ public class VPRequestCreateDto {
     private DCQLQueryDto dcqlQuery;
     @Schema(description = "Indicates whether response code validation is required.")
     boolean responseCodeValidationRequired;
+    @Schema(description = "OpenID4VP response_mode. Omit or use direct_post for wallet HTTP submission; use dc_api for Digital Credentials API.")
+    String responseMode;
+    @Schema(description = "Optional hint of the verifier page origin for DC API. Server determines the authoritative origin from Origin/Referer.")
+    List<String> expectedOrigins;
 
+    /** Backward-compatible constructor used by existing tests and call sites. */
+    public VPRequestCreateDto(String clientId, String transactionId, String nonce, DCQLQueryDto dcqlQuery,
+                              boolean responseCodeValidationRequired) {
+        this(clientId, transactionId, nonce, dcqlQuery, responseCodeValidationRequired, null, null);
+    }
 }

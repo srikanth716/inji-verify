@@ -120,6 +120,10 @@ export interface VPRequestBody {
    * Must be omitted/false for cross-device and same-device mobile-wallet (deeplink) flows.
    */
   responseCodeValidationRequired?: boolean;
+  /** OpenID4VP response_mode; use `dc_api` for Digital Credentials API. */
+  responseMode?: "direct_post" | "dc_api";
+  /** Hint of the verifier page origin for DC API (server is authoritative). */
+  expectedOrigins?: string[];
 }
 
 type ExclusiveCallbacks =
@@ -177,6 +181,17 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
   isSameDeviceFlowEnabled?: boolean;
 
   /**
+   * When true (default), same-device mobile + DID clientId may use the W3C Digital Credentials API
+   * if the browser supports `openid4vp-v1-signed`. Otherwise falls back to OpenID4VP deep-link / QR.
+   */
+  enableDcApi?: boolean;
+
+  /**
+   * Application timeout for `navigator.credentials.get` (AbortController). Default 5 minutes.
+   */
+  dcApiTimeoutMs?: number;
+
+  /**
    Styling options for the QR code.
    */
   qrCodeStyles?: {
@@ -221,6 +236,8 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
 
 export interface SessionState {
   requestId: string;
+  /** Slice 1: browser DigitalCredential payload held until Slice 2 submission. */
+  dcApiCredentialData?: unknown;
 }
 
 export type AppError = {

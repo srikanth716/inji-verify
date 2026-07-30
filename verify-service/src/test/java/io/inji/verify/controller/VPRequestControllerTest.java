@@ -371,7 +371,7 @@ public class VPRequestControllerTest {
                 "DCQL_CREDENTIAL_FORMAT_REQUIRED"));
 
         MethodParameter parameter = new MethodParameter(
-                VPRequestController.class.getDeclaredMethod("createVPSessionRequest", VPRequestCreateDto.class),
+                VPRequestController.class.getDeclaredMethod("createVPSessionRequest", VPRequestCreateDto.class, jakarta.servlet.http.HttpServletRequest.class),
                 0);
         MethodArgumentNotValidException ex =
                 new MethodArgumentNotValidException(parameter, bindingResult);

@@ -9,7 +9,6 @@ import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
-import io.inji.verify.dto.submission.VPTokenResultDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.exception.VPRequestValidationException;
@@ -21,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
@@ -42,6 +42,7 @@ import static io.inji.verify.shared.Constants.VP_REQUEST_URI;
 
 @RestController
 @Slf4j
+@CrossOrigin(originPatterns = "*", allowedHeaders = "content-type", allowCredentials = "true")
 public class VPRequestController {
 
     final VerifiablePresentationRequestService verifiablePresentationRequestService;
@@ -76,7 +77,7 @@ public class VPRequestController {
             @Parameter(description = "The parameters for creating a VP request, including the DCQL query and other relevant details.")
             @Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
         dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
-        return processCreateVPRequest(vpRequestCreate, false);
+        return processCreateVPRequest(vpRequestCreate, false, null);
     }
 
     @Operation(summary = "Create a new VP session request with cookie management. Validates the DCQL query, creates the request, and sets a cookie for session tracking.")
@@ -93,9 +94,9 @@ public class VPRequestController {
     })
     public ResponseEntity<Object> createVPSessionRequest(
             @Parameter(description = "The parameters for creating a VP session request, including the DCQL query and other relevant details. A cookie will be set for session tracking.")
-            @Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
+            @Valid @RequestBody VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest) {
         dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
-        return processCreateVPRequest(vpRequestCreate, true);
+        return processCreateVPRequest(vpRequestCreate, true, httpRequest);
     }
 
     @Operation(summary = "Get the status of a VP request by its ID. Returns the current status of the request, including any relevant details.")
@@ -147,8 +148,11 @@ public class VPRequestController {
     }
 
     @NotNull
-    private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie) {
-        VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate);
+    private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie,
+                                                          HttpServletRequest httpRequest) {
+        VPRequestResponseDto authorizationRequestResponse = httpRequest != null
+                ? verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate, httpRequest)
+                : verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate);
 
         if (createCookie) {
             String transactionId = authorizationRequestResponse.getTransactionId();

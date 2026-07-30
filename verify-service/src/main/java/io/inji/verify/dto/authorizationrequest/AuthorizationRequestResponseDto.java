@@ -3,26 +3,26 @@ package io.inji.verify.dto.authorizationrequest;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.inji.verify.dto.dcql.DCQLQueryDto;
 import io.inji.verify.dto.presentation.VPDefinitionResponseDto;
 import io.inji.verify.shared.Constants;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.ToString;
 
 import java.time.Instant;
+import java.util.List;
 
 /**
  * DTO representing the response to an authorization request, containing details about the request and its parameters.
  */
 @Getter
-@AllArgsConstructor(onConstructor_ = @JsonCreator)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @ToString
 public class AuthorizationRequestResponseDto {
 
     private final String responseType = Constants.RESPONSE_TYPE;
-    private final String responseMode = Constants.RESPONSE_MODE;
+    private final String responseMode;
     private final long issuedAt = Instant.now().toEpochMilli();
     private final String clientId;
     private final DCQLQueryDto dcqlQuery;
@@ -34,4 +34,43 @@ public class AuthorizationRequestResponseDto {
     @Getter(onMethod_ = @JsonIgnore)
     private final boolean acceptVPWithoutHolderProof;
     private final boolean responseCodeValidationRequired;
+    private final List<String> expectedOrigins;
+
+    /**
+     * Backward-compatible constructor (direct_post, no expected_origins).
+     */
+    public AuthorizationRequestResponseDto(
+            String clientId,
+            DCQLQueryDto dcqlQuery,
+            VPDefinitionResponseDto presentationDefinition,
+            String nonce,
+            String responseUri,
+            boolean acceptVPWithoutHolderProof,
+            boolean responseCodeValidationRequired) {
+        this(clientId, dcqlQuery, presentationDefinition, nonce, responseUri,
+                acceptVPWithoutHolderProof, responseCodeValidationRequired,
+                Constants.RESPONSE_MODE, null);
+    }
+
+    @JsonCreator
+    public AuthorizationRequestResponseDto(
+            @JsonProperty("clientId") String clientId,
+            @JsonProperty("dcqlQuery") DCQLQueryDto dcqlQuery,
+            @JsonProperty("presentationDefinition") VPDefinitionResponseDto presentationDefinition,
+            @JsonProperty("nonce") String nonce,
+            @JsonProperty("responseUri") String responseUri,
+            @JsonProperty("acceptVPWithoutHolderProof") boolean acceptVPWithoutHolderProof,
+            @JsonProperty("responseCodeValidationRequired") boolean responseCodeValidationRequired,
+            @JsonProperty("responseMode") String responseMode,
+            @JsonProperty("expectedOrigins") List<String> expectedOrigins) {
+        this.clientId = clientId;
+        this.dcqlQuery = dcqlQuery;
+        this.presentationDefinition = presentationDefinition;
+        this.nonce = nonce;
+        this.responseUri = responseUri;
+        this.acceptVPWithoutHolderProof = acceptVPWithoutHolderProof;
+        this.responseCodeValidationRequired = responseCodeValidationRequired;
+        this.responseMode = responseMode != null ? responseMode : Constants.RESPONSE_MODE;
+        this.expectedOrigins = expectedOrigins;
+    }
 }

@@ -29,12 +29,15 @@ import org.springframework.web.context.request.async.DeferredResult;
 
 import java.text.ParseException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
+import org.mockito.ArgumentCaptor;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 class VerifiablePresentationRequestServiceImplTest {
 
@@ -289,6 +292,69 @@ class VerifiablePresentationRequestServiceImplTest {
         when(mockAuthorizationRequestCreateResponseRepository.findById("missingId")).thenReturn(Optional.empty());
 
         assertThrows(VPRequestNotFoundException.class, () -> service.getVPRequestJwt("missingId"));
+    }
+
+    @Test
+    void getVPRequestJwt_DcApiMode_OmitsStateAndResponseUri_IncludesExpectedOrigins() throws Exception {
+        String requestId = "reqDcApi";
+        String didClient = "decentralized_identifier:did:web:verify.example.com";
+        AuthorizationRequestResponseDto authzDto =
+                new AuthorizationRequestResponseDto(
+                        didClient,
+                        DcqlTestFixtures.minimalDcqlDto(),
+                        null,
+                        "nonce-value-123456",
+                        null,
+                        false,
+                        false,
+                        Constants.RESPONSE_MODE_DC_API,
+                        List.of("https://verify.example.com"));
+        AuthorizationRequestCreateResponse response =
+                new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 10000);
+        when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(response));
+        OctetKeyPair mockOKP = new OctetKeyPairGenerator(Curve.Ed25519).generate();
+        when(mockKeyManagementService.getKeyPair()).thenReturn(mockOKP);
+
+        String jwt = service.getVPRequestJwt(requestId);
+        var claims = SignedJWT.parse(jwt).getJWTClaimsSet();
+
+        assertEquals(Constants.RESPONSE_MODE_DC_API, claims.getStringClaim("response_mode"));
+        assertEquals(List.of("https://verify.example.com"), claims.getStringListClaim("expected_origins"));
+        assertNull(claims.getClaim("state"));
+        assertNull(claims.getClaim("response_uri"));
+        assertNotNull(claims.getClaim("dcql_query"));
+        assertEquals(didClient, claims.getStringClaim("client_id"));
+    }
+
+    @Test
+    void createAuthorizationRequest_DcApi_PersistsServerOrigin() throws Exception {
+        clearInvocations(mockAuthorizationRequestCreateResponseRepository);
+        when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        String didClient = "decentralized_identifier:did:web:verify.example.com";
+        VPRequestCreateDto dto = new VPRequestCreateDto(
+                didClient,
+                "tx1",
+                "nonce-value-123456",
+                minimalDcqlQuery(),
+                false,
+                Constants.RESPONSE_MODE_DC_API,
+                List.of("https://verify.example.com"));
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Origin", "https://verify.example.com");
+
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(dto, request);
+
+        assertNotNull(responseDto.getRequestUri());
+        ArgumentCaptor<AuthorizationRequestCreateResponse> captor =
+                ArgumentCaptor.forClass(AuthorizationRequestCreateResponse.class);
+        verify(mockAuthorizationRequestCreateResponseRepository, times(1)).save(captor.capture());
+        AuthorizationRequestResponseDto details = captor.getValue().getAuthorizationDetails();
+        assertEquals(Constants.RESPONSE_MODE_DC_API, details.getResponseMode());
+        assertEquals(List.of("https://verify.example.com"), details.getExpectedOrigins());
+        assertNull(details.getResponseUri());
     }
 
     @Test

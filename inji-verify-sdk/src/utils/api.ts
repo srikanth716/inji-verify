@@ -90,7 +90,7 @@ export const vcSubmission = async (
   }
 };
 
-const isAppError = (error: unknown): error is AppError => (
+export const isAppError = (error: unknown): error is AppError => (
   typeof error === 'object' &&
   error !== null &&
   'errorMessage' in error &&
@@ -121,7 +121,9 @@ export const vpSessionRequest = async (
   dcqlQuery: DcqlQuery,
   clientId: string,
   txnId?: string,
-  responseCodeValidationRequired?: boolean
+  responseCodeValidationRequired?: boolean,
+  responseMode?: "direct_post" | "dc_api",
+  expectedOrigins?: string[]
 ) => {
   const requestBody: VPRequestBody = {
     clientId: clientId,
@@ -131,6 +133,12 @@ export const vpSessionRequest = async (
   if (txnId) requestBody.transactionId = txnId;
   if (responseCodeValidationRequired) {
     requestBody.responseCodeValidationRequired = true;
+  }
+  if (responseMode) {
+    requestBody.responseMode = responseMode;
+  }
+  if (expectedOrigins) {
+    requestBody.expectedOrigins = expectedOrigins;
   }
 
   try {
@@ -166,6 +174,25 @@ export const vpSessionRequest = async (
       throw new Error("An unknown error occurred");
     }
   }
+};
+
+export const getVpRequestJwt = async (url: string, requestId: string): Promise<string> => {
+  const response = await fetch(`${url}/v2/vp-request/${requestId}`, {
+    method: "GET",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    const record = errorData as Record<string, unknown>;
+    throw {
+      errorCode: (record.errorCode as string) || "NO_AUTH_REQUEST",
+      errorMessage:
+        (record.errorMessage as string) ||
+        (record.error as string) ||
+        "Failed to fetch authorization request JWT",
+    } as AppError;
+  }
+  return response.text();
 };
 
 /**

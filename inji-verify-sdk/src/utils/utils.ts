@@ -1,5 +1,35 @@
-import {VALID_SD_JWT_TYPES} from "./constants";
+import {VALID_SD_JWT_TYPES, DC_API_PROTOCOL} from "./constants";
 import {CredentialResult, VCVerificationV2Response} from "../components/qrcode-verification/QRCodeVerification.types";
+
+export const isMobileDevice = (): boolean => {
+  const userAgent = navigator.userAgent;
+
+  const isMobileUA = /Android.*Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    userAgent
+  );
+
+  const isTabletUA =
+    /iPad/i.test(userAgent) ||
+    (/Macintosh/i.test(userAgent) && "ontouchend" in document) || // iPad iOS13+ (real)
+    (/Android/i.test(userAgent) && !/Mobile/i.test(userAgent)); // Android tablet
+
+  return isMobileUA || isTabletUA;
+};
+
+export const isDcApiSupported = (props: {
+  enableDcApi: boolean;
+  isSameDeviceFlowEnabled: boolean;
+  clientId: string;
+}): boolean => {
+  if (!props.enableDcApi) return false;
+  if (!props.isSameDeviceFlowEnabled) return false;
+  if (!isMobileDevice()) return false;
+  if (!props.clientId.startsWith("decentralized_identifier:")) return false;
+  if (typeof window.DigitalCredential === "undefined") return false;
+  const allows = window.DigitalCredential.userAgentAllowsProtocol;
+  if (typeof allows !== "function") return false;
+  return allows.call(window.DigitalCredential, DC_API_PROTOCOL) === true;
+};
 
 export const isSdJwt = (vpToken: string): boolean => {
     try {

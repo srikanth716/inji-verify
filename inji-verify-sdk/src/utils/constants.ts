@@ -31,3 +31,6 @@ export const acceptedFileTypes = SupportedFileTypes.map(
 
 // Constants for SD-JWT validation
 export const VALID_SD_JWT_TYPES = new Set(['vc+sd-jwt', 'dc+sd-jwt']);
+
+export const DC_API_PROTOCOL = "openid4vp-v1-signed";
+export const DEFAULT_DC_API_TIMEOUT_MS = 300_000;
