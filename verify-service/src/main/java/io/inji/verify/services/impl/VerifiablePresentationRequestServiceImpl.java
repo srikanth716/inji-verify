@@ -312,7 +312,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
     private static String stripDidPrefix(String verifierDid) {
         return verifierDid != null
-                ? verifierDid.replaceFirst("^" + Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER + ":", "")
+                ? verifierDid.replaceFirst("^" + Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER, "")
                 : null;
     }
 

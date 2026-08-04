@@ -187,7 +187,7 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
   enableDcApi?: boolean;
 
   /**
-   * Application timeout for `navigator.credentials.get` (AbortController). Default 5 minutes.
+   * Application timeout for DC API JWT fetch and `navigator.credentials.get` (AbortController). Default 5 minutes.
    */
   dcApiTimeoutMs?: number;
 

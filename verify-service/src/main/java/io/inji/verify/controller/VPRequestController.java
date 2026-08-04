@@ -42,7 +42,6 @@ import static io.inji.verify.shared.Constants.VP_REQUEST_URI;
 
 @RestController
 @Slf4j
-@CrossOrigin(originPatterns = "*", allowedHeaders = "content-type", allowCredentials = "true")
 public class VPRequestController {
 
     final VerifiablePresentationRequestService verifiablePresentationRequestService;

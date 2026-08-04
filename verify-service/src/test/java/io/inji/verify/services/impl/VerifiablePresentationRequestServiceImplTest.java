@@ -358,6 +358,67 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
+    void createAuthorizationRequest_DcApi_NonDidClientId_ThrowsDcApiRequiresDidClientId() throws Exception {
+        VPRequestCreateDto dto = new VPRequestCreateDto(
+                "test_client_id",
+                "tx1",
+                "nonce-value-123456",
+                minimalDcqlQuery(),
+                false,
+                Constants.RESPONSE_MODE_DC_API,
+                List.of("https://verify.example.com"));
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Origin", "https://verify.example.com");
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> service.createAuthorizationRequest(dto, request));
+
+        assertEquals(ErrorCode.DC_API_REQUIRES_DID_CLIENT_ID, ex.getErrorCode());
+    }
+
+    @Test
+    void createAuthorizationRequest_DcApi_MissingOriginAndReferer_ThrowsVerifierOriginRequired() throws Exception {
+        String didClient = "decentralized_identifier:did:web:verify.example.com";
+        VPRequestCreateDto dto = new VPRequestCreateDto(
+                didClient,
+                "tx1",
+                "nonce-value-123456",
+                minimalDcqlQuery(),
+                false,
+                Constants.RESPONSE_MODE_DC_API,
+                null);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> service.createAuthorizationRequest(dto, request));
+
+        assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, ex.getErrorCode());
+    }
+
+    @Test
+    void createAuthorizationRequest_DcApi_ExpectedOriginsMismatch_ThrowsExpectedOriginMismatch() throws Exception {
+        String didClient = "decentralized_identifier:did:web:verify.example.com";
+        VPRequestCreateDto dto = new VPRequestCreateDto(
+                didClient,
+                "tx1",
+                "nonce-value-123456",
+                minimalDcqlQuery(),
+                false,
+                Constants.RESPONSE_MODE_DC_API,
+                List.of("https://evil.example.com"));
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Origin", "https://verify.example.com");
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> service.createAuthorizationRequest(dto, request));
+
+        assertEquals(ErrorCode.EXPECTED_ORIGIN_MISMATCH, ex.getErrorCode());
+    }
+
+    @Test
     void getVPRequestJwt_WithExpiredRequest_AllowsJwt() throws Exception {
         String requestId = "expiredReq";
         AuthorizationRequestResponseDto authzDto =

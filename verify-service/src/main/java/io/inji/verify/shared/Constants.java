@@ -26,7 +26,7 @@ public final class Constants {
     public static final String RESPONSE_MODE =  "direct_post";
     public static final String RESPONSE_MODE_DC_API = "dc_api";
     public static final String COOKIE_NAME = "transaction_id";
-    public static final String CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER = "decentralized_identifier";
+    public static final String CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER = "decentralized_identifier:";
 
     public static final String TRANSACTION_ID_PREFIX = "txn";
     public static final String REQUEST_ID_PREFIX = "req";

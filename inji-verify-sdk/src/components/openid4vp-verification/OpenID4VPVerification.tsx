@@ -293,8 +293,8 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     );
 
     try {
-      const signedJwt = await getVpRequestJwt(verifyServiceUrl, data.requestId);
-      const credential = await (navigator.credentials.get as (options: unknown) => Promise<Credential | null>)({
+      const signedJwt = await getVpRequestJwt(verifyServiceUrl, data.requestId, controller.signal);
+      const credential = await navigator.credentials.get({
         signal: controller.signal,
         digital: {
           requests: [
@@ -306,16 +306,22 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         },
       });
 
-      // Slice 1: hold DigitalCredential for Slice 2 submission (no backend ingest yet)
+      if (!credential) {
+        onError({
+          errorCode: "DC_API_NO_CREDENTIAL",
+          errorMessage: "No digital credential was returned",
+        });
+        resetState();
+        return;
+      }
+
+      // Slice 1: hold DigitalCredential for Slice 2 submission (no backend ingest yet).
+      // onVPProcessed / onVPReceived are intentionally deferred until Slice 2
+      // implements POST /v2/vp-submission/dc-api and /vp-session-results.
       sessionStateRef.current = {
         requestId: data.requestId,
-        dcApiCredentialData: (credential as { data?: unknown } | null)?.data,
+        dcApiCredentialData: credential.data,
       };
-      console.info("[OpenID4VP] DC API DigitalCredential received", {
-        requestId: data.requestId,
-        protocol: (credential as { protocol?: string } | null)?.protocol,
-        hasData: !!sessionStateRef.current.dcApiCredentialData,
-      });
       setLoading(false);
     } catch (err) {
       const name = err instanceof DOMException ? err.name : "";

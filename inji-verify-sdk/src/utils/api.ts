@@ -176,10 +176,11 @@ export const vpSessionRequest = async (
   }
 };
 
-export const getVpRequestJwt = async (url: string, requestId: string): Promise<string> => {
+export const getVpRequestJwt = async (url: string, requestId: string, signal?: AbortSignal): Promise<string> => {
   const response = await fetch(`${url}/v2/vp-request/${requestId}`, {
     method: "GET",
     credentials: "include",
+    signal,
   });
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
