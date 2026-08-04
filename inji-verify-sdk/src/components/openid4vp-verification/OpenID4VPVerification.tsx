@@ -15,7 +15,7 @@ import {
   getVpRequestJwt,
   isAppError,
 } from "../../utils/api";
-import {clearUrl, summariseVPResult, normalizeVp, isDcApiSupported, isMobileDevice} from "../../utils/utils";
+import {clearUrl, summariseVPResult, normalizeVp, isDcApiSupported, isMobileDevice, normalizeDcApiTimeoutMs} from "../../utils/utils";
 import { QrData } from "../../types/OVPSchemeQrData";
 import { DC_API_PROTOCOL, DEFAULT_DC_API_TIMEOUT_MS } from "../../utils/constants";
 
@@ -287,9 +287,10 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     sessionStateRef.current = { requestId: data.requestId };
 
     const controller = new AbortController();
+    const timeoutMs = normalizeDcApiTimeoutMs(dcApiTimeoutMs);
     const timeoutId = window.setTimeout(
       () => controller.abort("DC_API_TIMEOUT"),
-      dcApiTimeoutMs
+      timeoutMs
     );
 
     try {

@@ -185,7 +185,7 @@ public class VPRequestControllerTest {
     public void testCreateVPSessionRequest_SetsCookie() throws Exception {
         VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
 
-        when(verifiablePresentationRequestService.createAuthorizationRequest(any())).thenReturn(responseDto);
+        when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
         String expectedCookieValue = Base64.getEncoder().encodeToString("tId".getBytes(StandardCharsets.UTF_8));
 
