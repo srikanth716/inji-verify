@@ -78,7 +78,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 minimalDcqlQuery(),
                 false);
 
-        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, null);
 
         assertNotNull(responseDto);
         assertEquals("test_transaction_id", responseDto.getTransactionId());
@@ -99,7 +99,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 minimalDcqlQuery(),
                 false);
 
-        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, null);
 
         assertNotNull(responseDto);
         assertTrue(responseDto.getTransactionId().startsWith(Constants.TRANSACTION_ID_PREFIX));
@@ -165,7 +165,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 new AuthorizationRequestResponseDto(
                         null, // null clientId → verifierDid null
                         DcqlTestFixtures.minimalDcqlDto(),
-                        null, "nonce", "https://resp.example/post", false, false);
+                        null, "nonce", "https://resp.example/post", false, false, Constants.RESPONSE_MODE, null);
         AuthorizationRequestCreateResponse authzResponse =
                 new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 5000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(authzResponse));
@@ -188,7 +188,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 new AuthorizationRequestResponseDto(
                         did,
                         DcqlTestFixtures.minimalDcqlDto(),
-                        null, "nonce", "https://resp.example/post", false, false);
+                        null, "nonce", "https://resp.example/post", false, false, Constants.RESPONSE_MODE, null);
         AuthorizationRequestCreateResponse authzResponse =
                 new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 5000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(authzResponse));
@@ -220,7 +220,7 @@ class VerifiablePresentationRequestServiceImplTest {
                         "nonce",
                         "https://verifier.example/resp",
                         false,
-                        false);
+                        false, Constants.RESPONSE_MODE, null);
 
         AuthorizationRequestCreateResponse authzResponse =
                 new AuthorizationRequestCreateResponse(requestId, null, authzDetailsDto, 0L);
@@ -257,7 +257,7 @@ class VerifiablePresentationRequestServiceImplTest {
     void getVPRequestJwt_WhenDcqlMissing_ReturnsJwtWithoutDcqlClaim() throws Exception {
         String requestId = "reqMissingDcql";
         AuthorizationRequestResponseDto authzDto =
-                new AuthorizationRequestResponseDto("did:example", null, null, "nonce", "responseUri", false, false);
+                new AuthorizationRequestResponseDto("did:example", null, null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE, null);
         AuthorizationRequestCreateResponse response =
                 new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 1000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(response));
@@ -279,7 +279,7 @@ class VerifiablePresentationRequestServiceImplTest {
                         requestId,
                         "tx",
                         new AuthorizationRequestResponseDto(
-                                "did:example", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false),
+                                "did:example", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE, null),
                         Instant.now().toEpochMilli() + 2000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(response));
 
@@ -339,8 +339,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 "nonce-value-123456",
                 minimalDcqlQuery(),
                 false,
-                Constants.RESPONSE_MODE_DC_API,
-                List.of("https://verify.example.com"));
+                Constants.RESPONSE_MODE_DC_API);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Origin", "https://verify.example.com");
@@ -365,8 +364,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 "nonce-value-123456",
                 minimalDcqlQuery(),
                 false,
-                Constants.RESPONSE_MODE_DC_API,
-                List.of("https://verify.example.com"));
+                Constants.RESPONSE_MODE_DC_API);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Origin", "https://verify.example.com");
@@ -386,8 +384,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 "nonce-value-123456",
                 minimalDcqlQuery(),
                 false,
-                Constants.RESPONSE_MODE_DC_API,
-                null);
+                Constants.RESPONSE_MODE_DC_API);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
 
@@ -398,7 +395,11 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void createAuthorizationRequest_DcApi_ExpectedOriginsMismatch_ThrowsExpectedOriginMismatch() throws Exception {
+    void createAuthorizationRequest_DcApi_UsesRefererWhenOriginAbsent() throws Exception {
+        clearInvocations(mockAuthorizationRequestCreateResponseRepository);
+        when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
         String didClient = "decentralized_identifier:did:web:verify.example.com";
         VPRequestCreateDto dto = new VPRequestCreateDto(
                 didClient,
@@ -406,23 +407,26 @@ class VerifiablePresentationRequestServiceImplTest {
                 "nonce-value-123456",
                 minimalDcqlQuery(),
                 false,
-                Constants.RESPONSE_MODE_DC_API,
-                List.of("https://evil.example.com"));
+                Constants.RESPONSE_MODE_DC_API);
 
         MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Origin", "https://verify.example.com");
+        request.addHeader("Referer", "https://verify.example.com/verify");
 
-        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                () -> service.createAuthorizationRequest(dto, request));
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(dto, request);
 
-        assertEquals(ErrorCode.EXPECTED_ORIGIN_MISMATCH, ex.getErrorCode());
+        assertNotNull(responseDto.getRequestUri());
+        ArgumentCaptor<AuthorizationRequestCreateResponse> captor =
+                ArgumentCaptor.forClass(AuthorizationRequestCreateResponse.class);
+        verify(mockAuthorizationRequestCreateResponseRepository, times(1)).save(captor.capture());
+        assertEquals(List.of("https://verify.example.com"),
+                captor.getValue().getAuthorizationDetails().getExpectedOrigins());
     }
 
     @Test
     void getVPRequestJwt_WithExpiredRequest_AllowsJwt() throws Exception {
         String requestId = "expiredReq";
         AuthorizationRequestResponseDto authzDto =
-                new AuthorizationRequestResponseDto("did:example", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false);
+                new AuthorizationRequestResponseDto("did:example", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE, null);
         AuthorizationRequestCreateResponse expiredResponse =
                 new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() - 5000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(expiredResponse));
@@ -473,7 +477,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 minimalDcqlQuery(),
                 true);
 
-        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, null);
 
         assertNotNull(responseDto);
         assertEquals("test_transaction_id", responseDto.getTransactionId());
@@ -491,7 +495,7 @@ class VerifiablePresentationRequestServiceImplTest {
 
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", validNonce, minimalDcqlQuery(), false);
 
-        VPRequestResponseDto response = service.createAuthorizationRequest(dto);
+        VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
 
         assertEquals(validNonce, response.getAuthorizationDetails().getNonce());
     }
@@ -503,7 +507,7 @@ class VerifiablePresentationRequestServiceImplTest {
 
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", null, minimalDcqlQuery(), false);
 
-        VPRequestResponseDto response = service.createAuthorizationRequest(dto);
+        VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
 
         assertNotNull(response.getAuthorizationDetails().getNonce());
         assertFalse(response.getAuthorizationDetails().getNonce().isBlank());
@@ -516,7 +520,7 @@ class VerifiablePresentationRequestServiceImplTest {
 
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", "   ", minimalDcqlQuery(), false);
 
-        VPRequestResponseDto response = service.createAuthorizationRequest(dto);
+        VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
 
         // blank nonce must NOT be used — a generated nonce must replace it
         assertNotNull(response.getAuthorizationDetails().getNonce());
@@ -533,7 +537,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 "decentralized_identifier:did:example:verifier",
                 "tx_dec_id", null, minimalDcqlQuery(), false);
 
-        VPRequestResponseDto response = service.createAuthorizationRequest(dto);
+        VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
 
         assertNotNull(response);
         assertEquals("tx_dec_id", response.getTransactionId());
@@ -558,7 +562,7 @@ class VerifiablePresentationRequestServiceImplTest {
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", "invalid nonce value!", minimalDcqlQuery(), false);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                () -> service.createAuthorizationRequest(dto));
+                () -> service.createAuthorizationRequest(dto, null));
 
         assertEquals(ErrorCode.NONCE_INVALID, ex.getErrorCode());
     }
@@ -568,7 +572,7 @@ class VerifiablePresentationRequestServiceImplTest {
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", "short", minimalDcqlQuery(), false);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                () -> service.createAuthorizationRequest(dto));
+                () -> service.createAuthorizationRequest(dto, null));
 
         assertEquals(ErrorCode.NONCE_INVALID, ex.getErrorCode());
     }
@@ -585,7 +589,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 minimalDcqlQuery(),
                 false);
 
-        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto);
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, null);
 
         assertNotNull(responseDto);
         assertEquals("test_transaction_id", responseDto.getTransactionId());

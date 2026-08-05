@@ -40,7 +40,6 @@ public enum ErrorCode {
     INVALID_RESPONSE_MODE("invalid_request", "responseMode must be direct_post or dc_api."),
     DC_API_REQUIRES_DID_CLIENT_ID("invalid_request", "DC API response_mode requires a decentralized_identifier client_id."),
     VERIFIER_ORIGIN_REQUIRED("invalid_request", "Unable to determine verifier origin from Origin or Referer headers."),
-    EXPECTED_ORIGIN_MISMATCH("invalid_request", "expectedOrigins does not match the request Origin."),
     SUBMISSION_ORIGIN_NOT_ALLOWED("invalid_request", "Submission Origin is not in the authorization request expected_origins."),
     NONCE_INVALID("invalid_request", "Nonce must contain only ASCII URL-safe characters (A-Z, a-z, 0-9, -, ., _, ~) and be at least 16 characters."),
     DID_CREATION_FAILED("DID_CREATION_FAILED","Error while creating DID document."),

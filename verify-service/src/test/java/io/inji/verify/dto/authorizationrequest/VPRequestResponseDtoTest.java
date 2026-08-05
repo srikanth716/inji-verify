@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.inji.verify.shared.Constants;
 public class VPRequestResponseDtoTest {
 
     @Test
@@ -19,7 +20,9 @@ public class VPRequestResponseDtoTest {
                         "nonce123",
                         "url",
                         false,
-                        false);
+                        false,
+                        Constants.RESPONSE_MODE,
+                        null);
         long expiresAt = 1687318740000L;
 
         VPRequestResponseDto vpRequestResponseDto =

@@ -74,9 +74,9 @@ public class VPRequestController {
     })
     public ResponseEntity<Object> createVPRequest(
             @Parameter(description = "The parameters for creating a VP request, including the DCQL query and other relevant details.")
-            @Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
+            @Valid @RequestBody VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest) {
         dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
-        return processCreateVPRequest(vpRequestCreate, false, null);
+        return processCreateVPRequest(vpRequestCreate, false, httpRequest);
     }
 
     @Operation(summary = "Create a new VP session request with cookie management. Validates the DCQL query, creates the request, and sets a cookie for session tracking.")
@@ -149,9 +149,7 @@ public class VPRequestController {
     @NotNull
     private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie,
                                                           HttpServletRequest httpRequest) {
-        VPRequestResponseDto authorizationRequestResponse = httpRequest != null
-                ? verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate, httpRequest)
-                : verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate);
+        VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate, httpRequest);
 
         if (createCookie) {
             String transactionId = authorizationRequestResponse.getTransactionId();

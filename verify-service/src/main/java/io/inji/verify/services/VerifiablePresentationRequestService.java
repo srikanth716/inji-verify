@@ -12,8 +12,10 @@ import org.springframework.web.context.request.async.DeferredResult;
 import java.util.List;
 
 public interface VerifiablePresentationRequestService {
-    VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate);
-
+    /**
+     * Creates an authorization request. Pass {@code httpRequest} when available so DC API can
+     * resolve {@code expected_origins} from Origin/Referer; server-to-server callers may pass {@code null}.
+     */
     VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest);
 
     VPRequestStatusDto getCurrentRequestStatus(String requestId);

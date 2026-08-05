@@ -4,12 +4,12 @@ import {CredentialResult, VCVerificationV2Response} from "../components/qrcode-v
 /** Max delay accepted by `window.setTimeout` (signed 32-bit int). */
 const MAX_SET_TIMEOUT_MS = 2_147_483_647;
 
-/** Finite positive ms, floored and capped; otherwise the 5-minute default. */
+/** Finite positive ms, floored, at least 1ms, and capped; otherwise the 5-minute default. */
 export const normalizeDcApiTimeoutMs = (value: number | undefined): number => {
   if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
     return DEFAULT_DC_API_TIMEOUT_MS;
   }
-  return Math.min(Math.floor(value), MAX_SET_TIMEOUT_MS);
+  return Math.min(Math.max(Math.floor(value), 1), MAX_SET_TIMEOUT_MS);
 };
 
 export const isMobileDevice = (): boolean => {

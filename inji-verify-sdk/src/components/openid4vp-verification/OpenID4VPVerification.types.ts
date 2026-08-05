@@ -122,8 +122,6 @@ export interface VPRequestBody {
   responseCodeValidationRequired?: boolean;
   /** OpenID4VP response_mode; use `dc_api` for Digital Credentials API. */
   responseMode?: "direct_post" | "dc_api";
-  /** Hint of the verifier page origin for DC API (server is authoritative). */
-  expectedOrigins?: string[];
 }
 
 type ExclusiveCallbacks =
@@ -238,6 +236,11 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
 
 export interface SessionState {
   requestId: string;
+  /**
+   * Distinguishes OpenID4VP status-polling sessions from DC API.
+   * When `dc_api`, visibility/saved-session must not call fetchVPStatus.
+   */
+  flow?: "openid4vp" | "dc_api";
   /** Slice 1: browser DigitalCredential payload held until Slice 2 submission. */
   dcApiCredentialData?: unknown;
 }

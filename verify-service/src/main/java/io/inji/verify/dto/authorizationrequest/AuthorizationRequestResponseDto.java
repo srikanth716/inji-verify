@@ -34,23 +34,11 @@ public class AuthorizationRequestResponseDto {
     @Getter(onMethod_ = @JsonIgnore)
     private final boolean acceptVPWithoutHolderProof;
     private final boolean responseCodeValidationRequired;
-    private final List<String> expectedOrigins;
-
     /**
-     * Backward-compatible constructor (direct_post, no expected_origins).
+     * Populated only for {@code response_mode=dc_api}. Remains {@code null} for {@code direct_post}
+     * so Jackson's {@code NON_NULL} omits it from JSON.
      */
-    public AuthorizationRequestResponseDto(
-            String clientId,
-            DCQLQueryDto dcqlQuery,
-            VPDefinitionResponseDto presentationDefinition,
-            String nonce,
-            String responseUri,
-            boolean acceptVPWithoutHolderProof,
-            boolean responseCodeValidationRequired) {
-        this(clientId, dcqlQuery, presentationDefinition, nonce, responseUri,
-                acceptVPWithoutHolderProof, responseCodeValidationRequired,
-                Constants.RESPONSE_MODE, null);
-    }
+    private final List<String> expectedOrigins;
 
     @JsonCreator
     public AuthorizationRequestResponseDto(

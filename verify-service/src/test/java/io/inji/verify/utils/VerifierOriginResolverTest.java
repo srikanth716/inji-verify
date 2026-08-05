@@ -3,8 +3,6 @@ package io.inji.verify.utils;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class VerifierOriginResolverTest {
@@ -24,11 +22,16 @@ class VerifierOriginResolverTest {
     }
 
     @Test
-    void hintMustMatchSingleOrigin() {
-        assertTrue(VerifierOriginResolver.hintMatchesVerifierOrigin(
-                List.of("https://verify.example.com"), "https://verify.example.com"));
-        assertFalse(VerifierOriginResolver.hintMatchesVerifierOrigin(
-                List.of("https://evil.example.com"), "https://verify.example.com"));
-        assertTrue(VerifierOriginResolver.hintMatchesVerifierOrigin(null, "https://verify.example.com"));
+    void prefersOriginOverReferer() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Origin", "https://verify.example.com");
+        request.addHeader("Referer", "https://other.example.com/path");
+        assertEquals("https://verify.example.com", VerifierOriginResolver.resolve(request).orElseThrow());
+    }
+
+    @Test
+    void emptyWhenOriginAndRefererMissing() {
+        assertTrue(VerifierOriginResolver.resolve(new MockHttpServletRequest()).isEmpty());
+        assertTrue(VerifierOriginResolver.resolve(null).isEmpty());
     }
 }

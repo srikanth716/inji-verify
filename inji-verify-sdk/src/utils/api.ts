@@ -122,8 +122,7 @@ export const vpSessionRequest = async (
   clientId: string,
   txnId?: string,
   responseCodeValidationRequired?: boolean,
-  responseMode?: "direct_post" | "dc_api",
-  expectedOrigins?: string[]
+  responseMode?: "direct_post" | "dc_api"
 ) => {
   const requestBody: VPRequestBody = {
     clientId: clientId,
@@ -137,9 +136,6 @@ export const vpSessionRequest = async (
   if (responseMode) {
     requestBody.responseMode = responseMode;
   }
-  if (expectedOrigins) {
-    requestBody.expectedOrigins = expectedOrigins;
-  }
 
   try {
     const response = await fetch(url + "/v2/vp-session-request", {
@@ -148,6 +144,8 @@ export const vpSessionRequest = async (
         "Content-Type": "application/json",
       },
       credentials: "include",
+      // Keep an origin-bearing Referer as a best-effort fallback when Origin is stripped.
+      referrerPolicy: "origin",
       body: JSON.stringify(requestBody),
     });
     if (response.status !== 201) {
@@ -176,12 +174,8 @@ export const vpSessionRequest = async (
   }
 };
 
-export const getVpRequestJwt = async (url: string, requestId: string, signal?: AbortSignal): Promise<string> => {
-  const response = await fetch(`${url}/v2/vp-request/${requestId}`, {
-    method: "GET",
-    credentials: "include",
-    signal,
-  });
+export const getVpRequestJwt = async (url: string, requestId: string): Promise<string> => {
+  const response = await fetch(`${url}/v2/vp-request/${requestId}`);
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     const record = errorData as Record<string, unknown>;

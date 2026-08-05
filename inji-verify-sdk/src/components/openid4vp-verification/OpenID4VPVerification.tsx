@@ -86,7 +86,12 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     isActiveRef.current = false;
     hasFetchedVPResultRef.current = false;
     clearSessionData();
-  }, []);
+  }, [clearSessionData]);
+
+  const isDcApiSession = useCallback(
+    () => sessionStateRef.current.flow === "dc_api",
+    []
+  );
 
   const getPresentationDefinitionParams = useCallback(
     (data: QrData) => {
@@ -193,10 +198,12 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
 
   const fetchVPStatus = useCallback(
     async (reqId: string) => {
-      if (!isActiveRef.current) return;
+      if (!isActiveRef.current || isDcApiSession()) return;
 
       try {
         const response = await vpRequestStatus(verifyServiceUrl, reqId);
+
+        if (!isActiveRef.current || isDcApiSession()) return;
 
         if (response.status === "ACTIVE") {
             fetchVPStatus(reqId);
@@ -218,10 +225,13 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
       verifyServiceUrl,
       onQrCodeExpired,
       fetchVPResult,
+      isDcApiSession,
+      resetState,
+      onError,
     ]
   );
 
-  const createVPRequest = useCallback(async (isCrossDeviceFlow: boolean, responseMode?: "direct_post" | "dc_api", expectedOrigins?: string[]) => {
+  const createVPRequest = useCallback(async (isCrossDeviceFlow: boolean, responseMode?: "direct_post" | "dc_api") => {
     if (isActiveRef.current) return;
     isActiveRef.current = true;
     setLoading(true);
@@ -235,15 +245,19 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         transactionId ?? undefined,
         responseCodeValidationRequired,
         responseMode,
-        expectedOrigins,
       );
 
-      if (webWalletBaseUrl == null && !isCrossDeviceFlow) {
+      if (webWalletBaseUrl == null && !isCrossDeviceFlow && responseMode !== "dc_api") {
         sessionStateRef.current = {
           requestId: data.requestId,
+          flow: "openid4vp",
         };
       }
       if (isCrossDeviceFlow) {
+        sessionStateRef.current = {
+          requestId: data.requestId,
+          flow: "openid4vp",
+        };
         fetchVPStatus(data.requestId);
       }
       return data;
@@ -281,10 +295,10 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   };
 
   const startDcApiVerification = async () => {
-    const data = await createVPRequest(false, "dc_api", [window.location.origin]);
+    const data = await createVPRequest(false, "dc_api");
     if (!data) return;
 
-    sessionStateRef.current = { requestId: data.requestId };
+    sessionStateRef.current = { requestId: data.requestId, flow: "dc_api" };
 
     const controller = new AbortController();
     const timeoutMs = normalizeDcApiTimeoutMs(dcApiTimeoutMs);
@@ -294,7 +308,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     );
 
     try {
-      const signedJwt = await getVpRequestJwt(verifyServiceUrl, data.requestId, controller.signal);
+      const signedJwt = await getVpRequestJwt(verifyServiceUrl, data.requestId);
       const credential = await navigator.credentials.get({
         signal: controller.signal,
         digital: {
@@ -321,6 +335,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
       // implements POST /v2/vp-submission/dc-api and /vp-session-results.
       sessionStateRef.current = {
         requestId: data.requestId,
+        flow: "dc_api",
         dcApiCredentialData: credential.data,
       };
       setLoading(false);
@@ -394,9 +409,13 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      const requestId = sessionStateRef.current.requestId;
+      const { requestId, flow } = sessionStateRef.current;
       if (
-        document.visibilityState === "visible" && isActiveRef.current && requestId) {
+        document.visibilityState === "visible" &&
+        isActiveRef.current &&
+        requestId &&
+        flow !== "dc_api"
+      ) {
         fetchVPStatus(requestId);
       }
     };
@@ -417,9 +436,9 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         isActiveRef.current = true;
         fetchVPResult(responseCode);
       } else {
-        const savedRequestId = sessionStateRef.current.requestId;
+        const { requestId: savedRequestId, flow } = sessionStateRef.current;
 
-        if (savedRequestId) {
+        if (savedRequestId && flow !== "dc_api") {
           isActiveRef.current = true;
           setLoading(true);
           fetchVPStatus(savedRequestId);

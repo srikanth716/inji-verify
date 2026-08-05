@@ -86,11 +86,6 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     }
 
     @Override
-    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate) {
-        return createAuthorizationRequest(vpRequestCreate, null);
-    }
-
-    @Override
     public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest) {
         log.info("Creating authorization request");
         String transactionId = vpRequestCreate.getTransactionId() != null ? vpRequestCreate.getTransactionId() : Utils.generateID(Constants.TRANSACTION_ID_PREFIX);
@@ -118,9 +113,6 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
             }
             String verifierOrigin = VerifierOriginResolver.resolve(httpRequest)
                     .orElseThrow(() -> new VPRequestValidationException(ErrorCode.VERIFIER_ORIGIN_REQUIRED));
-            if (!VerifierOriginResolver.hintMatchesVerifierOrigin(vpRequestCreate.getExpectedOrigins(), verifierOrigin)) {
-                throw new VPRequestValidationException(ErrorCode.EXPECTED_ORIGIN_MISMATCH);
-            }
             expectedOrigins = List.of(verifierOrigin);
         } else {
             responseUri = verifyServiceBaseUrl + Constants.VP_RESPONSE_SUBMISSION_URI;

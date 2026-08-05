@@ -5,11 +5,15 @@ import org.springframework.util.StringUtils;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.List;
 import java.util.Optional;
 
 /**
  * Determines the verifier web origin from the HTTP request (Option A for DC API expected_origins).
+ * <p>
+ * Prefers the {@code Origin} header (always sent by browsers on CORS and same-origin POST).
+ * Falls back to the origin of {@code Referer} only when Origin is absent. Modern Referrer-Policy
+ * defaults and privacy extensions often strip or downgrade Referer, so that path rarely helps;
+ * if both are missing the call fails closed with {@code VERIFIER_ORIGIN_REQUIRED}.
  */
 public final class VerifierOriginResolver {
 
@@ -81,18 +85,6 @@ public final class VerifierOriginResolver {
         } catch (URISyntaxException e) {
             return Optional.empty();
         }
-    }
-
-    public static boolean hintMatchesVerifierOrigin(List<String> expectedOriginsHint, String verifierOrigin) {
-        if (expectedOriginsHint == null || expectedOriginsHint.isEmpty()) {
-            return true;
-        }
-        if (expectedOriginsHint.size() != 1) {
-            return false;
-        }
-        return canonicalize(expectedOriginsHint.get(0))
-                .map(hint -> hint.equals(verifierOrigin))
-                .orElse(false);
     }
 
     private static String stripTrailingSlash(String value) {
