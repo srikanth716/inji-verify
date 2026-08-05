@@ -51,7 +51,7 @@ public class AuthorizationRequestResponseDtoTest {
     }
 
     @Test
-    void serializedOutputIncludesExpectedOriginsForDcApi() throws Exception {
+    void should_includeExpectedOrigins_when_dcApiResponseMode() throws Exception {
         AuthorizationRequestResponseDto dto =
                 new AuthorizationRequestResponseDto(
                         "c1", DcqlTestFixtures.minimalDcqlDto(), null, "n", null, false, false,

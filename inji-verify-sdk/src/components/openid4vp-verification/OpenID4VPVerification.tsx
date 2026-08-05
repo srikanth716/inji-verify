@@ -308,7 +308,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     );
 
     try {
-      const signedJwt = await getVpRequestJwt(verifyServiceUrl, data.requestId);
+      const signedJwt = await getVpRequestJwt(verifyServiceUrl, data.requestId, controller.signal);
       const credential = await navigator.credentials.get({
         signal: controller.signal,
         digital: {
@@ -338,6 +338,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         flow: "dc_api",
         dcApiCredentialData: credential.data,
       };
+      isActiveRef.current = false;
       setLoading(false);
     } catch (err) {
       const name = err instanceof DOMException ? err.name : "";

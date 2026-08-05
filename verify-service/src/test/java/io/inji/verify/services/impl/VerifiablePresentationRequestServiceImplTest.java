@@ -295,7 +295,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void getVPRequestJwt_DcApiMode_OmitsStateAndResponseUri_IncludesExpectedOrigins() throws Exception {
+    void should_omitStateAndResponseUri_andIncludeExpectedOrigins_when_dcApiMode() throws Exception {
         String requestId = "reqDcApi";
         String didClient = "decentralized_identifier:did:web:verify.example.com";
         AuthorizationRequestResponseDto authzDto =
@@ -327,7 +327,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void createAuthorizationRequest_DcApi_PersistsServerOrigin() throws Exception {
+    void should_persistServerOrigin_when_dcApiRequest() throws Exception {
         clearInvocations(mockAuthorizationRequestCreateResponseRepository);
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -357,7 +357,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void createAuthorizationRequest_DcApi_NonDidClientId_ThrowsDcApiRequiresDidClientId() throws Exception {
+    void should_throwDcApiRequiresDidClientId_when_clientIdIsNotDid() throws Exception {
         VPRequestCreateDto dto = new VPRequestCreateDto(
                 "test_client_id",
                 "tx1",
@@ -376,7 +376,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void createAuthorizationRequest_DcApi_MissingOriginAndReferer_ThrowsVerifierOriginRequired() throws Exception {
+    void should_throwVerifierOriginRequired_when_originAndRefererMissing() throws Exception {
         String didClient = "decentralized_identifier:did:web:verify.example.com";
         VPRequestCreateDto dto = new VPRequestCreateDto(
                 didClient,
@@ -395,7 +395,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void createAuthorizationRequest_DcApi_UsesRefererWhenOriginAbsent() throws Exception {
+    void should_useRefererOrigin_when_originHeaderAbsent() throws Exception {
         clearInvocations(mockAuthorizationRequestCreateResponseRepository);
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));

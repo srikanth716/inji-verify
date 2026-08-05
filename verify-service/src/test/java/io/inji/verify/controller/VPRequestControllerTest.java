@@ -114,7 +114,7 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    public void testCreateVPRequest_Success() throws Exception {
+    public void should_createVpRequest_when_requestIsValid() throws Exception {
         VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
 
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
@@ -135,7 +135,7 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    void testCreateVPRequest_DcApi_ForwardsOriginOnHttpServletRequest() throws Exception {
+    void should_forwardOriginOnHttpServletRequest_when_dcApiVpRequest() throws Exception {
         VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", null, 0L, "https://verify.example.com/v1/verify/v2/vp-request/rId");
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
@@ -152,7 +152,7 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    void testCreateVPSessionRequest_DcApi_ForwardsOriginOnHttpServletRequest() throws Exception {
+    void should_forwardOriginOnHttpServletRequest_when_dcApiVpSessionRequest() throws Exception {
         VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", null, 0L, "https://verify.example.com/v1/verify/v2/vp-request/rId");
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
@@ -169,7 +169,7 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    public void testCreateVPRequest_WithoutDcqlQuery_IsAccepted() throws Exception {
+    public void should_acceptVpRequest_when_dcqlQueryIsMissing() throws Exception {
         VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
@@ -182,7 +182,7 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    public void testCreateVPRequest_WhenServiceThrows_propagatesException() {
+    public void should_propagateException_when_serviceThrows() {
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any()))
                 .thenThrow(new RuntimeException("unexpected"));
 
