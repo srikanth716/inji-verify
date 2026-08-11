@@ -137,10 +137,21 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
         // DID and DC API both use request_uri / JWT fetch
         if (isDcApi || vpRequestCreate.getClientId().startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
-            String requestUri = verifyServiceBaseUrl + Constants.VP_REQUEST_URI;
-            return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), null, authorizationRequestCreateResponse.getExpiresAt(), "%s/%s".formatted(requestUri, authorizationRequestCreateResponse.getRequestId()));
+            String requestUri = "%s/%s".formatted(
+                    verifyServiceBaseUrl + Constants.VP_REQUEST_URI,
+                    authorizationRequestCreateResponse.getRequestId());
+            String submissionUri = isDcApi
+                    ? verifyServiceBaseUrl + Constants.VP_DC_API_SUBMISSION_URI
+                    : null;
+            return new VPRequestResponseDto(
+                    authorizationRequestCreateResponse.getTransactionId(),
+                    authorizationRequestCreateResponse.getRequestId(),
+                    null,
+                    authorizationRequestCreateResponse.getExpiresAt(),
+                    requestUri,
+                    submissionUri);
         }
-        return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), authorizationRequestCreateResponse.getAuthorizationDetails(), authorizationRequestCreateResponse.getExpiresAt(), null);
+        return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), authorizationRequestCreateResponse.getAuthorizationDetails(), authorizationRequestCreateResponse.getExpiresAt(), null, null);
     }
 
     private String resolveResponseMode(String responseMode) {

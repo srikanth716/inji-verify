@@ -23,6 +23,9 @@ public final class VerifierOriginResolver {
     /**
      * Prefer the {@code Origin} header; fall back to the origin of {@code Referer}.
      * Returns empty if neither yields a usable http(s) origin.
+     * <p>
+     * Both headers are passed through {@link #canonicalize(String)}, which parses the URI,
+     * discards path/query, validates the scheme, and handles {@link URISyntaxException}.
      */
     public static Optional<String> resolve(HttpServletRequest request) {
         if (request == null) {
@@ -34,20 +37,7 @@ public final class VerifierOriginResolver {
         }
         String referer = request.getHeader("Referer");
         if (StringUtils.hasText(referer)) {
-            try {
-                URI uri = new URI(referer.trim());
-                if (uri.getScheme() == null || uri.getHost() == null) {
-                    return Optional.empty();
-                }
-                StringBuilder origin = new StringBuilder();
-                origin.append(uri.getScheme()).append("://").append(uri.getHost());
-                if (uri.getPort() > 0) {
-                    origin.append(":").append(uri.getPort());
-                }
-                return canonicalize(origin.toString());
-            } catch (URISyntaxException e) {
-                return Optional.empty();
-            }
+            return canonicalize(referer.trim());
         }
         return Optional.empty();
     }

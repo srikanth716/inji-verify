@@ -298,7 +298,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     const data = await createVPRequest(false, "dc_api");
     if (!data) return;
 
-    sessionStateRef.current = { requestId: data.requestId, flow: "dc_api" };
+    sessionStateRef.current = { requestId: data.requestId, flow: "dc_api", submissionUri: data.submissionUri};
 
     const controller = new AbortController();
     const timeoutMs = normalizeDcApiTimeoutMs(dcApiTimeoutMs);
@@ -308,7 +308,15 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     );
 
     try {
-      const signedJwt = await getVpRequestJwt(verifyServiceUrl, data.requestId, controller.signal);
+      if (!data.requestUri) {
+        onError({
+          errorCode: "NO_AUTH_REQUEST",
+          errorMessage: "VP session response missing requestUri",
+        });
+        resetState();
+        return;
+      }
+      const signedJwt = await getVpRequestJwt(data.requestUri, controller.signal);
       const credential = await navigator.credentials.get({
         signal: controller.signal,
         digital: {
@@ -332,10 +340,11 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
 
       // Slice 1: hold DigitalCredential for Slice 2 submission (no backend ingest yet).
       // onVPProcessed / onVPReceived are intentionally deferred until Slice 2
-      // implements POST /v2/vp-submission/dc-api and /vp-session-results.
+      // posts to data.submissionUri and calls /vp-session-results.
       sessionStateRef.current = {
         requestId: data.requestId,
         flow: "dc_api",
+        submissionUri: data.submissionUri,
         dcApiCredentialData: credential.data,
       };
       isActiveRef.current = false;

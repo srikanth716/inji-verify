@@ -34,4 +34,18 @@ class VerifierOriginResolverTest {
         assertTrue(VerifierOriginResolver.resolve(new MockHttpServletRequest()).isEmpty());
         assertTrue(VerifierOriginResolver.resolve(null).isEmpty());
     }
+
+    @Test
+    void should_returnEmpty_when_refererIsNotHttpOrigin() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Referer", "ftp://verify.example.com/path");
+        assertTrue(VerifierOriginResolver.resolve(request).isEmpty());
+    }
+
+    @Test
+    void should_canonicalizeReferer_when_pathAndQueryPresent() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Referer", "https://Verify.Example.COM:443/path?q=1#frag");
+        assertEquals("https://verify.example.com", VerifierOriginResolver.resolve(request).orElseThrow());
+    }
 }

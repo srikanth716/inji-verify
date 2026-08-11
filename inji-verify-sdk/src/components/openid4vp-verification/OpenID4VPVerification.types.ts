@@ -241,6 +241,8 @@ export interface SessionState {
    * When `dc_api`, visibility/saved-session must not call fetchVPStatus.
    */
   flow?: "openid4vp" | "dc_api";
+  /** Server-returned DC API submission endpoint (from VP session response). */
+  submissionUri?: string;
   /** Slice 1: browser DigitalCredential payload held until Slice 2 submission. */
   dcApiCredentialData?: unknown;
 }
