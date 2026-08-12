@@ -26,14 +26,13 @@ public class VPRequestResponseDtoTest {
         long expiresAt = 1687318740000L;
 
         VPRequestResponseDto vpRequestResponseDto =
-                new VPRequestResponseDto(transactionId, requestId, authorizationDetails, expiresAt, "url", null);
+                new VPRequestResponseDto(transactionId, requestId, authorizationDetails, expiresAt, "url");
 
         assertEquals(transactionId, vpRequestResponseDto.getTransactionId());
         assertEquals(requestId, vpRequestResponseDto.getRequestId());
         assertEquals(authorizationDetails, vpRequestResponseDto.getAuthorizationDetails());
         assertEquals(expiresAt, vpRequestResponseDto.getExpiresAt());
         assertEquals("url", vpRequestResponseDto.getRequestUri());
-        assertNull(vpRequestResponseDto.getSubmissionUri());
         assertEquals("url", vpRequestResponseDto.getAuthorizationDetails().getResponseUri());
     }
 }

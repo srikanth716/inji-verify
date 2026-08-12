@@ -115,7 +115,7 @@ public class VPRequestControllerTest {
 
     @Test
     public void should_createVpRequest_when_requestIsValid() throws Exception {
-        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "", null);
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
 
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
@@ -136,7 +136,7 @@ public class VPRequestControllerTest {
 
     @Test
     void should_forwardOriginOnHttpServletRequest_when_dcApiVpRequest() throws Exception {
-        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", null, 0L, "https://verify.example.com/v1/verify/v2/vp-request/rId", null);
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", null, 0L, "https://verify.example.com/v1/verify/v2/vp-request/rId");
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v2/vp-request")
@@ -153,7 +153,7 @@ public class VPRequestControllerTest {
 
     @Test
     void should_forwardOriginOnHttpServletRequest_when_dcApiVpSessionRequest() throws Exception {
-        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", null, 0L, "https://verify.example.com/v1/verify/v2/vp-request/rId", null);
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", null, 0L, "https://verify.example.com/v1/verify/v2/vp-request/rId");
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v2/vp-session-request")
@@ -170,7 +170,7 @@ public class VPRequestControllerTest {
 
     @Test
     public void should_acceptVpRequest_when_dcqlQueryIsMissing() throws Exception {
-        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "", null);
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v2/vp-request")
@@ -228,7 +228,7 @@ public class VPRequestControllerTest {
 
     @Test
     public void testCreateVPSessionRequest_SetsCookie() throws Exception {
-        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "", null);
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
 
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
@@ -248,7 +248,7 @@ public class VPRequestControllerTest {
         String body =
                 "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\"}]},"
                         + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
-        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "", null);
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))
@@ -262,7 +262,7 @@ public class VPRequestControllerTest {
         String body =
                 "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\",\"meta\":{}}]},"
                         + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
-        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "", null);
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/v2/vp-request").contentType(MediaType.APPLICATION_JSON).content(body))

@@ -16,7 +16,7 @@ import {
 } from "../../utils/api";
 import {clearUrl, summariseVPResult, normalizeVp, isDcApiSupported, isMobileDevice, normalizeDcApiTimeoutMs} from "../../utils/utils";
 import { QrData } from "../../types/OVPSchemeQrData";
-import { DC_API_PROTOCOL, DEFAULT_DC_API_TIMEOUT_MS } from "../../utils/constants";
+import { DC_API_PROTOCOL, DEFAULT_DC_API_TIMEOUT_MS, DEFAULT_PROTOCOL, VP_FORMATS_SUPPORTED } from "../../utils/constants";
 
 const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   triggerElement,
@@ -44,29 +44,6 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
 
   const shouldShowQRCode = !loading && qrCodeData;
 
-  const DEFAULT_PROTOCOL = "openid4vp://";
-
-  const VPFormatsSupported = useMemo(
-    () => ({
-      ldp_vp: {
-        proof_type: [
-          "Ed25519Signature2018",
-          "Ed25519Signature2020",
-          "RsaSignature2018",
-        ],
-      },
-      "dc+sd-jwt": {
-        "sd-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
-        "kb-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
-      },
-      "vc+sd-jwt": {
-        "sd-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
-        "kb-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
-      },
-    }),
-    []
-  );
-
   const resetState = useCallback(() => {
     setQrCodeData(null);
     setLoading(false);
@@ -93,7 +70,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
           params.set(
             "client_metadata",
             JSON.stringify({
-              vp_formats_supported: VPFormatsSupported,
+              vp_formats_supported: VP_FORMATS_SUPPORTED,
             })
           );
         }
@@ -211,12 +188,12 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     ]
   );
 
-  const createVPRequest = useCallback(async (isCrossDeviceFlow: boolean) => {
+  const createVPRequest = useCallback(async (isCrossDeviceFlow: boolean, responseMode: "direct_post" | "dc_api") => {
     if (isActiveRef.current) return;
     isActiveRef.current = true;
     setLoading(true);
     try {
-      const responseCodeValidationRequired = webWalletBaseUrl != null;
+      const responseCodeValidationRequired = responseMode === "dc_api" ? false : webWalletBaseUrl != null;
 
       const data = await vpSessionRequest(
         verifyServiceUrl,
@@ -224,13 +201,13 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         clientId,
         transactionId ?? undefined,
         responseCodeValidationRequired,
-        "direct_post",
+        responseMode,
       );
 
-      if (isCrossDeviceFlow || webWalletBaseUrl == null) {
+      if (responseMode !== "dc_api" && (isCrossDeviceFlow || webWalletBaseUrl == null)) {
         requestIdRef.current = data.requestId;
       }
-      if (isCrossDeviceFlow) {
+      if (responseMode !== "dc_api" && isCrossDeviceFlow) {
         fetchVPStatus(data.requestId);
       }
       return data;
@@ -250,7 +227,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   ]);
 
   const processQRCodeGenerationFlow = async () => {
-    const data = await createVPRequest(true);
+    const data = await createVPRequest(true, "direct_post");
     if (data) {
       const authParams = getAuthorizationRequestParams(data);
       const qrData = `${protocol || DEFAULT_PROTOCOL}authorize?${authParams}`;
@@ -260,7 +237,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   };
 
   const processDeepLinkFlow = async () => {
-    const data = await createVPRequest(false);
+    const data = await createVPRequest(false, "direct_post");
     if (!data) return;
     const authParams = getAuthorizationRequestParams(data);
 
@@ -281,26 +258,13 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   };
 
   const processDcAPIFlow = async () => {
-    if (isActiveRef.current) return;
-    isActiveRef.current = true;
-    setLoading(true);
-
     const controller = new AbortController();
     const timeoutMs = normalizeDcApiTimeoutMs(dcApiTimeoutMs);
-    const timeoutId = window.setTimeout(
-      () => controller.abort("DC_API_TIMEOUT"),
-      timeoutMs
-    );
+    const timeoutId = window.setTimeout(() => controller.abort("DC_API_TIMEOUT"), timeoutMs);
 
     try {
-      const data = await vpSessionRequest(
-        verifyServiceUrl,
-        dcqlQuery,
-        clientId,
-        transactionId ?? undefined,
-        false,
-        "dc_api",
-      );
+      const data = await createVPRequest(false, "dc_api");
+      if (!data) return;
 
       if (!data.requestUri) {
         onError({

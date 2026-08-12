@@ -34,3 +34,26 @@ export const VALID_SD_JWT_TYPES = new Set(['vc+sd-jwt', 'dc+sd-jwt']);
 
 export const DC_API_PROTOCOL = "openid4vp-v1-signed";
 export const DEFAULT_DC_API_TIMEOUT_MS = 300_000;
+
+// OpenID4VP deep-link protocol used when no `protocol` prop is provided.
+export const DEFAULT_PROTOCOL = "openid4vp://";
+
+// VP formats advertised in `client_metadata.vp_formats_supported`
+// for decentralized_identifier / redirect_uri client_ids.
+export const VP_FORMATS_SUPPORTED = {
+  ldp_vp: {
+    proof_type: [
+      "Ed25519Signature2018",
+      "Ed25519Signature2020",
+      "RsaSignature2018",
+    ],
+  },
+  "dc+sd-jwt": {
+    "sd-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
+    "kb-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
+  },
+  "vc+sd-jwt": {
+    "sd-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
+    "kb-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
+  },
+} as const;

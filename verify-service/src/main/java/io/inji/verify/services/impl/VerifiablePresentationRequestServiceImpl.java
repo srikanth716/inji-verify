@@ -104,7 +104,9 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         String responseMode = resolveResponseMode(vpRequestCreate.getResponseMode());
         boolean isDcApi = Constants.RESPONSE_MODE_DC_API.equals(responseMode);
         List<String> expectedOrigins = null;
-        String responseUri = null;
+        String responseUri = verifyServiceBaseUrl + (isDcApi
+            ? Constants.VP_DC_API_SUBMISSION_URI
+            : Constants.VP_RESPONSE_SUBMISSION_URI);
 
         if (isDcApi) {
             if (vpRequestCreate.getClientId() == null
@@ -114,8 +116,6 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
             String verifierOrigin = VerifierOriginResolver.resolve(httpRequest)
                     .orElseThrow(() -> new VPRequestValidationException(ErrorCode.VERIFIER_ORIGIN_REQUIRED));
             expectedOrigins = List.of(verifierOrigin);
-        } else {
-            responseUri = verifyServiceBaseUrl + Constants.VP_RESPONSE_SUBMISSION_URI;
         }
 
         boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
@@ -133,25 +133,12 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
         AuthorizationRequestCreateResponse authorizationRequestCreateResponse = new AuthorizationRequestCreateResponse(requestId, transactionId, authorizationRequestResponseDto, expiresAt);
         authorizationRequestCreateResponseRepository.save(authorizationRequestCreateResponse);
-        log.info("Authorization request created with responseMode={}", responseMode);
-
-        // DID and DC API both use request_uri / JWT fetch
-        if (isDcApi || vpRequestCreate.getClientId().startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
-            String requestUri = "%s/%s".formatted(
-                    verifyServiceBaseUrl + Constants.VP_REQUEST_URI,
-                    authorizationRequestCreateResponse.getRequestId());
-            String submissionUri = isDcApi
-                    ? verifyServiceBaseUrl + Constants.VP_DC_API_SUBMISSION_URI
-                    : null;
-            return new VPRequestResponseDto(
-                    authorizationRequestCreateResponse.getTransactionId(),
-                    authorizationRequestCreateResponse.getRequestId(),
-                    null,
-                    authorizationRequestCreateResponse.getExpiresAt(),
-                    requestUri,
-                    submissionUri);
+        log.info("Authorization request created");
+        if (vpRequestCreate.getClientId().startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
+            String requestUri = verifyServiceBaseUrl + Constants.VP_REQUEST_URI;
+            return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), null, authorizationRequestCreateResponse.getExpiresAt(), "%s/%s".formatted(requestUri, authorizationRequestCreateResponse.getRequestId()));
         }
-        return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), authorizationRequestCreateResponse.getAuthorizationDetails(), authorizationRequestCreateResponse.getExpiresAt(), null, null);
+        return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), authorizationRequestCreateResponse.getAuthorizationDetails(), authorizationRequestCreateResponse.getExpiresAt(), null);
     }
 
     private String resolveResponseMode(String responseMode) {
@@ -258,9 +245,6 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                 .map(authorizationRequestCreateResponse -> {
                     AuthorizationRequestResponseDto details = authorizationRequestCreateResponse.getAuthorizationDetails();
                     String verifierDid = details.getClientId();
-                    if (Constants.RESPONSE_MODE_DC_API.equals(details.getResponseMode())) {
-                        return createAndSignAuthorizationDcApiRequestJwt(verifierDid, details);
-                    }
                     String state = authorizationRequestCreateResponse.getRequestId();
                     return createAndSignAuthorizationRequestJwt(verifierDid, details, state);
                 })
@@ -270,80 +254,56 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     private String createAndSignAuthorizationRequestJwt(String verifierDid, AuthorizationRequestResponseDto authorizationRequest, String state) {
 
         try {
-            String issuer = stripDidPrefix(verifierDid);
+
+            String issuer = verifierDid != null ? verifierDid.replaceFirst("^" + Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER, "") : verifierDid;
+            boolean isDcApi = Constants.RESPONSE_MODE_DC_API.equals(authorizationRequest.getResponseMode());
+
             JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                     .issuer(issuer)
                     .issueTime(Date.from(Instant.now()))
                     .claim("client_id", verifierDid)
                     .jwtID(UUID.randomUUID().toString())
                     .claim("response_type", authorizationRequest.getResponseType())
-                    .claim("response_mode", Constants.RESPONSE_MODE_DIRECT_POST)
-                    .claim("nonce", authorizationRequest.getNonce())
-                    .claim("state", state)
-                    .claim("response_uri", authorizationRequest.getResponseUri());
+                    .claim("response_mode", authorizationRequest.getResponseMode())
+                    .claim("nonce", authorizationRequest.getNonce());
 
-            addClientMetadataIfDid(claimsBuilder, verifierDid);
-            JWTClaimsSet claimsSet = addDcqlClaim(claimsBuilder.build(), authorizationRequest);
-            return signAuthorizationRequestJwt(claimsSet);
+            if (isDcApi) {
+                claimsBuilder.claim("expected_origins", authorizationRequest.getExpectedOrigins());
+            } else {
+                claimsBuilder
+                        .claim("state", state)
+                        .claim("response_uri", authorizationRequest.getResponseUri());
+            }
+
+            if (verifierDid != null && verifierDid.startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
+                claimsBuilder.claim(
+                        "client_metadata",
+                        new ClientMetadataDto(VP_FORMATS_SUPPORTED)
+                );
+            }
+
+            JWTClaimsSet claimsSet = claimsBuilder.build();
+
+            // DCQL-only: never emit presentation_definition / presentation_definition_uri claims (spec).
+            if (authorizationRequest.getDcqlQuery() != null) {
+                String dcqlQueryJson = objectMapper.writeValueAsString(authorizationRequest.getDcqlQuery());
+                claimsSet = new JWTClaimsSet.Builder(claimsSet)
+                        .claim("dcql_query", JSONObjectUtils.parse(dcqlQueryJson))
+                        .build();
+            }
+
+            JWSHeader jwsHeader = new JWSHeader.Builder(JWSAlgorithm.EdDSA)
+                    .type(new JOSEObjectType("oauth-authz-req+jwt"))
+                    .keyID(verifyPublicKeyURI)
+                    .build();
+            SignedJWT signedJWT = new SignedJWT(jwsHeader, claimsSet);
+            JWSSigner signer = new Ed25519Signer(keyManagementService.getKeyPair());
+
+            signedJWT.sign(signer);
+            return signedJWT.serialize();
         } catch (ParseException | JOSEException | JsonProcessingException e) {
-            log.error("Error generating direct_post JWT: {}", e.getMessage());
+            log.error("Error generating JWT: {}", e.getMessage());
             throw new JWTCreationException();
         }
-    }
-
-    private String createAndSignAuthorizationDcApiRequestJwt(String verifierDid, AuthorizationRequestResponseDto authorizationRequest) {
-        try {
-            String issuer = stripDidPrefix(verifierDid);
-            JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
-                    .issuer(issuer)
-                    .issueTime(Date.from(Instant.now()))
-                    .claim("client_id", verifierDid)
-                    .jwtID(UUID.randomUUID().toString())
-                    .claim("response_type", authorizationRequest.getResponseType())
-                    .claim("response_mode", Constants.RESPONSE_MODE_DC_API)
-                    .claim("nonce", authorizationRequest.getNonce())
-                    .claim("expected_origins", authorizationRequest.getExpectedOrigins());
-
-            addClientMetadataIfDid(claimsBuilder, verifierDid);
-            JWTClaimsSet claimsSet = addDcqlClaim(claimsBuilder.build(), authorizationRequest);
-            return signAuthorizationRequestJwt(claimsSet);
-        } catch (ParseException | JOSEException | JsonProcessingException e) {
-            log.error("Error generating dc_api JWT: {}", e.getMessage());
-            throw new JWTCreationException();
-        }
-    }
-
-    private static String stripDidPrefix(String verifierDid) {
-        return verifierDid != null
-                ? verifierDid.replaceFirst("^" + Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER, "")
-                : null;
-    }
-
-    private void addClientMetadataIfDid(JWTClaimsSet.Builder claimsBuilder, String verifierDid) {
-        if (verifierDid != null && verifierDid.startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
-            claimsBuilder.claim("client_metadata", new ClientMetadataDto(VP_FORMATS_SUPPORTED));
-        }
-    }
-
-    private JWTClaimsSet addDcqlClaim(JWTClaimsSet claimsSet, AuthorizationRequestResponseDto authorizationRequest)
-            throws JsonProcessingException, ParseException {
-        if (authorizationRequest.getDcqlQuery() == null) {
-            return claimsSet;
-        }
-        String dcqlQueryJson = objectMapper.writeValueAsString(authorizationRequest.getDcqlQuery());
-        return new JWTClaimsSet.Builder(claimsSet)
-                .claim("dcql_query", JSONObjectUtils.parse(dcqlQueryJson))
-                .build();
-    }
-
-    private String signAuthorizationRequestJwt(JWTClaimsSet claimsSet) throws JOSEException {
-        JWSHeader jwsHeader = new JWSHeader.Builder(JWSAlgorithm.EdDSA)
-                .type(new JOSEObjectType("oauth-authz-req+jwt"))
-                .keyID(verifyPublicKeyURI)
-                .build();
-        SignedJWT signedJWT = new SignedJWT(jwsHeader, claimsSet);
-        JWSSigner signer = new Ed25519Signer(keyManagementService.getKeyPair());
-        signedJWT.sign(signer);
-        return signedJWT.serialize();
     }
 }

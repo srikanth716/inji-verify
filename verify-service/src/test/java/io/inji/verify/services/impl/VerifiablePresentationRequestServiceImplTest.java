@@ -304,7 +304,7 @@ class VerifiablePresentationRequestServiceImplTest {
                         DcqlTestFixtures.minimalDcqlDto(),
                         null,
                         "nonce-value-123456",
-                        null,
+                        "https://verify.example.com/v1/verify/v2/vp-submission/dc-api",
                         false,
                         false,
                         Constants.RESPONSE_MODE_DC_API,
@@ -347,17 +347,16 @@ class VerifiablePresentationRequestServiceImplTest {
         VPRequestResponseDto responseDto = service.createAuthorizationRequest(dto, request);
 
         assertNotNull(responseDto.getRequestUri());
-        assertNotNull(responseDto.getSubmissionUri());
-        assertTrue(responseDto.getSubmissionUri().endsWith(Constants.VP_DC_API_SUBMISSION_URI),
-                "submissionUri should end with '" + Constants.VP_DC_API_SUBMISSION_URI
-                        + "' but was: " + responseDto.getSubmissionUri());
         ArgumentCaptor<AuthorizationRequestCreateResponse> captor =
                 ArgumentCaptor.forClass(AuthorizationRequestCreateResponse.class);
         verify(mockAuthorizationRequestCreateResponseRepository, times(1)).save(captor.capture());
         AuthorizationRequestResponseDto details = captor.getValue().getAuthorizationDetails();
         assertEquals(Constants.RESPONSE_MODE_DC_API, details.getResponseMode());
         assertEquals(List.of("https://verify.example.com"), details.getExpectedOrigins());
-        assertNull(details.getResponseUri());
+        assertNotNull(details.getResponseUri());
+        assertTrue(details.getResponseUri().endsWith(Constants.VP_DC_API_SUBMISSION_URI),
+                "responseUri should end with '" + Constants.VP_DC_API_SUBMISSION_URI
+                        + "' but was: " + details.getResponseUri());
     }
 
     @Test
@@ -547,7 +546,6 @@ class VerifiablePresentationRequestServiceImplTest {
         assertEquals("tx_dec_id", response.getTransactionId());
         // DID-based flow: requestUri is populated, authorizationDetails is null
         assertNull(response.getAuthorizationDetails());
-        assertNull(response.getSubmissionUri());
         String requestUri = response.getRequestUri();
         assertNotNull(requestUri);
         // URI must embed the VP request path defined in Constants
