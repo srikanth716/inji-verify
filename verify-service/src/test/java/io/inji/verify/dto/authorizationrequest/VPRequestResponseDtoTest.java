@@ -9,7 +9,7 @@ import io.inji.verify.shared.Constants;
 public class VPRequestResponseDtoTest {
 
     @Test
-    public void testConstructor() {
+    public void should_populateAllFields_when_constructed() {
         String transactionId = "tx123";
         String requestId = "req123";
         AuthorizationRequestResponseDto authorizationDetails =

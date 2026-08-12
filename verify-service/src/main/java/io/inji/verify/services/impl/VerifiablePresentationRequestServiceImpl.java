@@ -103,7 +103,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
         String responseMode = resolveResponseMode(vpRequestCreate.getResponseMode());
         boolean isDcApi = Constants.RESPONSE_MODE_DC_API.equals(responseMode);
-        String responseUri = verifyServiceBaseUrl + (isDcApi ? Constants.VP_DC_API_SUBMISSION_URI : Constants.VP_RESPONSE_SUBMISSION_URI);
+        String responseUri = verifyServiceBaseUrl + (isDcApi ? Constants.VP_DC_API_SUBMISSION_URI : Constants.VP_DIRECT_POST_SUBMISSION_URI);
         List<String> expectedOrigins = null;
 
         if (isDcApi) {

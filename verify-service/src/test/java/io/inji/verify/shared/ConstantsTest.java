@@ -22,7 +22,7 @@ public class ConstantsTest {
 
     @Test
     @DisplayName("Verify URI constants")
-    void testUriConstants() {
+    void should_exposeExpectedUriPaths_when_constantsDefined() {
         assertEquals("/v2/vp-submission/direct-post", Constants.VP_DIRECT_POST_SUBMISSION_URI);
         assertEquals("/vp-submission/dc-api", Constants.VP_DC_API_SUBMISSION_URI);
         assertEquals("/v2/vp-request", Constants.VP_REQUEST_URI);
@@ -88,7 +88,7 @@ public class ConstantsTest {
 
     @Test
     @DisplayName("Verify constants are not null or empty")
-    void testConstantsNotNullOrEmpty() {
+    void should_keepUriAndResponseConstantsNonEmpty_when_defined() {
         assertNotNull(Constants.VP_DIRECT_POST_SUBMISSION_URI);
         assertFalse(Constants.VP_DIRECT_POST_SUBMISSION_URI.isEmpty());
 

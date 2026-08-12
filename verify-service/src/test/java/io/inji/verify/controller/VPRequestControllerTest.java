@@ -227,7 +227,7 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    public void testCreateVPSessionRequest_SetsCookie() throws Exception {
+    public void should_setTransactionCookie_when_vpSessionRequestCreated() throws Exception {
         VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "", null);
 
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
@@ -244,7 +244,7 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    void testCreateVPRequest_MissingMeta_IsAccepted() throws Exception {
+    void should_acceptVpRequest_when_credentialMetaIsMissing() throws Exception {
         String body =
                 "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\"}]},"
                         + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
@@ -258,7 +258,7 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    void testCreateVPRequest_EmptyMeta_IsAccepted() throws Exception {
+    void should_acceptVpRequest_when_credentialMetaIsEmpty() throws Exception {
         String body =
                 "{\"clientId\":\"c1\",\"nonce\":\"n\",\"dcqlQuery\":{\"credentials\":[{\"id\":\"x\",\"format\":\"dc+sd-jwt\",\"meta\":{}}]},"
                         + "\"acceptVPWithoutHolderProof\":false,\"responseCodeValidationRequired\":false}";
@@ -403,7 +403,7 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    void handleVPRequestValidationException_returnsErrorDto() throws Exception {
+    void should_returnErrorDto_when_vpRequestValidationException() throws Exception {
         BeanPropertyBindingResult bindingResult =
                 new BeanPropertyBindingResult(new Object(), "VPRequestCreateDto");
         bindingResult.addError(new FieldError(

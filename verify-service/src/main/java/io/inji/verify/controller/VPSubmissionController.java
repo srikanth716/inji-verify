@@ -85,7 +85,7 @@ public class VPSubmissionController {
                     description = "VP submission processed successfully. If a response code was generated, the response will include a redirect_uri for the client to be redirected to."
             )
     })
-    @PostMapping(path = Constants.VP_RESPONSE_SUBMISSION_URI, consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    @PostMapping(path = Constants.VP_DIRECT_POST_SUBMISSION_URI, consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public ResponseEntity<?> submitVP(
             @Parameter(description = "The vp_token containing the Verifiable Presentation data. This parameter is optional but either this or the error parameter must be provided. If provided, it must be a valid JSON object with specific structure rules.")
             @RequestParam(value = "vp_token", required = false) String vpToken,

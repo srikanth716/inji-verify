@@ -67,7 +67,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    public void shouldCreateNewAuthorizationRequest() throws Exception {
+    public void should_createAuthorizationRequest_when_requestIsValid() throws Exception {
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
                 .thenReturn(null);
 
@@ -88,7 +88,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    public void shouldCreateAuthorizationRequestWithMissingTransactionId() throws Exception {
+    public void should_generateTransactionId_when_transactionIdMissing() throws Exception {
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
                 .thenReturn(null);
 
@@ -304,7 +304,7 @@ class VerifiablePresentationRequestServiceImplTest {
                         DcqlTestFixtures.minimalDcqlDto(),
                         null,
                         "nonce-value-123456",
-                        "https://verify.example.com/v1/verify/v2/vp-submission/dc-api",
+                        "https://verify.example.com/v1/verify" + Constants.VP_DC_API_SUBMISSION_URI,
                         false,
                         false,
                         Constants.RESPONSE_MODE_DC_API,
@@ -470,7 +470,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    public void shouldCreateNewAuthorizationRequestWithResponseCodeValidationRequired() throws Exception {
+    public void should_createAuthorizationRequest_when_responseCodeValidationRequired() throws Exception {
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
                 .thenReturn(null);
 
@@ -492,7 +492,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void shouldUseProvidedNonce_whenValidNonceSupplied() throws Exception {
+    void should_useProvidedNonce_when_validNonceSupplied() throws Exception {
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
                 .thenReturn(null);
         String validNonce = "abcABC123-._~valid";  // 18 chars, all URL-safe
@@ -505,7 +505,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void shouldGenerateNonce_whenNonceIsNull() throws Exception {
+    void should_generateNonce_when_nonceIsNull() throws Exception {
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
                 .thenReturn(null);
 
@@ -518,7 +518,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void shouldGenerateNonce_whenNonceIsBlank() throws Exception {
+    void should_generateNonce_when_nonceIsBlank() throws Exception {
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
                 .thenReturn(null);
 
@@ -533,7 +533,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void shouldCreateAuthorizationRequest_WithDecentralizedIdentifierClientId() throws Exception {
+    void should_returnRequestUri_when_clientIdIsDecentralizedIdentifier() throws Exception {
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
                 .thenReturn(null);
 
@@ -562,7 +562,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void shouldFail_whenNonceContainsDisallowedCharacters() throws Exception {
+    void should_rejectNonce_when_nonceContainsDisallowedCharacters() throws Exception {
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", "invalid nonce value!", minimalDcqlQuery(), false);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -572,7 +572,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void shouldFail_whenNonceIsTooShort() throws Exception {
+    void should_rejectNonce_when_nonceIsTooShort() throws Exception {
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", "short", minimalDcqlQuery(), false);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -582,7 +582,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    public void shouldCreateNewAuthorizationRequestWithPresentationFlowCrossDevice() throws Exception {
+    public void should_createAuthorizationRequest_when_crossDevicePresentationFlow() throws Exception {
         when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
                 .thenReturn(null);
 
