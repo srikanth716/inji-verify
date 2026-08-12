@@ -147,8 +147,7 @@ public class VPRequestController {
     }
 
     @NotNull
-    private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie,
-                                                          HttpServletRequest httpRequest) {
+    private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie, HttpServletRequest httpRequest) {
         VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate, httpRequest);
 
         if (createCookie) {
