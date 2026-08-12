@@ -24,7 +24,7 @@ public final class Constants {
     public static final String VP_DC_API_SUBMISSION_URI = "/v2/vp-submission/dc-api";
     public static final String VP_REQUEST_URI = "/v2/vp-request";
     public static final String RESPONSE_TYPE =  "vp_token";
-    public static final String RESPONSE_MODE =  "direct_post";
+    public static final String RESPONSE_MODE_DIRECT_POST =  "direct_post";
     public static final String RESPONSE_MODE_DC_API = "dc_api";
     public static final String COOKIE_NAME = "transaction_id";
     public static final String CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER = "decentralized_identifier:";

@@ -58,7 +58,7 @@ public class AuthorizationRequestResponseDto {
         this.responseUri = responseUri;
         this.acceptVPWithoutHolderProof = acceptVPWithoutHolderProof;
         this.responseCodeValidationRequired = responseCodeValidationRequired;
-        this.responseMode = responseMode != null ? responseMode : Constants.RESPONSE_MODE;
+        this.responseMode = responseMode != null ? responseMode : Constants.RESPONSE_MODE_DIRECT_POST;
         this.expectedOrigins = expectedOrigins;
     }
 }

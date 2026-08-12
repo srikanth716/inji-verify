@@ -25,7 +25,7 @@ public class AuthorizationRequestResponseDtoTest {
 
         AuthorizationRequestResponseDto responseDto =
                 new AuthorizationRequestResponseDto(
-                        clientId, DcqlTestFixtures.minimalDcqlDto(), null, nonce, responseUri, true, false, Constants.RESPONSE_MODE, null);
+                        clientId, DcqlTestFixtures.minimalDcqlDto(), null, nonce, responseUri, true, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
 
         assertEquals(Constants.RESPONSE_TYPE, responseDto.getResponseType());
         assertEquals(clientId, responseDto.getClientId());
@@ -39,7 +39,7 @@ public class AuthorizationRequestResponseDtoTest {
     void serializedOutputOmitsLegacyPresentationDefinitionKeys() throws Exception {
         AuthorizationRequestResponseDto dto =
                 new AuthorizationRequestResponseDto(
-                        "c1", DcqlTestFixtures.minimalDcqlDto(), null, "n", "u", false, false, Constants.RESPONSE_MODE, null);
+                        "c1", DcqlTestFixtures.minimalDcqlDto(), null, "n", "u", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
 
         JsonNode out = MAPPER.valueToTree(dto);
         assertFalse(out.has("presentation_definition"));
@@ -47,7 +47,7 @@ public class AuthorizationRequestResponseDtoTest {
         assertTrue(out.has("dcqlQuery"));
         assertEquals("c1", out.get("clientId").asText());
         assertFalse(out.has("expectedOrigins"));
-        assertEquals(Constants.RESPONSE_MODE, out.get("responseMode").asText());
+        assertEquals(Constants.RESPONSE_MODE_DIRECT_POST, out.get("responseMode").asText());
     }
 
     @Test

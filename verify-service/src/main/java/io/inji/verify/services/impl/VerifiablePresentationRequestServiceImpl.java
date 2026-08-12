@@ -156,9 +156,9 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
     private String resolveResponseMode(String responseMode) {
         if (!StringUtils.hasText(responseMode)) {
-            return Constants.RESPONSE_MODE;
+            return Constants.RESPONSE_MODE_DIRECT_POST;
         }
-        if (Constants.RESPONSE_MODE.equals(responseMode) || Constants.RESPONSE_MODE_DC_API.equals(responseMode)) {
+        if (Constants.RESPONSE_MODE_DIRECT_POST.equals(responseMode) || Constants.RESPONSE_MODE_DC_API.equals(responseMode)) {
             return responseMode;
         }
         throw new VPRequestValidationException(ErrorCode.INVALID_RESPONSE_MODE);
@@ -277,7 +277,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                     .claim("client_id", verifierDid)
                     .jwtID(UUID.randomUUID().toString())
                     .claim("response_type", authorizationRequest.getResponseType())
-                    .claim("response_mode", Constants.RESPONSE_MODE)
+                    .claim("response_mode", Constants.RESPONSE_MODE_DIRECT_POST)
                     .claim("nonce", authorizationRequest.getNonce())
                     .claim("state", state)
                     .claim("response_uri", authorizationRequest.getResponseUri());

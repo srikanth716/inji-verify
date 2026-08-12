@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { QRCodeSVG } from "qrcode.react";
 import {
   AppError,
-  SessionState,
   OpenID4VPVerificationProps,
   VerificationResults,
   CredentialResult
@@ -32,7 +31,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   onError,
   clientId,
   isSameDeviceFlowEnabled = true,
-  enableDcApi = true,
+  enableDcApi = false,
   dcApiTimeoutMs = DEFAULT_DC_API_TIMEOUT_MS,
   webWalletBaseUrl,
   vpVerificationRequest,
@@ -41,9 +40,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   const [qrCodeData, setQrCodeData] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const isActiveRef = useRef(false);
-  const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hasFetchedVPResultRef = useRef(false);
-  const sessionStateRef = useRef<SessionState>({requestId: ""});
+  const requestIdRef = useRef("");
 
   const shouldShowQRCode = !loading && qrCodeData;
 
@@ -70,30 +67,14 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     []
   );
 
-  const clearSessionData = useCallback(() => {
-    sessionStateRef.current = {
-      requestId: "",
-    };
-  }, []);
-
   const resetState = useCallback(() => {
-    if (redirectTimeoutRef.current) {
-      clearTimeout(redirectTimeoutRef.current);
-      redirectTimeoutRef.current = null;
-    }
     setQrCodeData(null);
     setLoading(false);
     isActiveRef.current = false;
-    hasFetchedVPResultRef.current = false;
-    clearSessionData();
-  }, [clearSessionData]);
+    requestIdRef.current = "";
+  }, []);
 
-  const isDcApiSession = useCallback(
-    () => sessionStateRef.current.flow === "dc_api",
-    []
-  );
-
-  const getPresentationDefinitionParams = useCallback(
+  const getAuthorizationRequestParams = useCallback(
     (data: QrData) => {
       const params = new URLSearchParams();
       params.set("client_id", clientId);
@@ -198,12 +179,12 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
 
   const fetchVPStatus = useCallback(
     async (reqId: string) => {
-      if (!isActiveRef.current || isDcApiSession()) return;
+      if (!isActiveRef.current) return;
 
       try {
         const response = await vpRequestStatus(verifyServiceUrl, reqId);
 
-        if (!isActiveRef.current || isDcApiSession()) return;
+        if (!isActiveRef.current) return;
 
         if (response.status === "ACTIVE") {
             fetchVPStatus(reqId);
@@ -225,18 +206,17 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
       verifyServiceUrl,
       onQrCodeExpired,
       fetchVPResult,
-      isDcApiSession,
       resetState,
       onError,
     ]
   );
 
-  const createVPRequest = useCallback(async (isCrossDeviceFlow: boolean, responseMode?: "direct_post" | "dc_api") => {
+  const createVPRequest = useCallback(async (isCrossDeviceFlow: boolean) => {
     if (isActiveRef.current) return;
     isActiveRef.current = true;
     setLoading(true);
     try {
-      const responseCodeValidationRequired = webWalletBaseUrl != null && responseMode !== "dc_api";
+      const responseCodeValidationRequired = webWalletBaseUrl != null;
 
       const data = await vpSessionRequest(
         verifyServiceUrl,
@@ -244,20 +224,13 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         clientId,
         transactionId ?? undefined,
         responseCodeValidationRequired,
-        responseMode,
+        "direct_post",
       );
 
-      if (webWalletBaseUrl == null && !isCrossDeviceFlow && responseMode !== "dc_api") {
-        sessionStateRef.current = {
-          requestId: data.requestId,
-          flow: "openid4vp",
-        };
+      if (isCrossDeviceFlow || webWalletBaseUrl == null) {
+        requestIdRef.current = data.requestId;
       }
       if (isCrossDeviceFlow) {
-        sessionStateRef.current = {
-          requestId: data.requestId,
-          flow: "openid4vp",
-        };
         fetchVPStatus(data.requestId);
       }
       return data;
@@ -276,29 +249,41 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     resetState,
   ]);
 
-  const handleTriggerClick = () => {
-    if (isSameDeviceFlowEnabled) {
-      startVerification();
-    } else {
-      handleGenerateQRCode();
-    }
-  };
-
-  const handleGenerateQRCode = async () => {
-    const data = await createVPRequest(true, "direct_post");
+  const processQRCodeGenerationFlow = async () => {
+    const data = await createVPRequest(true);
     if (data) {
-      const pdParams = getPresentationDefinitionParams(data);
-      const qrData = `${protocol || DEFAULT_PROTOCOL}authorize?${pdParams}`;
+      const authParams = getAuthorizationRequestParams(data);
+      const qrData = `${protocol || DEFAULT_PROTOCOL}authorize?${authParams}`;
       setQrCodeData(qrData);
       setLoading(false);
     }
   };
 
-  const startDcApiVerification = async () => {
-    const data = await createVPRequest(false, "dc_api");
+  const processDeepLinkFlow = async () => {
+    const data = await createVPRequest(false);
     if (!data) return;
+    const authParams = getAuthorizationRequestParams(data);
 
-    sessionStateRef.current = { requestId: data.requestId, flow: "dc_api", submissionUri: data.submissionUri};
+    if (webWalletBaseUrl) {
+      let end = webWalletBaseUrl.length;
+      while (end > 0 && webWalletBaseUrl[end - 1] === "/") end--;
+      const baseUrl = webWalletBaseUrl.slice(0, end);
+      window.location.href = `${baseUrl}/authorize?${authParams}`;
+    } else if (isMobileDevice()) {
+      window.location.href = `${protocol || DEFAULT_PROTOCOL}authorize?${authParams}`;
+    } else {
+      onError({
+        errorMessage: "Same device flow can be enabled in desktop mode for only Web Wallets. Provide a valid webWalletBaseUrl",
+        errorCode: "MISSING_WEB_WALLET_BASE_URL"
+      });
+      resetState();
+    }
+  };
+
+  const processDcAPIFlow = async () => {
+    if (isActiveRef.current) return;
+    isActiveRef.current = true;
+    setLoading(true);
 
     const controller = new AbortController();
     const timeoutMs = normalizeDcApiTimeoutMs(dcApiTimeoutMs);
@@ -308,6 +293,15 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     );
 
     try {
+      const data = await vpSessionRequest(
+        verifyServiceUrl,
+        dcqlQuery,
+        clientId,
+        transactionId ?? undefined,
+        false,
+        "dc_api",
+      );
+
       if (!data.requestUri) {
         onError({
           errorCode: "NO_AUTH_REQUEST",
@@ -316,6 +310,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         resetState();
         return;
       }
+
       const signedJwt = await getVpRequestJwt(data.requestUri, controller.signal);
       const credential = await navigator.credentials.get({
         signal: controller.signal,
@@ -338,17 +333,8 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         return;
       }
 
-      // Slice 1: hold DigitalCredential for Slice 2 submission (no backend ingest yet).
-      // onVPProcessed / onVPReceived are intentionally deferred until Slice 2
-      // posts to data.submissionUri and calls /vp-session-results.
-      sessionStateRef.current = {
-        requestId: data.requestId,
-        flow: "dc_api",
-        submissionUri: data.submissionUri,
-        dcApiCredentialData: credential.data,
-      };
-      isActiveRef.current = false;
-      setLoading(false);
+      // Slice 2: POST credential.data to data.submissionUri, then fetchVPResult().
+      resetState();
     } catch (err) {
       const name = err instanceof DOMException ? err.name : "";
       const abortedForTimeout =
@@ -385,46 +371,23 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     }
   };
 
-  const startVerification = async () => {
-    if (
-      isDcApiSupported({
-        enableDcApi,
-        isSameDeviceFlowEnabled,
-        clientId,
-      })
-    ) {
-      await startDcApiVerification();
-      return;
-    }
-
-    const data = await createVPRequest(false);
-    if (!data) return;
-    const pdParams = getPresentationDefinitionParams(data);
-
-    if (webWalletBaseUrl) {
-      let end = webWalletBaseUrl.length;
-      while (end > 0 && webWalletBaseUrl[end - 1] === "/") end--;
-      const baseUrl = webWalletBaseUrl.slice(0, end);
-      window.location.href = `${baseUrl}/authorize?${pdParams}`;
-    } else if (isMobileDevice()) {
-      window.location.href = `${protocol || DEFAULT_PROTOCOL}authorize?${pdParams}`;
+  const handleTriggerClick = () => {
+    if (isSameDeviceFlowEnabled && isDcApiSupported({enableDcApi, isSameDeviceFlowEnabled, clientId})) {
+      processDcAPIFlow();
+    } else if (isSameDeviceFlowEnabled) {
+      processDeepLinkFlow();
     } else {
-      onError({
-        errorMessage: "Same device flow can be enabled in desktop mode for only Web Wallets. Provide a valid webWalletBaseUrl",
-        errorCode: "MISSING_WEB_WALLET_BASE_URL"
-      });
-      resetState();
+      processQRCodeGenerationFlow();
     }
   };
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      const { requestId, flow } = sessionStateRef.current;
+      const requestId = requestIdRef.current;
       if (
         document.visibilityState === "visible" &&
         isActiveRef.current &&
-        requestId &&
-        flow !== "dc_api"
+        requestId
       ) {
         fetchVPStatus(requestId);
       }
@@ -446,9 +409,9 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         isActiveRef.current = true;
         fetchVPResult(responseCode);
       } else {
-        const { requestId: savedRequestId, flow } = sessionStateRef.current;
+        const savedRequestId = requestIdRef.current;
 
-        if (savedRequestId && flow !== "dc_api") {
+        if (savedRequestId) {
           isActiveRef.current = true;
           setLoading(true);
           fetchVPStatus(savedRequestId);
@@ -493,10 +456,12 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
 
   useEffect(() => {
     if (!triggerElement) {
-      if (isSameDeviceFlowEnabled) {
-        startVerification();
+      if (isSameDeviceFlowEnabled && isDcApiSupported({enableDcApi, isSameDeviceFlowEnabled, clientId})) {
+        processDcAPIFlow();
+      } else if (isSameDeviceFlowEnabled) {
+        processDeepLinkFlow();
       } else {
-        handleGenerateQRCode();
+        processQRCodeGenerationFlow();
       }
     }
   }, [triggerElement, isSameDeviceFlowEnabled]);

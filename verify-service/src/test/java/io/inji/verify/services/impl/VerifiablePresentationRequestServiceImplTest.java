@@ -165,7 +165,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 new AuthorizationRequestResponseDto(
                         null, // null clientId → verifierDid null
                         DcqlTestFixtures.minimalDcqlDto(),
-                        null, "nonce", "https://resp.example/post", false, false, Constants.RESPONSE_MODE, null);
+                        null, "nonce", "https://resp.example/post", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
         AuthorizationRequestCreateResponse authzResponse =
                 new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 5000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(authzResponse));
@@ -188,7 +188,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 new AuthorizationRequestResponseDto(
                         did,
                         DcqlTestFixtures.minimalDcqlDto(),
-                        null, "nonce", "https://resp.example/post", false, false, Constants.RESPONSE_MODE, null);
+                        null, "nonce", "https://resp.example/post", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
         AuthorizationRequestCreateResponse authzResponse =
                 new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 5000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(authzResponse));
@@ -220,7 +220,7 @@ class VerifiablePresentationRequestServiceImplTest {
                         "nonce",
                         "https://verifier.example/resp",
                         false,
-                        false, Constants.RESPONSE_MODE, null);
+                        false, Constants.RESPONSE_MODE_DIRECT_POST, null);
 
         AuthorizationRequestCreateResponse authzResponse =
                 new AuthorizationRequestCreateResponse(requestId, null, authzDetailsDto, 0L);
@@ -257,7 +257,7 @@ class VerifiablePresentationRequestServiceImplTest {
     void getVPRequestJwt_WhenDcqlMissing_ReturnsJwtWithoutDcqlClaim() throws Exception {
         String requestId = "reqMissingDcql";
         AuthorizationRequestResponseDto authzDto =
-                new AuthorizationRequestResponseDto("did:example", null, null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE, null);
+                new AuthorizationRequestResponseDto("did:example", null, null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
         AuthorizationRequestCreateResponse response =
                 new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 1000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(response));
@@ -279,7 +279,7 @@ class VerifiablePresentationRequestServiceImplTest {
                         requestId,
                         "tx",
                         new AuthorizationRequestResponseDto(
-                                "did:example", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE, null),
+                                "did:example", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null),
                         Instant.now().toEpochMilli() + 2000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(response));
 
@@ -430,7 +430,7 @@ class VerifiablePresentationRequestServiceImplTest {
     void getVPRequestJwt_WithExpiredRequest_AllowsJwt() throws Exception {
         String requestId = "expiredReq";
         AuthorizationRequestResponseDto authzDto =
-                new AuthorizationRequestResponseDto("did:example", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE, null);
+                new AuthorizationRequestResponseDto("did:example", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
         AuthorizationRequestCreateResponse expiredResponse =
                 new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() - 5000);
         when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(expiredResponse));

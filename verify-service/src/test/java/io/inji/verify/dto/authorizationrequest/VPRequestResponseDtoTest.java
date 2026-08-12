@@ -21,7 +21,7 @@ public class VPRequestResponseDtoTest {
                         "url",
                         false,
                         false,
-                        Constants.RESPONSE_MODE,
+                        Constants.RESPONSE_MODE_DIRECT_POST,
                         null);
         long expiresAt = 1687318740000L;
 

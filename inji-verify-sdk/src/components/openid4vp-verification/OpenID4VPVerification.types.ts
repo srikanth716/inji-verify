@@ -179,8 +179,8 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
   isSameDeviceFlowEnabled?: boolean;
 
   /**
-   * When true (default), same-device mobile + DID clientId may use the W3C Digital Credentials API
-   * if the browser supports `openid4vp-v1-signed`. Otherwise falls back to OpenID4VP deep-link / QR.
+   * When true, same-device mobile + DID clientId may use the W3C Digital Credentials API
+   * if the browser supports `openid4vp-v1-signed`. Defaults to false; otherwise falls back to OpenID4VP deep-link / QR.
    */
   enableDcApi?: boolean;
 
@@ -233,19 +233,6 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
 
     summariseResults?: boolean;
 };
-
-export interface SessionState {
-  requestId: string;
-  /**
-   * Distinguishes OpenID4VP status-polling sessions from DC API.
-   * When `dc_api`, visibility/saved-session must not call fetchVPStatus.
-   */
-  flow?: "openid4vp" | "dc_api";
-  /** Server-returned DC API submission endpoint (from VP session response). */
-  submissionUri?: string;
-  /** Slice 1: browser DigitalCredential payload held until Slice 2 submission. */
-  dcApiCredentialData?: unknown;
-}
 
 export type AppError = {
   errorMessage: string;
