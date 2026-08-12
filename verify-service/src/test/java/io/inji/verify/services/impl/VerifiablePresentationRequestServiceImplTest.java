@@ -347,16 +347,17 @@ class VerifiablePresentationRequestServiceImplTest {
         VPRequestResponseDto responseDto = service.createAuthorizationRequest(dto, request);
 
         assertNotNull(responseDto.getRequestUri());
+        assertNotNull(responseDto.getResponseUri());
+        assertTrue(responseDto.getResponseUri().endsWith(Constants.VP_DC_API_SUBMISSION_URI),
+                "responseUri should end with '" + Constants.VP_DC_API_SUBMISSION_URI
+                        + "' but was: " + responseDto.getResponseUri());
         ArgumentCaptor<AuthorizationRequestCreateResponse> captor =
                 ArgumentCaptor.forClass(AuthorizationRequestCreateResponse.class);
         verify(mockAuthorizationRequestCreateResponseRepository, times(1)).save(captor.capture());
         AuthorizationRequestResponseDto details = captor.getValue().getAuthorizationDetails();
         assertEquals(Constants.RESPONSE_MODE_DC_API, details.getResponseMode());
         assertEquals(List.of("https://verify.example.com"), details.getExpectedOrigins());
-        assertNotNull(details.getResponseUri());
-        assertTrue(details.getResponseUri().endsWith(Constants.VP_DC_API_SUBMISSION_URI),
-                "responseUri should end with '" + Constants.VP_DC_API_SUBMISSION_URI
-                        + "' but was: " + details.getResponseUri());
+        assertEquals(responseDto.getResponseUri(), details.getResponseUri());
     }
 
     @Test

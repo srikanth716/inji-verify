@@ -297,7 +297,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         return;
       }
 
-      // Slice 2: POST credential.data to data.submissionUri, then fetchVPResult().
+      // Slice 2: POST credential.data to data.responseUri, then fetchVPResult().
       resetState();
     } catch (err) {
       const name = err instanceof DOMException ? err.name : "";

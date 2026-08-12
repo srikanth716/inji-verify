@@ -26,7 +26,7 @@ public class VPRequestResponseDtoTest {
         long expiresAt = 1687318740000L;
 
         VPRequestResponseDto vpRequestResponseDto =
-                new VPRequestResponseDto(transactionId, requestId, authorizationDetails, expiresAt, "url");
+                new VPRequestResponseDto(transactionId, requestId, authorizationDetails, expiresAt, "url", null);
 
         assertEquals(transactionId, vpRequestResponseDto.getTransactionId());
         assertEquals(requestId, vpRequestResponseDto.getRequestId());

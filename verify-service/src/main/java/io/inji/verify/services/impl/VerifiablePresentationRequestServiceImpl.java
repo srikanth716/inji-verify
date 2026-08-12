@@ -103,14 +103,11 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
         String responseMode = resolveResponseMode(vpRequestCreate.getResponseMode());
         boolean isDcApi = Constants.RESPONSE_MODE_DC_API.equals(responseMode);
+        String responseUri = verifyServiceBaseUrl + (isDcApi ? Constants.VP_DC_API_SUBMISSION_URI : Constants.VP_RESPONSE_SUBMISSION_URI);
         List<String> expectedOrigins = null;
-        String responseUri = verifyServiceBaseUrl + (isDcApi
-            ? Constants.VP_DC_API_SUBMISSION_URI
-            : Constants.VP_RESPONSE_SUBMISSION_URI);
 
         if (isDcApi) {
-            if (vpRequestCreate.getClientId() == null
-                    || !vpRequestCreate.getClientId().startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
+            if (vpRequestCreate.getClientId() == null || !vpRequestCreate.getClientId().startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
                 throw new VPRequestValidationException(ErrorCode.DC_API_REQUIRES_DID_CLIENT_ID);
             }
             String verifierOrigin = VerifierOriginResolver.resolve(httpRequest)
@@ -136,9 +133,9 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         log.info("Authorization request created");
         if (vpRequestCreate.getClientId().startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
             String requestUri = verifyServiceBaseUrl + Constants.VP_REQUEST_URI;
-            return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), null, authorizationRequestCreateResponse.getExpiresAt(), "%s/%s".formatted(requestUri, authorizationRequestCreateResponse.getRequestId()));
+            return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), null, authorizationRequestCreateResponse.getExpiresAt(), "%s/%s".formatted(requestUri, authorizationRequestCreateResponse.getRequestId()), isDcApi ? responseUri : null);
         }
-        return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), authorizationRequestCreateResponse.getAuthorizationDetails(), authorizationRequestCreateResponse.getExpiresAt(), null);
+        return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), authorizationRequestCreateResponse.getAuthorizationDetails(), authorizationRequestCreateResponse.getExpiresAt(), null, null);
     }
 
     private String resolveResponseMode(String responseMode) {
