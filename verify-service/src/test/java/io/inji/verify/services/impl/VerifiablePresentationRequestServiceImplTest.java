@@ -120,7 +120,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 dcqlQuery,
                 false);
 
-        service.createAuthorizationRequest(vpRequestCreateDto);
+        service.createAuthorizationRequest(vpRequestCreateDto, null);
 
         verify(mockDcqlValidator, times(1)).validate(dcqlQuery);
     }
@@ -139,7 +139,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 .when(mockDcqlValidator).validate(any(DCQLQueryDto.class));
         try {
             assertThrows(VPRequestValidationException.class,
-                    () -> service.createAuthorizationRequest(vpRequestCreateDto));
+                    () -> service.createAuthorizationRequest(vpRequestCreateDto, null));
         } finally {
             // mockDcqlValidator is a shared static mock (initialized once in @BeforeAll); reset it
             // so this failure stub doesn't leak into other tests in this class.

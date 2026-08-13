@@ -72,7 +72,6 @@ public class VPRequestController {
     public ResponseEntity<Object> createVPRequest(
             @Parameter(description = "The parameters for creating a VP request, including the DCQL query and other relevant details.")
             @Valid @RequestBody VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest) {
-        dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
         return processCreateVPRequest(vpRequestCreate, false, httpRequest);
     }
 
@@ -91,7 +90,6 @@ public class VPRequestController {
     public ResponseEntity<Object> createVPSessionRequest(
             @Parameter(description = "The parameters for creating a VP session request, including the DCQL query and other relevant details. A cookie will be set for session tracking.")
             @Valid @RequestBody VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest) {
-        dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
         return processCreateVPRequest(vpRequestCreate, true, httpRequest);
     }
 

@@ -32,6 +32,7 @@ import io.inji.verify.services.VerifiablePresentationRequestService;
 import io.inji.verify.utils.SecurityUtils;
 import io.inji.verify.utils.Utils;
 import io.inji.verify.utils.VerifierOriginResolver;
+import io.inji.verify.validator.DcqlValidator;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

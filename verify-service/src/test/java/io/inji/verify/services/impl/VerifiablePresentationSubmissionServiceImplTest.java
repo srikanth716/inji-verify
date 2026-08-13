@@ -2637,7 +2637,8 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     List.of(new CredentialQueryDto(credentialId, "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null)),
                     null);
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    CLIENT_ID, dcqlQuery, null, NONCE, "https://resp.example/post", false, false);
+                    CLIENT_ID, dcqlQuery, null, NONCE, "https://resp.example/post", false, false,
+                    Constants.RESPONSE_MODE_DIRECT_POST, null);
             return new AuthorizationRequestCreateResponse(STATE, "tx", authDetails, Instant.now().toEpochMilli() + 10000);
         }
 
@@ -2837,7 +2838,8 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         @Test
         void submitVerifiablePresentation_errorOnlySubmission_endToEnd_succeeds() {
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    CLIENT_ID, null, null, NONCE, "https://resp.example/post", false, false);
+                    CLIENT_ID, null, null, NONCE, "https://resp.example/post", false, false,
+                    Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse =
                     new AuthorizationRequestCreateResponse(STATE, "tx", authDetails, Instant.now().toEpochMilli() + 10000);
             when(authorizationRequestCreateResponseRepository.findById(STATE)).thenReturn(Optional.of(authResponse));
