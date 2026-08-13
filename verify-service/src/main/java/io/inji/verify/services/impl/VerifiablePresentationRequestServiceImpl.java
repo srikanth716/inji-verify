@@ -17,7 +17,6 @@ import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.client.ClientMetadataDto;
-import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.enums.VPRequestStatus;
 import io.inji.verify.exception.JWTCreationException;
@@ -35,8 +34,6 @@ import io.inji.verify.utils.Utils;
 import io.inji.verify.utils.VerifierOriginResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.async.DeferredResult;
@@ -60,6 +57,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     final VPSubmissionRepository vpSubmissionRepository;
     final KeyManagementService<OctetKeyPair> keyManagementService;
     final ObjectMapper objectMapper;
+    final DcqlValidator dcqlValidator;
 
     @Value("${inji.vp-request.long-polling-timeout}")
     Long defaultTimeout;
@@ -78,16 +76,19 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
             AuthorizationRequestCreateResponseRepository authorizationRequestCreateResponseRepository,
             VPSubmissionRepository vpSubmissionRepository,
             KeyManagementService<OctetKeyPair> keyManagementService,
-            ObjectMapper objectMapper) {
+            ObjectMapper objectMapper,
+            DcqlValidator dcqlValidator) {
         this.authorizationRequestCreateResponseRepository = authorizationRequestCreateResponseRepository;
         this.vpSubmissionRepository = vpSubmissionRepository;
         this.keyManagementService = keyManagementService;
         this.objectMapper = objectMapper;
+        this.dcqlValidator = dcqlValidator;
     }
 
     @Override
     public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest) {
         log.info("Creating authorization request");
+        dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
         String transactionId = vpRequestCreate.getTransactionId() != null ? vpRequestCreate.getTransactionId() : Utils.generateID(Constants.TRANSACTION_ID_PREFIX);
         String requestId = Utils.generateID(Constants.REQUEST_ID_PREFIX);
         long expiresAt = Instant.now().plusSeconds(Constants.DEFAULT_EXPIRY).toEpochMilli();
@@ -230,7 +231,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                 })
                 .orElseGet(() -> {
                     DeferredResult<VPRequestStatusDto> result = new DeferredResult<>();
-                    result.setErrorResult(ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorDto(ErrorCode.NO_AUTH_REQUEST)));
+                    result.setErrorResult(new VPRequestNotFoundException());
                     return result;
                 });
     }
