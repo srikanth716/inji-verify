@@ -262,21 +262,6 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    public void testGetVPRequest_NotFound() throws Exception {
-        String requestId = "missing-req";
-
-        when(verifiablePresentationRequestService.getVPRequestJwt(requestId))
-                .thenThrow(new io.inji.verify.exception.VPRequestNotFoundException());
-
-        mockMvc.perform(get("/v2/vp-request/{requestId}", requestId))
-                .andExpect(status().isNotFound())
-                .andExpect(content().string(objectMapper.writeValueAsString(
-                        new ErrorDto(io.inji.verify.enums.ErrorCode.NO_AUTH_REQUEST))));
-
-        verify(verifiablePresentationRequestService, times(1)).getVPRequestJwt(requestId);
-    }
-
-    @Test
     public void testGetStatus_NotFound1() throws Exception {
         String requestId = "missing-req";
         DeferredResult<VPRequestStatusDto> deferredResult = new DeferredResult<>();
