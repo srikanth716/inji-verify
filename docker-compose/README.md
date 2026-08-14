@@ -158,7 +158,131 @@ This will open app.
 
 Navigate to the docker-compose directory:
 
+<<<<<<< HEAD
 ```shell
+=======
+## Why?
+
+Mobile devices cannot access `localhost`.
+
+## Solution:
+
+```bash
+ngrok http 3000
+```
+
+Example:
+
+```
+https://abc123.ngrok.app → http://localhost:3000
+```
+
+## Update docker-compose.yml
+
+Replace:
+
+```
+VERIFY_SERVICE_PROXY_FOR_LOCALHOST
+```
+
+With:
+
+```
+abc123.ngrok.app
+```
+
+---
+
+# 📱 Flows
+
+## Cross Device Flow
+
+To test the cross-device flow on a mobile or tablet device, scan the VP request QR code directly. For credentials with `clientIdPrefix` set to `pre_registered`, the wallet cannot share the VC unless the locally running Verify application is registered as a trusted verifier. For credentials with `clientIdPrefix` set to `decentralized_identifier`, the wallet can share the VC. For `pre_registered`, add the client ID to `mimoto-trusted-verifiers.json`, which Inji Wallet uses as its trusted verifier list.
+
+### Behavior:
+
+* `decentralized_identifier` → Works directly
+* `pre_registered` → Needs trusted verifier config
+
+---
+
+## Same Device Flow
+
+To test the Same Device flow on your mobile / tablet device, hit the URL https://proxyurl.ngrok.app. This will open the app.
+
+> **Note:** VP submission is disabled by default (`VP_SUBMISSION_SUPPORTED=false`). Set it to `true` in `docker-compose.yml` to enable the OpenID4VP tab.
+
+---
+
+# 🐳 Docker Commands
+
+## Start
+
+```bash
+docker compose up -d
+```
+
+## Stop
+
+```bash
+docker compose down
+```
+
+## Reset (with volumes)
+
+```bash
+docker compose down -v
+```
+
+## Logs
+
+```bash
+docker compose logs -f
+```
+
+---
+
+# 🛠 Local Development
+
+## 1. Enable Local Build
+
+```yaml
+verify-service:
+  #image: injistackdev/inji-verify-service:develop  
+  build:
+    context: ../verify-service
+  image: inji-verify-service:local    
+verify-ui:
+  #image: injistackdev/inji-verify-ui:develop
+  build:
+    context: ../verify-ui
+  image: inji-verify-ui:local    
+```
+
+---
+
+## 2. Build verify-service locally first
+
+`verify-service`'s Dockerfile does **not** run Maven — it only packages a jar that must already
+exist in `verify-service/target/`. Unlike `verify-ui` (whose Dockerfile builds the React app from
+source), `docker compose build` will silently reuse whatever's already in `target/` if you skip
+this step, including a stale jar from before your latest changes.
+
+> **Never `cd verify-service` and build it standalone.** It depends on the sibling `verify-core`
+> module; building it alone resolves `verify-core` from your `~/.m2` cache instead of current
+> source, which silently uses a **stale** `verify-core` jar if it's changed since your last
+> install — producing confusing `NoClassDefFoundError`s at container startup that don't reproduce
+> locally. Always build from the repo root.
+
+```bash
+cd inji-verify   # repo root
+mvn clean install -Dgpg.skip   # builds + installs verify-core and verify-service together
+```
+
+## 3. Clear Cache and Start Docker Compose
+
+```bash
+>>>>>>> 73095bd4 (#2148 split into two components verify-core and verify-service (#2231))
 cd docker-compose
 ```
 
