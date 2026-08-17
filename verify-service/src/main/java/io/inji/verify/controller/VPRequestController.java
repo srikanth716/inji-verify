@@ -9,6 +9,7 @@ import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
 import io.inji.verify.dto.core.ErrorDto;
+import io.inji.verify.dto.submission.VPTokenResultDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.exception.VPRequestValidationException;
@@ -19,10 +20,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -71,8 +70,8 @@ public class VPRequestController {
     })
     public ResponseEntity<Object> createVPRequest(
             @Parameter(description = "The parameters for creating a VP request, including the DCQL query and other relevant details.")
-            @Valid @RequestBody VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest) {
-        return processCreateVPRequest(vpRequestCreate, false, httpRequest);
+            @Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
+        return processCreateVPRequest(vpRequestCreate, false);
     }
 
     @Operation(summary = "Create a new VP session request with cookie management. Validates the DCQL query, creates the request, and sets a cookie for session tracking.")
@@ -89,8 +88,8 @@ public class VPRequestController {
     })
     public ResponseEntity<Object> createVPSessionRequest(
             @Parameter(description = "The parameters for creating a VP session request, including the DCQL query and other relevant details. A cookie will be set for session tracking.")
-            @Valid @RequestBody VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest) {
-        return processCreateVPRequest(vpRequestCreate, true, httpRequest);
+            @Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
+        return processCreateVPRequest(vpRequestCreate, true);
     }
 
     @Operation(summary = "Get the status of a VP request by its ID. Returns the current status of the request, including any relevant details.")
@@ -143,9 +142,8 @@ public class VPRequestController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorDto(ErrorCode.NO_AUTH_REQUEST));
     }
 
-    @NotNull
-    private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie, HttpServletRequest httpRequest) {
-        VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate, httpRequest);
+    private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie) {
+        VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate);
 
         if (createCookie) {
             String transactionId = authorizationRequestResponse.getTransactionId();

@@ -31,9 +31,7 @@ import io.inji.verify.shared.Constants;
 import io.inji.verify.services.VerifiablePresentationRequestService;
 import io.inji.verify.utils.SecurityUtils;
 import io.inji.verify.utils.Utils;
-import io.inji.verify.utils.VerifierOriginResolver;
 import io.inji.verify.validator.DcqlValidator;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -87,7 +85,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     }
 
     @Override
-    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest) {
+    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate) {
         log.info("Creating authorization request");
         dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
         String transactionId = vpRequestCreate.getTransactionId() != null ? vpRequestCreate.getTransactionId() : Utils.generateID(Constants.TRANSACTION_ID_PREFIX);
@@ -102,20 +100,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         } else {
             nonce = SecurityUtils.generateNonce();
         }
-
-        String responseMode = resolveResponseMode(vpRequestCreate.getResponseMode());
-        boolean isDcApi = Constants.RESPONSE_MODE_DC_API.equals(responseMode);
-        String responseUri = verifyServiceBaseUrl + (isDcApi ? Constants.VP_DC_API_SUBMISSION_URI : Constants.VP_DIRECT_POST_SUBMISSION_URI);
-        List<String> expectedOrigins = null;
-
-        if (isDcApi) {
-            if (vpRequestCreate.getClientId() == null || !vpRequestCreate.getClientId().startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
-                throw new VPRequestValidationException(ErrorCode.DC_API_REQUIRES_DID_CLIENT_ID);
-            }
-            String verifierOrigin = VerifierOriginResolver.resolve(httpRequest)
-                    .orElseThrow(() -> new VPRequestValidationException(ErrorCode.VERIFIER_ORIGIN_REQUIRED));
-            expectedOrigins = List.of(verifierOrigin);
-        }
+        String responseUri = verifyServiceBaseUrl + Constants.VP_RESPONSE_SUBMISSION_URI;
 
         boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
         AuthorizationRequestResponseDto authorizationRequestResponseDto = new AuthorizationRequestResponseDto(
@@ -125,29 +110,17 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                 nonce,
                 responseUri,
                 false, //acceptVPWithoutHolderProof is deprecated and should not be used, set to false for backward compatibility
-                responseCodeValidationRequired,
-                responseMode,
-                expectedOrigins
+                responseCodeValidationRequired
         );
 
         AuthorizationRequestCreateResponse authorizationRequestCreateResponse = new AuthorizationRequestCreateResponse(requestId, transactionId, authorizationRequestResponseDto, expiresAt);
         authorizationRequestCreateResponseRepository.save(authorizationRequestCreateResponse);
         log.info("Authorization request created");
-        if (vpRequestCreate.getClientId().startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
+        if (vpRequestCreate.getClientId().startsWith("decentralized_identifier")) {
             String requestUri = verifyServiceBaseUrl + Constants.VP_REQUEST_URI;
-            return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), null, authorizationRequestCreateResponse.getExpiresAt(), "%s/%s".formatted(requestUri, authorizationRequestCreateResponse.getRequestId()), isDcApi ? responseUri : null);
+            return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), null, authorizationRequestCreateResponse.getExpiresAt(), "%s/%s".formatted(requestUri, authorizationRequestCreateResponse.getRequestId()));
         }
-        return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), authorizationRequestCreateResponse.getAuthorizationDetails(), authorizationRequestCreateResponse.getExpiresAt(), null, null);
-    }
-
-    private String resolveResponseMode(String responseMode) {
-        if (!StringUtils.hasText(responseMode)) {
-            return Constants.RESPONSE_MODE_DIRECT_POST;
-        }
-        if (Constants.RESPONSE_MODE_DIRECT_POST.equals(responseMode) || Constants.RESPONSE_MODE_DC_API.equals(responseMode)) {
-            return responseMode;
-        }
-        throw new VPRequestValidationException(ErrorCode.INVALID_RESPONSE_MODE);
+        return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), authorizationRequestCreateResponse.getAuthorizationDetails(), authorizationRequestCreateResponse.getExpiresAt(), null);
     }
 
     @Override
@@ -245,7 +218,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                     AuthorizationRequestResponseDto details = authorizationRequestCreateResponse.getAuthorizationDetails();
                     String verifierDid = details.getClientId();
                     String state = authorizationRequestCreateResponse.getRequestId();
-                    return createAndSignAuthorizationRequestJwt(verifierDid, details, state);
+                    return createAndSignAuthorizationRequestJwt(verifierDid, authorizationRequestCreateResponse.getAuthorizationDetails(), state);
                 })
                 .orElseThrow(VPRequestNotFoundException::new);
     }
@@ -254,27 +227,19 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
         try {
 
-            String issuer = verifierDid != null ? verifierDid.replaceFirst("^" + Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER, "") : verifierDid;
-            boolean isDcApi = Constants.RESPONSE_MODE_DC_API.equals(authorizationRequest.getResponseMode());
-
+            String issuer = verifierDid != null ? verifierDid.replaceFirst("^decentralized_identifier:", "") : verifierDid;
             JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                     .issuer(issuer)
                     .issueTime(Date.from(Instant.now()))
                     .claim("client_id", verifierDid)
                     .jwtID(UUID.randomUUID().toString())
                     .claim("response_type", authorizationRequest.getResponseType())
-                    .claim("response_mode", authorizationRequest.getResponseMode())
-                    .claim("nonce", authorizationRequest.getNonce());
+                    .claim("response_mode", Constants.RESPONSE_MODE)
+                    .claim("nonce", authorizationRequest.getNonce())
+                    .claim("state", state)
+                    .claim("response_uri", authorizationRequest.getResponseUri());
 
-            if (isDcApi) {
-                claimsBuilder.claim("expected_origins", authorizationRequest.getExpectedOrigins());
-            } else {
-                claimsBuilder
-                        .claim("state", state)
-                        .claim("response_uri", authorizationRequest.getResponseUri());
-            }
-
-            if (verifierDid != null && verifierDid.startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
+            if (verifierDid != null && verifierDid.startsWith("decentralized_identifier")) {
                 claimsBuilder.claim(
                         "client_metadata",
                         new ClientMetadataDto(VP_FORMATS_SUPPORTED)
