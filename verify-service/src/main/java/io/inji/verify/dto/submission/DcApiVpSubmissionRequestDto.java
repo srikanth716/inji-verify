@@ -2,6 +2,8 @@ package io.inji.verify.dto.submission;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,9 +17,11 @@ import lombok.Setter;
 @NoArgsConstructor
 public class DcApiVpSubmissionRequestDto {
 
+    @NotBlank(message = "INVALID_REQUEST_ID_MISSING")
     private String requestId;
 
     @JsonProperty("vp_token")
+    @JsonDeserialize(using = FailOnDuplicateKeyJsonNodeDeserializer.class)
     private JsonNode vpToken;
 
     private String error;

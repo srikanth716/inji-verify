@@ -183,8 +183,9 @@ class VPSubmissionControllerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         ErrorDto body = (ErrorDto) response.getBody();
         assertNotNull(body);
-        assertEquals("invalid_vp_token", body.getErrorCode());
-        assertTrue(body.getErrorMessage().contains("bad structure"));
+        assertEquals(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT.getErrorCode(), body.getErrorCode());
+        assertEquals(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT.getErrorMessage(), body.getErrorMessage());
+        assertFalse(body.getErrorMessage().contains("bad structure"));
     }
 
     // ---- DC API JSON endpoint ----
@@ -264,6 +265,8 @@ class VPSubmissionControllerTest {
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         ErrorDto error = (ErrorDto) response.getBody();
         assertNotNull(error);
-        assertEquals("invalid_vp_token", error.getErrorCode());
+        assertEquals(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT.getErrorCode(), error.getErrorCode());
+        assertEquals(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT.getErrorMessage(), error.getErrorMessage());
+        assertFalse(error.getErrorMessage().contains("bad structure"));
     }
 }

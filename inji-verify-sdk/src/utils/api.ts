@@ -191,7 +191,6 @@ export const getVpRequestJwt = async (requestUri: string, signal?: AbortSignal):
     }
     return await response.text();
   } catch (error) {
-    console.error(error);
     if (isAppError(error)) {
       throw error;
     }
@@ -211,7 +210,7 @@ export const vpResultSubmission = async (responseUri: string, requestId: string,
         "Content-Type": "application/json",
       },
       referrerPolicy: "origin",
-      body: JSON.stringify({ requestId, ...data }),
+      body: JSON.stringify({ ...data, requestId }),
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -225,7 +224,6 @@ export const vpResultSubmission = async (responseUri: string, requestId: string,
       } as AppError;
     }
   } catch (error) {
-    console.error(error);
     if (isAppError(error)) {
       throw error;
     }

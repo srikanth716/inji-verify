@@ -148,6 +148,9 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         List<String> expectedOrigins = null;
         String responseUri;
         if (isDcApi) {
+            if (responseCodeValidationRequired) {
+                throw new VPRequestValidationException(ErrorCode.DC_API_RESPONSE_CODE_NOT_SUPPORTED);
+            }
             if (vpRequestCreate.getClientId() == null || !vpRequestCreate.getClientId().startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
                 throw new VPRequestValidationException(ErrorCode.DC_API_REQUIRES_DID_CLIENT_ID);
             }
@@ -341,8 +344,8 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
             signedJWT.sign(signer);
             return signedJWT.serialize();
         } catch (ParseException | JOSEException | JsonProcessingException e) {
-            log.error("Error generating authorization request JWT: {}", e.getMessage());
-            throw new JWTCreationException();
+            log.error("Error generating authorization request JWT", e);
+            throw new JWTCreationException(e);
         }
     }
 

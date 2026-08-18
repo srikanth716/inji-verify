@@ -456,6 +456,28 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
+    void should_throwDcApiResponseCodeNotSupported_when_responseCodeValidationRequired() throws Exception {
+        clearInvocations(mockAuthorizationRequestCreateResponseRepository);
+        String didClient = "decentralized_identifier:did:web:verify.example.com";
+        VPRequestCreateDto dto = new VPRequestCreateDto(
+                didClient,
+                "tx1",
+                "nonce-value-123456",
+                minimalDcqlQuery(),
+                true,
+                Constants.RESPONSE_MODE_DC_API);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Origin", "https://verify.example.com");
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> service.createAuthorizationRequest(dto, request));
+
+        assertEquals(ErrorCode.DC_API_RESPONSE_CODE_NOT_SUPPORTED, ex.getErrorCode());
+        verify(mockAuthorizationRequestCreateResponseRepository, never()).save(any());
+    }
+
+    @Test
     void should_throwVerifierOriginRequired_when_originAndRefererMissing() throws Exception {
         String didClient = "decentralized_identifier:did:web:verify.example.com";
         VPRequestCreateDto dto = new VPRequestCreateDto(

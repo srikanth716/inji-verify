@@ -176,7 +176,11 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         log.debug("Authorization request resolved for state: {}", state);
 
         AuthorizationRequestResponseDto authDetails = authRequestCreateResponse.getAuthorizationDetails();
-        if (requireDcApi && !Constants.RESPONSE_MODE_DC_API.equals(authDetails.getResponseMode())) {
+        boolean storedIsDcApi = Constants.RESPONSE_MODE_DC_API.equals(authDetails.getResponseMode());
+        // The stored response mode decides which endpoint may finalize the session. Both
+        // directions are enforced so an error-only submission cannot terminate a dc_api
+        // session through the direct-post endpoint without an origin check.
+        if (requireDcApi != storedIsDcApi) {
             throw new VPRequestValidationException(ErrorCode.DC_API_RESPONSE_MODE_REQUIRED);
         }
 

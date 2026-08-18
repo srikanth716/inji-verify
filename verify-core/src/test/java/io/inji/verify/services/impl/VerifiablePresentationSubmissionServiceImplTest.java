@@ -2966,6 +2966,18 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         }
 
         @Test
+        void submitVerifiablePresentation_directPost_dcApiSession_errorOnly_rejected() {
+            stubActiveState();
+            stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));
+
+            VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                    () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                            null, STATE, "access_denied", "user cancelled"));
+            assertEquals(ErrorCode.DC_API_RESPONSE_MODE_REQUIRED, ex.getErrorCode());
+            verify(vpSubmissionRepository, never()).save(any());
+        }
+
+        @Test
         void submitVerifiablePresentation_dcApi_walletError_succeedsWithoutRedirect() {
             stubActiveState();
             stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));

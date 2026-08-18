@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -108,9 +109,9 @@ public class VPSubmissionController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ErrorDto(ErrorCode.VP_ALREADY_SUBMITTED));
         } catch (InvalidVpTokenException e) {
-            log.error("Invalid VP token structure for state {}", state);
+            log.error("Invalid VP token structure for state {}: {}", state, e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorDto("invalid_vp_token", "The vp_token structure is invalid: " + e.getMessage()));
+                    .body(new ErrorDto(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT));
         }
     }
 
@@ -120,7 +121,7 @@ public class VPSubmissionController {
     })
     @PostMapping(path = "/vp-submission/dc-api", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<?> submitVpDcApi(
-            @RequestBody DcApiVpSubmissionRequestDto body,
+            @Valid @RequestBody DcApiVpSubmissionRequestDto body,
             HttpServletRequest request) {
         if (body == null || !StringUtils.hasText(body.getRequestId())) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -156,9 +157,9 @@ public class VPSubmissionController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ErrorDto(ErrorCode.VP_ALREADY_SUBMITTED));
         } catch (InvalidVpTokenException e) {
-            log.error("Invalid VP token structure for requestId {}", requestId);
+            log.error("Invalid VP token structure for requestId {}: {}", requestId, e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorDto("invalid_vp_token", "The vp_token structure is invalid: " + e.getMessage()));
+                    .body(new ErrorDto(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT));
         }
     }
 
