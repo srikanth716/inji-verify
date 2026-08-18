@@ -10,6 +10,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.lang.reflect.Constructor;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -35,8 +37,7 @@ public class VCVerificationControllerTest {
         String validVC = "validVC";
         String contentType = "application/ldp+json";
 
-        VCVerificationStatusDto expectedStatus = objectMapper.readValue(
-                "{\"verificationStatus\":\"SUCCESS\"}", VCVerificationStatusDto.class);
+        VCVerificationStatusDto expectedStatus = createStatus("SUCCESS");
 
         when(VCVerificationService.verify(validVC, contentType)).thenReturn(expectedStatus);
 
@@ -55,8 +56,7 @@ public class VCVerificationControllerTest {
     public void testVerifyInvalidVC() throws Exception {
         String invalidVC = "invalidVC";
         String contentType = "application/ldp+json";
-        VCVerificationStatusDto expectedStatus = objectMapper.readValue(
-                "{\"verificationStatus\":\"INVALID\"}", VCVerificationStatusDto.class);
+        VCVerificationStatusDto expectedStatus = createStatus("INVALID");
 
         when(VCVerificationService.verify(invalidVC, contentType)).thenReturn(expectedStatus);
 
@@ -75,5 +75,15 @@ public class VCVerificationControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(""))
                 .andExpect(status().isBadRequest());
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private VCVerificationStatusDto createStatus(String name) throws Exception {
+        Class enumClass = Class.forName("io.mosip.vercred.vcverifier.data.VerificationStatus");
+        Object status = Enum.valueOf(enumClass.asSubclass(Enum.class), name);
+        Constructor<VCVerificationStatusDto> constructor =
+                VCVerificationStatusDto.class.getDeclaredConstructor(enumClass);
+        constructor.setAccessible(true);
+        return constructor.newInstance(status);
     }
 }
