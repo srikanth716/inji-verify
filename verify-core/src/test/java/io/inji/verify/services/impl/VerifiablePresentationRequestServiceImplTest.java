@@ -12,6 +12,7 @@ import io.inji.verify.dto.dcql.DCQLQueryDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.exception.VPRequestValidationException;
+import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jwt.SignedJWT;
 import io.inji.verify.testsupport.DcqlTestFixtures;
 import io.inji.verify.enums.VPRequestStatus;
@@ -20,6 +21,8 @@ import io.inji.verify.repository.AuthorizationRequestCreateResponseRepository;
 import io.inji.verify.repository.VPSubmissionRepository;
 import io.inji.verify.services.KeyManagementService;
 import io.inji.verify.shared.Constants;
+import org.springframework.core.io.ResourceLoader;
+import org.springframework.core.io.ClassPathResource;
 import io.inji.verify.validator.DcqlValidator;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +50,7 @@ class VerifiablePresentationRequestServiceImplTest {
     static VPSubmissionRepository mockVPSubmissionRepository;
     static KeyManagementService<OctetKeyPair> mockKeyManagementService;
     static DcqlValidator mockDcqlValidator;
+    static ResourceLoader mockResourceLoader;
 
     private static DCQLQueryDto minimalDcqlQuery() throws Exception {
         return OBJECT_MAPPER.readValue(
@@ -60,12 +64,24 @@ class VerifiablePresentationRequestServiceImplTest {
         mockVPSubmissionRepository = mock(VPSubmissionRepository.class);
         mockKeyManagementService = mock(KeyManagementService.class);
         mockDcqlValidator = mock(DcqlValidator.class);
+        mockResourceLoader = mock(ResourceLoader.class);
         service = new VerifiablePresentationRequestServiceImpl(
                 mockAuthorizationRequestCreateResponseRepository,
                 mockVPSubmissionRepository,
                 mockKeyManagementService,
                 OBJECT_MAPPER,
-                mockDcqlValidator);
+                mockDcqlValidator,
+                mockResourceLoader);
+        service.verifyPublicKeyURI = "did:web:test#key-0";
+        service.signatureKeyReferenceType = "kid";
+        service.x5cKeystorePath = "classpath:sample-keystore/cmwallet-test.p12";
+        service.x5cKeystorePassword = "mosip1";
+        service.verifyServiceBaseUrl = "https://verify.example.com/v1/verify";
+    }
+
+    private static void stubEcX5cKeystore() {
+        when(mockResourceLoader.getResource("classpath:sample-keystore/cmwallet-test.p12"))
+                .thenReturn(new ClassPathResource("sample-keystore/cmwallet-test.p12"));
     }
 
     @Test
@@ -252,7 +268,6 @@ class VerifiablePresentationRequestServiceImplTest {
     void getVPRequestJwt_ValidRequest_ReturnsJwtString() throws Exception {
         String requestId = "testRequestId123";
         String verifierDid = "did:example:verifier123";
-        String expectedJwtHeader = "eyJ0eXAiOiJvYXV0aC1hdXRoei1yZXErand0IiwiYWxnIjoiRWREU0EifQ.";
 
         AuthorizationRequestResponseDto authzDetailsDto =
                 new AuthorizationRequestResponseDto(
@@ -274,7 +289,7 @@ class VerifiablePresentationRequestServiceImplTest {
         String actualJwt = service.getVPRequestJwt(requestId);
 
         assertNotNull(actualJwt);
-        assertTrue(actualJwt.startsWith(expectedJwtHeader));
+        assertEquals("did:web:test#key-0", SignedJWT.parse(actualJwt).getHeader().getKeyID());
         assertJwtContainsDcqlWithoutPresentationDefinition(actualJwt);
 
         verify(mockAuthorizationRequestCreateResponseRepository, times(1)).findById(requestId);
@@ -406,6 +421,25 @@ class VerifiablePresentationRequestServiceImplTest {
     void should_throwDcApiRequiresDidClientId_when_clientIdIsNotDid() throws Exception {
         VPRequestCreateDto dto = new VPRequestCreateDto(
                 "test_client_id",
+                "tx1",
+                "nonce-value-123456",
+                minimalDcqlQuery(),
+                false,
+                Constants.RESPONSE_MODE_DC_API);
+
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader("Origin", "https://verify.example.com");
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> service.createAuthorizationRequest(dto, request));
+
+        assertEquals(ErrorCode.DC_API_REQUIRES_DID_CLIENT_ID, ex.getErrorCode());
+    }
+
+    @Test
+    void should_throwDcApiRequiresDidClientId_when_clientIdIsX509SanDns() throws Exception {
+        VPRequestCreateDto dto = new VPRequestCreateDto(
+                "x509_san_dns:verify.example.com",
                 "tx1",
                 "nonce-value-123456",
                 minimalDcqlQuery(),
@@ -621,6 +655,42 @@ class VerifiablePresentationRequestServiceImplTest {
                 () -> service.createAuthorizationRequest(dto, null));
 
         assertEquals(ErrorCode.NONCE_INVALID, ex.getErrorCode());
+    }
+
+    @Test
+    void getVPRequestJwt_x5cMode_signsWithEs256AndX5c() throws Exception {
+        String previousMode = service.signatureKeyReferenceType;
+        String previousX5cPath = service.x5cKeystorePath;
+        String previousX5cPassword = service.x5cKeystorePassword;
+        try {
+            service.signatureKeyReferenceType = "x5c";
+            service.x5cKeystorePath = "classpath:sample-keystore/cmwallet-test.p12";
+            service.x5cKeystorePassword = "mosip1";
+            stubEcX5cKeystore();
+
+            String requestId = "req_x5c";
+            AuthorizationRequestResponseDto authzDto =
+                    new AuthorizationRequestResponseDto(
+                            "decentralized_identifier:did:web:verify.example.com",
+                            DcqlTestFixtures.minimalDcqlDto(),
+                            null, "nonce", null, false, false, Constants.RESPONSE_MODE_DC_API, List.of("https://verify.example.com"));
+            AuthorizationRequestCreateResponse authzResponse =
+                    new AuthorizationRequestCreateResponse(requestId, "tx", authzDto, Instant.now().toEpochMilli() + 5000);
+            when(mockAuthorizationRequestCreateResponseRepository.findById(requestId)).thenReturn(Optional.of(authzResponse));
+
+            String jwt = service.getVPRequestJwt(requestId);
+            SignedJWT signedJwt = SignedJWT.parse(jwt);
+            var header = signedJwt.getHeader();
+
+            assertEquals(JWSAlgorithm.ES256, header.getAlgorithm());
+            assertNotNull(header.getX509CertChain());
+            assertFalse(header.getX509CertChain().isEmpty());
+            assertNull(header.getKeyID());
+        } finally {
+            service.signatureKeyReferenceType = previousMode;
+            service.x5cKeystorePath = previousX5cPath;
+            service.x5cKeystorePassword = previousX5cPassword;
+        }
     }
 
     @Test

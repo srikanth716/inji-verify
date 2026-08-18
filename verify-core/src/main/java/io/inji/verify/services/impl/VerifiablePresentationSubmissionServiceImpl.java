@@ -51,6 +51,7 @@ import io.inji.verify.repository.VPSubmissionRepository;
 import io.inji.verify.services.VCSubmissionService;
 import io.inji.verify.services.VerifiablePresentationSubmissionService;
 import io.inji.verify.shared.Constants;
+import io.inji.verify.utils.OriginAudienceResolver;
 import io.inji.verify.utils.Utils;
 import io.inji.verify.validator.DcqlValidator;
 import io.inji.verify.dto.dcql.DCQLQueryDto;
@@ -75,6 +76,7 @@ import io.mosip.vercred.vcverifier.data.VPVerificationStatus;
 import io.mosip.vercred.vcverifier.data.VerificationResult;
 import io.mosip.vercred.vcverifier.data.VerificationStatus;
 import jakarta.validation.Validator;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -142,6 +144,18 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
     @Override
     public Map<String, Object> submitVerifiablePresentation(String vpToken, String state, String error, String errorDescription)
             throws VPRequestValidationException, RedirectUriGenerationException, VPAlreadySubmittedException, InvalidVpTokenException {
+        return submitVerifiablePresentation(vpToken, state, error, errorDescription, null, false);
+    }
+
+    @Override
+    public Map<String, Object> submitVerifiablePresentation(
+            String vpToken,
+            String state,
+            String error,
+            String errorDescription,
+            jakarta.servlet.http.HttpServletRequest httpRequest,
+            boolean requireDcApi)
+            throws VPRequestValidationException, RedirectUriGenerationException, VPAlreadySubmittedException, InvalidVpTokenException {
         // --- 1. Validate request parameters ---
         validateSubmissionRequest(vpToken, error, errorDescription);
 
@@ -161,6 +175,11 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         }
         log.debug("Authorization request resolved for state: {}", state);
 
+        AuthorizationRequestResponseDto authDetails = authRequestCreateResponse.getAuthorizationDetails();
+        if (requireDcApi && !Constants.RESPONSE_MODE_DC_API.equals(authDetails.getResponseMode())) {
+            throw new VPRequestValidationException(ErrorCode.DC_API_RESPONSE_MODE_REQUIRED);
+        }
+
         // ---- 5. Validate against the DCQL if vp_token is present
         if (StringUtils.hasText(vpToken)) {
             validateVpTokenAgainstDcql(vpToken, authRequestCreateResponse);
@@ -169,28 +188,31 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         // ---- 6. Extract DCQL VP tokens from the vp_token string
         DcqlTokensDto dcqlTokensDto = null;
         if (StringUtils.hasText(vpToken)) {
-            dcqlTokensDto = extractDcqlTokens(vpToken, authRequestCreateResponse.getAuthorizationDetails());
+            dcqlTokensDto = extractDcqlTokens(vpToken, authDetails);
         }
 
-        // ---- 7. Validate client_id and nonce for all token types.
+        // ---- 7. Validate client_id / origin audience and nonce for all token types.
         if (dcqlTokensDto != null) {
-            validateClientIdAndNonce(dcqlTokensDto, authRequestCreateResponse);
+            validateClientIdAndNonce(dcqlTokensDto, authRequestCreateResponse, httpRequest);
         }
 
-        // ---- 8. generate response_code and build redirect_uri as required
+        // ---- 8. generate response_code and build redirect_uri as required (direct-post only)
         Map<String, Object> response = new HashMap<>();
-        String responseCode = generateResponseCode(authRequestCreateResponse.getAuthorizationDetails());
+        String responseCode = null;
         Timestamp responseCodeExpiryAt = null;
-        if (responseCode != null) {
-            log.debug("Generated response code for state {}", state);
-            responseCodeExpiryAt = generateResponseCodeExpiry();
-            String redirectUriWithResponseCode = resolveRedirectUri(responseCode);
-            log.debug("Built redirect URI with response code for state {}", state);
-            response.put("redirect_uri", redirectUriWithResponseCode);
+        if (!requireDcApi) {
+            responseCode = generateResponseCode(authDetails);
+            if (responseCode != null) {
+                log.debug("Generated response code for state {}", state);
+                responseCodeExpiryAt = generateResponseCodeExpiry();
+                String redirectUriWithResponseCode = resolveRedirectUri(responseCode);
+                log.debug("Built redirect URI with response code for state {}", state);
+                response.put("redirect_uri", redirectUriWithResponseCode);
+            }
         }
 
         // ---- 9. If all validations pass, proceed with VP submission processing
-        submitVpToken(authRequestCreateResponse.getAuthorizationDetails(), vpToken, state, error, errorDescription, responseCode, responseCodeExpiryAt);
+        submitVpToken(authDetails, vpToken, state, error, errorDescription, responseCode, responseCodeExpiryAt);
 
         // ---- 10. Notify status listeners after transaction commits so the DB record is visible
         verifiablePresentationRequestService.invokeVpRequestStatusListener(state);
@@ -335,20 +357,27 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
     }
 
     /**
-     * Validates client_id/nonce (and, for SD-JWT, KB-JWT iat) binding for all bindable tokens
-     * extracted from a vp_token.
+     * Validates audience/nonce (and, for SD-JWT, KB-JWT iat) binding for all bindable tokens
+     * extracted from a vp_token. Audience is resolved via {@link OriginAudienceResolver}
+     * ({@code client_id} for direct_post; {@code origin:…} for dc_api).
      */
-    private void validateClientIdAndNonce(DcqlTokensDto dcqlTokensDto, AuthorizationRequestCreateResponse authRequest) {
+    private void validateClientIdAndNonce(DcqlTokensDto dcqlTokensDto, AuthorizationRequestCreateResponse authRequest, HttpServletRequest httpRequest) {
+        OriginAudienceResolver.ResolveResult audience = OriginAudienceResolver.resolve(authRequest.getAuthorizationDetails(), httpRequest);
+        if (!audience.isOk()) {
+            throw new VPRequestValidationException(audience.error());
+        }
+        String expectedAudience = audience.expectedAudience();
+
         Map<String, List<JSONObject>> ldpVpTokens = dcqlTokensDto.getLdpVpTokens() != null ? dcqlTokensDto.getLdpVpTokens() : Collections.emptyMap();
         Map<String, List<String>> sdJwtTokens = dcqlTokensDto.getSdJwtTokens() != null ? dcqlTokensDto.getSdJwtTokens() : Collections.emptyMap();
         if (!ldpVpTokens.isEmpty()) {
-            ErrorCode error = processLdpVpClientIdAndNonce(authRequest.getAuthorizationDetails(), ldpVpTokens);
+            ErrorCode error = processLdpVpClientIdAndNonce(authRequest.getAuthorizationDetails(), ldpVpTokens, expectedAudience);
             if (error != null) {
                 throw new VPRequestValidationException(error);
             }
         }
         if (!sdJwtTokens.isEmpty()) {
-            ErrorCode error = processSdJwtClientIdAndNonce(authRequest.getAuthorizationDetails(), sdJwtTokens);
+            ErrorCode error = processSdJwtClientIdAndNonce(authRequest.getAuthorizationDetails(), sdJwtTokens, expectedAudience);
             if (error != null) {
                 throw new VPRequestValidationException(error);
             }
@@ -472,22 +501,20 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
     }
 
     /**
-     * This method validates the client_id from the VP token against the client_id in the authorization request.
-     * @param authRequest
-     * @param ldpVpTokens
-     * @return
-     */
-    /**
-     * Validates client_id and nonce for LDP VP tokens in a single pass.
-     * Checks {@code proof.domain} against the auth request clientId and
-     * {@code proof.challenge} against the auth request nonce.
+     * Validates audience and nonce for LDP VP tokens in a single pass.
+     * Checks {@code proof.domain} against {@code expectedAudience} (client_id or origin-bound aud)
+     * and {@code proof.challenge} against the auth request nonce.
      * Returns the first {@link ErrorCode} encountered, or null if all tokens pass.
      */
-    ErrorCode processLdpVpClientIdAndNonce(AuthorizationRequestResponseDto authRequest, Map<String, List<JSONObject>> ldpVpTokens) {
+    ErrorCode processLdpVpClientIdAndNonce(AuthorizationRequestResponseDto authRequest, Map<String, List<JSONObject>> ldpVpTokens, String expectedAudience) {
         String clientId = authRequest.getClientId();
         String nonce = authRequest.getNonce();
         if (!StringUtils.hasText(clientId)) {
             log.error("clientId is missing in auth request");
+            return ErrorCode.CLIENT_ID_VALIDATION_FAILED;
+        }
+        if (!StringUtils.hasText(expectedAudience)) {
+            log.error("expectedAudience is missing for LDP VP validation");
             return ErrorCode.CLIENT_ID_VALIDATION_FAILED;
         }
         if (!StringUtils.hasText(nonce)) {
@@ -500,8 +527,8 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
                 log.debug("Processing LDP VP token for query ID: {}", queryId);
                 JSONObject proof = jsonVPToken.optJSONObject("proof");
                 String domain = proof != null ? proof.optString("domain", null) : null;
-                if (!Objects.equals(clientId, domain)) {
-                    log.error("clientId validation failed for query ID: {}, expected: {}, actual: {}", queryId, clientId, domain);
+                if (!OriginAudienceResolver.audienceMatches(expectedAudience, domain)) {
+                    log.error("clientId validation failed for query ID: {}, expected: {}, actual: {}", queryId, expectedAudience, domain);
                     return ErrorCode.CLIENT_ID_VALIDATION_FAILED;
                 }
                 String challenge = proof != null ? proof.optString("challenge", null) : null;
@@ -515,18 +542,22 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
     }
 
     /**
-     * Validates client_id and nonce for SD-JWT tokens in a single pass.
+     * Validates audience and nonce for SD-JWT tokens in a single pass.
      * When {@code require_cryptographic_holder_binding=true} for a query ID,
      * extracts the KB-JWT once per token and checks both {@code aud} against
-     * the auth request clientId and {@code nonce} against the auth request nonce
+     * {@code expectedAudience} and {@code nonce} against the auth request nonce
      * (OpenID4VP Appendix B.3.6).
      * Returns the first {@link ErrorCode} encountered, or null if all tokens pass.
      */
-    ErrorCode processSdJwtClientIdAndNonce(AuthorizationRequestResponseDto authRequest, Map<String, List<String>> sdJwtTokens) {
+    ErrorCode processSdJwtClientIdAndNonce(AuthorizationRequestResponseDto authRequest, Map<String, List<String>> sdJwtTokens, String expectedAudience) {
         String clientId = authRequest.getClientId();
         String nonce = authRequest.getNonce();
         if (!StringUtils.hasText(clientId)) {
             log.error("clientId is missing in auth request");
+            return ErrorCode.CLIENT_ID_VALIDATION_FAILED;
+        }
+        if (!StringUtils.hasText(expectedAudience)) {
+            log.error("expectedAudience is missing for SD-JWT validation");
             return ErrorCode.CLIENT_ID_VALIDATION_FAILED;
         }
         if (!StringUtils.hasText(nonce)) {
@@ -546,8 +577,8 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
                     return ErrorCode.CLIENT_ID_VALIDATION_FAILED;
                 }
                 String audClaim = kbPayload.optString("aud", null);
-                if (!Objects.equals(clientId, audClaim)) {
-                    log.error("KB-JWT aud mismatch for query ID: {}, expected: {}, actual: {}", queryId, clientId, audClaim);
+                if (!OriginAudienceResolver.audienceMatches(expectedAudience, audClaim)) {
+                    log.error("KB-JWT aud mismatch for query ID: {}, expected: {}, actual: {}", queryId, expectedAudience, audClaim);
                     return ErrorCode.CLIENT_ID_VALIDATION_FAILED;
                 }
                 String kbNonce = kbPayload.optString("nonce", null);

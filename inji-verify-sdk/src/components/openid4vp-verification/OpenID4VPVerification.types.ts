@@ -239,6 +239,11 @@ export type AppError = {
   errorCode?: string;
   transactionId?: string | null;
 };
+
+export type DcApiSubmissionData =
+  | { vp_token: unknown }
+  | { error: string; error_description?: string };
+
 export interface VPVerificationRequest {
     skipStatusChecks?: boolean;
     statusCheckFilters?: string[];

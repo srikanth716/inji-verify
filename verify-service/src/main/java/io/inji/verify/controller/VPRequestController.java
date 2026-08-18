@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -70,8 +71,9 @@ public class VPRequestController {
     })
     public ResponseEntity<Object> createVPRequest(
             @Parameter(description = "The parameters for creating a VP request, including the DCQL query and other relevant details.")
-            @Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
-        return processCreateVPRequest(vpRequestCreate, false);
+            @Valid @RequestBody VPRequestCreateDto vpRequestCreate,
+            HttpServletRequest httpRequest) {
+        return processCreateVPRequest(vpRequestCreate, httpRequest, false);
     }
 
     @Operation(summary = "Create a new VP session request with cookie management. Validates the DCQL query, creates the request, and sets a cookie for session tracking.")
@@ -88,8 +90,9 @@ public class VPRequestController {
     })
     public ResponseEntity<Object> createVPSessionRequest(
             @Parameter(description = "The parameters for creating a VP session request, including the DCQL query and other relevant details. A cookie will be set for session tracking.")
-            @Valid @RequestBody VPRequestCreateDto vpRequestCreate) {
-        return processCreateVPRequest(vpRequestCreate, true);
+            @Valid @RequestBody VPRequestCreateDto vpRequestCreate,
+            HttpServletRequest httpRequest) {
+        return processCreateVPRequest(vpRequestCreate, httpRequest, true);
     }
 
     @Operation(summary = "Get the status of a VP request by its ID. Returns the current status of the request, including any relevant details.")
@@ -142,8 +145,10 @@ public class VPRequestController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorDto(ErrorCode.NO_AUTH_REQUEST));
     }
 
-    private ResponseEntity<Object> processCreateVPRequest(VPRequestCreateDto vpRequestCreate, boolean createCookie) {
-        VPRequestResponseDto authorizationRequestResponse = verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate);
+    private ResponseEntity<Object> processCreateVPRequest(
+            VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest, boolean createCookie) {
+        VPRequestResponseDto authorizationRequestResponse =
+                verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate, httpRequest);
 
         if (createCookie) {
             String transactionId = authorizationRequestResponse.getTransactionId();

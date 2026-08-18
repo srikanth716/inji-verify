@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JOSEObjectType;
-import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.crypto.ECDSASigner;
 import com.nimbusds.jose.crypto.Ed25519Signer;
 import com.nimbusds.jose.jwk.OctetKeyPair;
+import com.nimbusds.jose.util.Base64;
 import com.nimbusds.jose.util.JSONObjectUtils;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
@@ -31,21 +33,37 @@ import io.inji.verify.shared.Constants;
 import io.inji.verify.services.VerifiablePresentationRequestService;
 import io.inji.verify.utils.SecurityUtils;
 import io.inji.verify.utils.Utils;
+import io.inji.verify.utils.VerifierOriginResolver;
 import io.inji.verify.validator.DcqlValidator;
+import jakarta.annotation.PostConstruct;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.async.DeferredResult;
+
+import java.io.InputStream;
+import java.security.KeyStore;
+import java.security.PrivateKey;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
+import java.security.interfaces.ECPrivateKey;
+import java.security.interfaces.ECPublicKey;
 import java.text.ParseException;
-import java.util.regex.Pattern;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
 import java.util.NoSuchElementException;
-import java.util.Date;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.beans.factory.annotation.Value;
+import java.util.regex.Pattern;
+
 import static io.inji.verify.shared.Constants.VP_FORMATS_SUPPORTED;
 
 @Service
@@ -57,6 +75,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     final KeyManagementService<OctetKeyPair> keyManagementService;
     final ObjectMapper objectMapper;
     final DcqlValidator dcqlValidator;
+    final ResourceLoader resourceLoader;
 
     @Value("${inji.vp-request.long-polling-timeout}")
     Long defaultTimeout;
@@ -67,6 +86,15 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     @Value("${inji.did.verify.public.key.uri}")
     String verifyPublicKeyURI;
 
+    @Value("${inji.jwt.signature-key-reference-type:kid}")
+    String signatureKeyReferenceType;
+
+    @Value("${inji.keystore.x5c.file.path:${inji.keystore.file.path}}")
+    String x5cKeystorePath;
+
+    @Value("${inji.keystore.x5c.file.pass:${inji.keystore.file.pass}}")
+    String x5cKeystorePassword;
+
     ConcurrentHashMap<String, DeferredResult<VPRequestStatusDto>> vpRequestStatusListeners = new ConcurrentHashMap<>();
 
     private static final Pattern NONCE_PATTERN = Pattern.compile("^[A-Za-z0-9\\-._~]{16,}$");
@@ -76,16 +104,23 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
             VPSubmissionRepository vpSubmissionRepository,
             KeyManagementService<OctetKeyPair> keyManagementService,
             ObjectMapper objectMapper,
-            DcqlValidator dcqlValidator) {
+            DcqlValidator dcqlValidator,
+            ResourceLoader resourceLoader) {
         this.authorizationRequestCreateResponseRepository = authorizationRequestCreateResponseRepository;
         this.vpSubmissionRepository = vpSubmissionRepository;
         this.keyManagementService = keyManagementService;
         this.objectMapper = objectMapper;
         this.dcqlValidator = dcqlValidator;
+        this.resourceLoader = resourceLoader;
+    }
+
+    @PostConstruct
+    void logJwtSigningConfiguration() {
+        log.info("VP request JWT signing: referenceType={}, x5cKeystore={}", signatureKeyReferenceType, x5cKeystorePath);
     }
 
     @Override
-    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate) {
+    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest) {
         log.info("Creating authorization request");
         dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
         String transactionId = vpRequestCreate.getTransactionId() != null ? vpRequestCreate.getTransactionId() : Utils.generateID(Constants.TRANSACTION_ID_PREFIX);
@@ -100,34 +135,58 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         } else {
             nonce = SecurityUtils.generateNonce();
         }
-        String responseUri = verifyServiceBaseUrl + Constants.VP_RESPONSE_SUBMISSION_URI;
-
         boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
+        String responseMode = StringUtils.hasText(vpRequestCreate.getResponseMode())
+                ? vpRequestCreate.getResponseMode()
+                : Constants.RESPONSE_MODE_DIRECT_POST;
+        if (!Constants.RESPONSE_MODE_DIRECT_POST.equals(responseMode)
+                && !Constants.RESPONSE_MODE_DC_API.equals(responseMode)) {
+            throw new VPRequestValidationException(ErrorCode.INVALID_RESPONSE_MODE);
+        }
+
+        boolean isDcApi = Constants.RESPONSE_MODE_DC_API.equals(responseMode);
+        List<String> expectedOrigins = null;
+        String responseUri;
+        if (isDcApi) {
+            if (vpRequestCreate.getClientId() == null || !vpRequestCreate.getClientId().startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
+                throw new VPRequestValidationException(ErrorCode.DC_API_REQUIRES_DID_CLIENT_ID);
+            }
+            String verifierOrigin = VerifierOriginResolver.resolve(httpRequest)
+                    .orElseThrow(() -> new VPRequestValidationException(ErrorCode.VERIFIER_ORIGIN_REQUIRED));
+            expectedOrigins = List.of(verifierOrigin);
+            responseUri = verifyServiceBaseUrl + Constants.VP_DC_API_SUBMISSION_URI;
+        } else {
+            responseUri = verifyServiceBaseUrl + Constants.VP_DIRECT_POST_SUBMISSION_URI;
+        }
+
         AuthorizationRequestResponseDto authorizationRequestResponseDto = new AuthorizationRequestResponseDto(
                 vpRequestCreate.getClientId(),
                 vpRequestCreate.getDcqlQuery(),
-                null, // presentationDefinition is deprecated and should not be used, set to null for backward compatibility
+                null,
                 nonce,
                 responseUri,
-                false, //acceptVPWithoutHolderProof is deprecated and should not be used, set to false for backward compatibility
-                responseCodeValidationRequired
+                false,
+                responseCodeValidationRequired,
+                responseMode,
+                expectedOrigins
         );
 
         AuthorizationRequestCreateResponse authorizationRequestCreateResponse = new AuthorizationRequestCreateResponse(requestId, transactionId, authorizationRequestResponseDto, expiresAt);
         authorizationRequestCreateResponseRepository.save(authorizationRequestCreateResponse);
-        log.info("Authorization request created");
-        if (vpRequestCreate.getClientId().startsWith("decentralized_identifier")) {
-            String requestUri = verifyServiceBaseUrl + Constants.VP_REQUEST_URI;
-            return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), null, authorizationRequestCreateResponse.getExpiresAt(), "%s/%s".formatted(requestUri, authorizationRequestCreateResponse.getRequestId()));
+        log.info("Authorization request created with responseMode={}", responseMode);
+
+        String clientId = vpRequestCreate.getClientId();
+        boolean isDidClient = clientId != null && clientId.startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER);
+        if (isDcApi || isDidClient) {
+            String requestUri = verifyServiceBaseUrl + Constants.VP_REQUEST_URI + "/" + requestId;
+            return new VPRequestResponseDto(transactionId, requestId, null, expiresAt, requestUri, isDcApi ? responseUri : null);
         }
-        return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), authorizationRequestCreateResponse.getAuthorizationDetails(), authorizationRequestCreateResponse.getExpiresAt(), null);
+        return new VPRequestResponseDto(transactionId, requestId, authorizationRequestResponseDto, expiresAt, null, null);
     }
 
     @Override
     public VPRequestStatusDto getCurrentRequestStatus(String requestId) {
-        VPSubmission vpSubmission = vpSubmissionRepository.findById(requestId).orElse(null);
-
-        if (vpSubmission != null) {
+        if (vpSubmissionRepository.findById(requestId).isPresent()) {
             return new VPRequestStatusDto(VPRequestStatus.VP_SUBMITTED);
         }
         Long expiresAt = authorizationRequestCreateResponseRepository.findById(requestId).map(AuthorizationRequestCreateResponse::getExpiresAt).orElse(null);
@@ -226,34 +285,50 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     private String createAndSignAuthorizationRequestJwt(String verifierDid, AuthorizationRequestResponseDto authorizationRequest, String state) {
 
         try {
+            String issuer = verifierDid != null ? verifierDid.replaceFirst("^" + Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER, "") : null;
+            boolean isDcApi = Constants.RESPONSE_MODE_DC_API.equals(authorizationRequest.getResponseMode());
 
-            String issuer = verifierDid != null ? verifierDid.replaceFirst("^decentralized_identifier:", "") : verifierDid;
             JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                     .issuer(issuer)
                     .issueTime(Date.from(Instant.now()))
                     .claim("client_id", verifierDid)
                     .jwtID(UUID.randomUUID().toString())
                     .claim("response_type", authorizationRequest.getResponseType())
-                    .claim("response_mode", Constants.RESPONSE_MODE)
-                    .claim("nonce", authorizationRequest.getNonce())
-                    .claim("state", state)
-                    .claim("response_uri", authorizationRequest.getResponseUri());
+                    .claim("response_mode", authorizationRequest.getResponseMode())
+                    .claim("nonce", authorizationRequest.getNonce());
 
-            if (verifierDid != null && verifierDid.startsWith("decentralized_identifier")) {
+            if (isDcApi) {
+                claimsBuilder.claim("expected_origins", authorizationRequest.getExpectedOrigins());
+            } else {
+                claimsBuilder
+                        .claim("state", state)
+                        .claim("response_uri", authorizationRequest.getResponseUri());
+            }
+
+            if (verifierDid != null && verifierDid.startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER)) {
                 claimsBuilder.claim(
                         "client_metadata",
                         new ClientMetadataDto(VP_FORMATS_SUPPORTED)
                 );
             }
 
-            JWTClaimsSet claimsSet = claimsBuilder.build();
-
             // DCQL-only: never emit presentation_definition / presentation_definition_uri claims (spec).
             if (authorizationRequest.getDcqlQuery() != null) {
                 String dcqlQueryJson = objectMapper.writeValueAsString(authorizationRequest.getDcqlQuery());
-                claimsSet = new JWTClaimsSet.Builder(claimsSet)
-                        .claim("dcql_query", JSONObjectUtils.parse(dcqlQueryJson))
+                claimsBuilder.claim("dcql_query", JSONObjectUtils.parse(dcqlQueryJson));
+            }
+
+            JWTClaimsSet claimsSet = claimsBuilder.build();
+
+            if ("x5c".equalsIgnoreCase(signatureKeyReferenceType)) {
+                X5cSigningMaterial material = loadX5cSigningMaterial();
+                JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.ES256)
+                        .type(new JOSEObjectType("oauth-authz-req+jwt"))
+                        .x509CertChain(material.certChain())
                         .build();
+                SignedJWT signedJWT = new SignedJWT(header, claimsSet);
+                signedJWT.sign(new ECDSASigner((ECPrivateKey) material.privateKey()));
+                return signedJWT.serialize();
             }
 
             JWSHeader jwsHeader = new JWSHeader.Builder(JWSAlgorithm.EdDSA)
@@ -266,7 +341,63 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
             signedJWT.sign(signer);
             return signedJWT.serialize();
         } catch (ParseException | JOSEException | JsonProcessingException e) {
-            log.error("Error generating JWT: {}", e.getMessage());
+            log.error("Error generating authorization request JWT: {}", e.getMessage());
+            throw new JWTCreationException();
+        }
+    }
+
+    private record X5cSigningMaterial(PrivateKey privateKey, List<Base64> certChain) {}
+
+    private X5cSigningMaterial loadX5cSigningMaterial() {
+        try {
+            Resource resource = resourceLoader.getResource(x5cKeystorePath);
+            KeyStore keystore = KeyStore.getInstance("PKCS12");
+            try (InputStream inputStream = resource.getInputStream()) {
+                keystore.load(inputStream, x5cKeystorePassword.toCharArray());
+            }
+
+            String alias = null;
+            for (Enumeration<String> aliases = keystore.aliases(); aliases.hasMoreElements();) {
+                String candidate = aliases.nextElement();
+                if (!keystore.isKeyEntry(candidate)) {
+                    continue;
+                }
+                X509Certificate cert = (X509Certificate) keystore.getCertificate(candidate);
+                if (cert == null || !"EC".equals(cert.getPublicKey().getAlgorithm())) {
+                    continue;
+                }
+                if (cert.getPublicKey() instanceof ECPublicKey ecPublicKey
+                        && ecPublicKey.getParams().getCurve().getField().getFieldSize() == 256) {
+                    alias = candidate;
+                    break;
+                }
+            }
+            if (alias == null) {
+                throw new JWTCreationException();
+            }
+
+            PrivateKey privateKey = (PrivateKey) keystore.getKey(alias, x5cKeystorePassword.toCharArray());
+            if (privateKey == null) {
+                throw new JWTCreationException();
+            }
+
+            Certificate[] chain = keystore.getCertificateChain(alias);
+            if (chain == null || chain.length == 0) {
+                X509Certificate leaf = (X509Certificate) keystore.getCertificate(alias);
+                if (leaf == null) {
+                    throw new JWTCreationException();
+                }
+                chain = new Certificate[]{leaf};
+            }
+
+            List<Base64> certChain = new ArrayList<>(chain.length);
+            for (Certificate certificate : chain) {
+                certChain.add(Base64.encode(((X509Certificate) certificate).getEncoded()));
+            }
+            return new X5cSigningMaterial(privateKey, certChain);
+        } catch (JWTCreationException e) {
+            throw e;
+        } catch (Exception e) {
             throw new JWTCreationException();
         }
     }

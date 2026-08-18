@@ -1,5 +1,6 @@
 import {
     AppError,
+    DcApiSubmissionData,
     DcqlQuery,
     VPRequestBody, VPVerificationRequest,
 } from "../components/openid4vp-verification/OpenID4VPVerification.types";
@@ -175,19 +176,65 @@ export const vpSessionRequest = async (
 };
 
 export const getVpRequestJwt = async (requestUri: string, signal?: AbortSignal): Promise<string> => {
-  const response = await fetch(requestUri, { signal });
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const record = errorData as Record<string, unknown>;
-    throw {
-      errorCode: (record.errorCode as string) || "NO_AUTH_REQUEST",
-      errorMessage:
-        (record.errorMessage as string) ||
-        (record.error as string) ||
-        "Failed to fetch authorization request JWT",
-    } as AppError;
+  try {
+    const response = await fetch(requestUri);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const record = errorData as Record<string, unknown>;
+      throw {
+        errorCode: (record.errorCode as string) || "NO_AUTH_REQUEST",
+        errorMessage:
+          (record.errorMessage as string) ||
+          (record.error as string) ||
+          "Failed to fetch authorization request JWT",
+      } as AppError;
+    }
+    return await response.text();
+  } catch (error) {
+    console.error(error);
+    if (isAppError(error)) {
+      throw error;
+    }
+    if (error instanceof Error) {
+      throw Error(error.message);
+    } else {
+      throw new Error("An unknown error occurred");
+    }
   }
-  return response.text();
+};
+
+export const vpResultSubmission = async (responseUri: string, requestId: string, data: DcApiSubmissionData): Promise<void> => {
+  try {
+    const response = await fetch(responseUri, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      referrerPolicy: "origin",
+      body: JSON.stringify({ requestId, ...data }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const record = errorData as Record<string, unknown>;
+      throw {
+        errorCode: (record.errorCode as string) || "DC_API_SUBMIT_FAILED",
+        errorMessage:
+          (record.errorMessage as string) ||
+          (record.error as string) ||
+          "Failed to submit DC API presentation",
+      } as AppError;
+    }
+  } catch (error) {
+    console.error(error);
+    if (isAppError(error)) {
+      throw error;
+    }
+    if (error instanceof Error) {
+      throw Error(error.message);
+    } else {
+      throw new Error("An unknown error occurred");
+    }
+  }
 };
 
 /**

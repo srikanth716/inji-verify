@@ -1,6 +1,7 @@
 package io.inji.verify.controller;
 
 import io.inji.verify.dto.core.ErrorDto;
+import io.inji.verify.dto.submission.DcApiVpSubmissionRequestDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.InvalidVpTokenException;
 import io.inji.verify.exception.RedirectUriGenerationException;
@@ -8,12 +9,15 @@ import io.inji.verify.exception.VPAlreadySubmittedException;
 import io.inji.verify.exception.VPRequestValidationException;
 import io.inji.verify.services.VerifiablePresentationSubmissionService;
 import jakarta.servlet.http.HttpServletRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -33,6 +37,7 @@ import static org.mockito.Mockito.*;
  * translates each exception type thrown by the service call into the right HTTP response.
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class VPSubmissionControllerTest {
 
     @Mock
@@ -180,5 +185,85 @@ class VPSubmissionControllerTest {
         assertNotNull(body);
         assertEquals("invalid_vp_token", body.getErrorCode());
         assertTrue(body.getErrorMessage().contains("bad structure"));
+    }
+
+    // ---- DC API JSON endpoint ----
+
+    @Test
+    void shouldReturnBadRequest_whenDcApiRequestIdMissing() {
+        DcApiVpSubmissionRequestDto body = new DcApiVpSubmissionRequestDto();
+        body.setVpToken(new ObjectMapper().createObjectNode().put("x", "y"));
+
+        ResponseEntity<?> response = controller.submitVpDcApi(body, request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        ErrorDto error = (ErrorDto) response.getBody();
+        assertNotNull(error);
+        assertEquals(ErrorCode.INVALID_REQUEST_ID_MISSING.getErrorCode(), error.getErrorCode());
+        verify(vpSubmissionService, never()).submitVerifiablePresentation(any(), any(), any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void shouldReturnAccepted_whenDcApiSubmissionSucceeds() {
+        DcApiVpSubmissionRequestDto body = new DcApiVpSubmissionRequestDto();
+        body.setRequestId(STATE);
+        body.setVpToken(new ObjectMapper().createObjectNode().putArray("query1").addObject().put("type", "VerifiablePresentation"));
+        when(vpSubmissionService.submitVerifiablePresentation(any(), any(), any(), any(), any(), eq(true)))
+                .thenReturn(new HashMap<>());
+
+        ResponseEntity<?> response = controller.submitVpDcApi(body, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertNull(response.getBody());
+        verify(vpSubmissionService).submitVerifiablePresentation(
+                eq(body.getVpToken().toString()), eq(STATE), isNull(), isNull(), eq(request), eq(true));
+    }
+
+    @Test
+    void shouldMapValidationException_whenDcApiServiceRejects() {
+        DcApiVpSubmissionRequestDto body = new DcApiVpSubmissionRequestDto();
+        body.setRequestId(STATE);
+        body.setError("access_denied");
+        when(vpSubmissionService.submitVerifiablePresentation(any(), any(), any(), any(), any(), eq(true)))
+                .thenThrow(new VPRequestValidationException(ErrorCode.DC_API_RESPONSE_MODE_REQUIRED));
+
+        ResponseEntity<?> response = controller.submitVpDcApi(body, request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        ErrorDto error = (ErrorDto) response.getBody();
+        assertNotNull(error);
+        assertEquals(ErrorCode.DC_API_RESPONSE_MODE_REQUIRED.getErrorCode(), error.getErrorCode());
+    }
+
+    @Test
+    void shouldMapAlreadySubmitted_whenDcApiServiceRejectsDuplicate() {
+        DcApiVpSubmissionRequestDto body = new DcApiVpSubmissionRequestDto();
+        body.setRequestId(STATE);
+        body.setError("access_denied");
+        when(vpSubmissionService.submitVerifiablePresentation(any(), any(), any(), any(), any(), eq(true)))
+                .thenThrow(new VPAlreadySubmittedException());
+
+        ResponseEntity<?> response = controller.submitVpDcApi(body, request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        ErrorDto error = (ErrorDto) response.getBody();
+        assertNotNull(error);
+        assertEquals(ErrorCode.VP_ALREADY_SUBMITTED.getErrorCode(), error.getErrorCode());
+    }
+
+    @Test
+    void shouldMapInvalidVpToken_whenDcApiServiceRejectsToken() {
+        DcApiVpSubmissionRequestDto body = new DcApiVpSubmissionRequestDto();
+        body.setRequestId(STATE);
+        body.setVpToken(new ObjectMapper().createObjectNode().putArray("query1").addObject());
+        when(vpSubmissionService.submitVerifiablePresentation(any(), any(), any(), any(), any(), eq(true)))
+                .thenThrow(new InvalidVpTokenException("bad structure"));
+
+        ResponseEntity<?> response = controller.submitVpDcApi(body, request);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        ErrorDto error = (ErrorDto) response.getBody();
+        assertNotNull(error);
+        assertEquals("invalid_vp_token", error.getErrorCode());
     }
 }

@@ -35,6 +35,7 @@ public class P12KeyExtractor implements Extractor {
         this.resourceLoader = resourceLoader;
     }
 
+    @Override
     public KeyPair extractKeyPair() {
 
         try {

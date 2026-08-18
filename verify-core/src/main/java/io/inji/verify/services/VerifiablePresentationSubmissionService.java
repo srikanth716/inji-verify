@@ -19,19 +19,22 @@ import io.inji.verify.exception.VPSubmissionNotFoundException;
 import io.inji.verify.exception.VPSubmissionWalletError;
 import io.inji.verify.exception.VPVerificationException;
 import io.inji.verify.exception.VPWithoutProofException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 public interface VerifiablePresentationSubmissionService {
 
     /**
      * Submits a Verifiable Presentation (VP) in response to a VP request. Validates the submission and processes it according to the VP request details.
+     * Uses the same pipeline for {@code direct_post} and {@code dc_api} (including DCQL validation via {@code DcqlValidator}).
      *
      * @param vpToken          The vp_token parameter from the request, which may be null or empty
-     * @param state            The state parameter from the request, which is required and must not be empty
+     * @param state            The state / requestId parameter from the request, which is required and must not be empty
      * @param error            The error parameter from the request, which may be null or empty
      * @param errorDescription The error_description parameter from the request, which may be null or empty
      * @return the response body: empty if no response code was required, or containing a
-     * {@code redirect_uri} entry if one was generated.
+     * {@code redirect_uri} entry if one was generated. For {@code dc_api}, typically empty
+     * (HTTP 200 with no body).
      * @throws VPRequestValidationException   if any validation step fails (mapped to HTTP 400)
      * @throws RedirectUriGenerationException if a response code was generated but no redirect_uri
      *                                        could be built (mapped to HTTP 500)
@@ -39,6 +42,20 @@ public interface VerifiablePresentationSubmissionService {
      * @throws InvalidVpTokenException        if the vp_token cannot be decomposed into DCQL tokens (mapped to HTTP 400)
      */
     Map<String, Object> submitVerifiablePresentation(String vpToken, String state, String error, String errorDescription)
+            throws VPRequestValidationException, RedirectUriGenerationException, VPAlreadySubmittedException, InvalidVpTokenException;
+
+    /**
+     * Same as {@link #submitVerifiablePresentation(String, String, String, String)} with an HTTP request
+     * for origin-bound audience checks. When {@code requireDcApi} is true, the authorization request
+     * must have {@code response_mode=dc_api} and no {@code redirect_uri} is generated.
+     */
+    Map<String, Object> submitVerifiablePresentation(
+            String vpToken,
+            String state,
+            String error,
+            String errorDescription,
+            HttpServletRequest httpRequest,
+            boolean requireDcApi)
             throws VPRequestValidationException, RedirectUriGenerationException, VPAlreadySubmittedException, InvalidVpTokenException;
 
     /**

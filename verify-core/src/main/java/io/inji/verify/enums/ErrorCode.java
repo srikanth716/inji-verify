@@ -41,6 +41,8 @@ public enum ErrorCode {
     DC_API_REQUIRES_DID_CLIENT_ID("invalid_request", "DC API response_mode requires a decentralized_identifier client_id."),
     VERIFIER_ORIGIN_REQUIRED("invalid_request", "Unable to determine verifier origin from Origin or Referer headers."),
     SUBMISSION_ORIGIN_NOT_ALLOWED("invalid_request", "Submission Origin is not in the authorization request expected_origins."),
+    DC_API_RESPONSE_MODE_REQUIRED("invalid_request", "This endpoint only accepts submissions for response_mode=dc_api."),
+    INVALID_REQUEST_ID_MISSING("invalid_request", "requestId is required and cannot be empty."),
     NONCE_INVALID("invalid_request", "Nonce must contain only ASCII URL-safe characters (A-Z, a-z, 0-9, -, ., _, ~) and be at least 16 characters."),
     DID_CREATION_FAILED("DID_CREATION_FAILED","Error while creating DID document."),
     VP_SUBMISSION_EXCEPTION("VP_SUBMISSION_EXCEPTION","Error while processing VP submission"),

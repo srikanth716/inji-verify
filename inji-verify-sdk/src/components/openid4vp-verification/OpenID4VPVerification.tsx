@@ -1,17 +1,19 @@
 import "./OpenID4VPVerification.css";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import {
   AppError,
   OpenID4VPVerificationProps,
   VerificationResults,
-  CredentialResult
+  CredentialResult,
+  DcApiSubmissionData
 } from "./OpenID4VPVerification.types";
 import {
   vpRequestStatus,
   vpSessionRequest,
   vpSessionResults,
   getVpRequestJwt,
+  vpResultSubmission,
   isAppError,
 } from "../../utils/api";
 import {clearUrl, summariseVPResult, normalizeVp, isDcApiSupported, isMobileDevice, normalizeDcApiTimeoutMs} from "../../utils/utils";
@@ -122,8 +124,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         },
         [onVPProcessed, onVPReceived, summariseResults]
     );
-  const fetchVPResult = useCallback(
-    async (responseCode?: string | null) => {
+  const fetchVPResult = useCallback(async (responseCode?: string | null) => {
       if (!isActiveRef.current) return;
       setLoading(true);
 
@@ -297,8 +298,34 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         return;
       }
 
-      // Slice 2: POST credential.data to data.responseUri, then fetchVPResult().
-      resetState();
+      if (!data.responseUri) {
+        onError({
+          errorCode: "DC_API_MISSING_RESPONSE_URI",
+          errorMessage: "VP session response missing responseUri for DC API submission",
+        });
+        resetState();
+        return;
+      }
+
+      try {
+        const raw = credential.data;
+        const submissionPayloadData = (typeof raw === "string" ? JSON.parse(raw) : raw) as DcApiSubmissionData;
+        await vpResultSubmission(data.responseUri, data.requestId, submissionPayloadData);
+        await fetchVPResult();
+      } catch (error) {
+        onError(
+          isAppError(error)
+            ? error
+            : {
+                errorCode: "DC_API_SUBMIT_FAILED",
+                errorMessage:
+                  error instanceof Error ? error.message : "Failed to submit DC API presentation",
+              },
+        );
+        resetState();
+        return;
+      }
+      
     } catch (err) {
       const name = err instanceof DOMException ? err.name : "";
       const abortedForTimeout =

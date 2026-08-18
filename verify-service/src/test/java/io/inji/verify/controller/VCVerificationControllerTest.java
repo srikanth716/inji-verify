@@ -2,7 +2,6 @@ package io.inji.verify.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.inji.verify.dto.verification.VCVerificationStatusDto;
-import io.mosip.vercred.vcverifier.data.VerificationStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -36,7 +35,8 @@ public class VCVerificationControllerTest {
         String validVC = "validVC";
         String contentType = "application/ldp+json";
 
-        VCVerificationStatusDto expectedStatus = new VCVerificationStatusDto(VerificationStatus.SUCCESS);
+        VCVerificationStatusDto expectedStatus = objectMapper.readValue(
+                "{\"verificationStatus\":\"SUCCESS\"}", VCVerificationStatusDto.class);
 
         when(VCVerificationService.verify(validVC, contentType)).thenReturn(expectedStatus);
 
@@ -55,7 +55,8 @@ public class VCVerificationControllerTest {
     public void testVerifyInvalidVC() throws Exception {
         String invalidVC = "invalidVC";
         String contentType = "application/ldp+json";
-        VCVerificationStatusDto expectedStatus = new VCVerificationStatusDto(VerificationStatus.INVALID);
+        VCVerificationStatusDto expectedStatus = objectMapper.readValue(
+                "{\"verificationStatus\":\"INVALID\"}", VCVerificationStatusDto.class);
 
         when(VCVerificationService.verify(invalidVC, contentType)).thenReturn(expectedStatus);
 
