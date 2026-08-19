@@ -826,15 +826,13 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
                   />
                   <div className="slider-container">
                     <Slider
-                      key={`${zoomLevel}`}
                       aria-label="Zoom Level"
                       min={0}
                       max={10}
-                      step={1}
+                      step={0.01}
                       value={zoomLevel}
                       onChange={handleSliderChange}
                       onChangeCommitted={handleSliderChange}
-                      marks
                       valueLabelDisplay="on"
                     />
                   </div>
