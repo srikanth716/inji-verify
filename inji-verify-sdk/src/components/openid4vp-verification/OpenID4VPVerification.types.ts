@@ -179,8 +179,9 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
   isSameDeviceFlowEnabled?: boolean;
 
   /**
-   * When true, same-device mobile + DID clientId may use the W3C Digital Credentials API
-   * if the browser supports `openid4vp-v1-signed`. Defaults to false; otherwise falls back to OpenID4VP deep-link / QR.
+   * When true, mobile + DID clientId may use the W3C Digital Credentials API
+   * (same-device or cross-device UI) if the browser supports `openid4vp-v1-signed`.
+   * Defaults to false; otherwise falls back to OpenID4VP deep-link / QR.
    */
   enableDcApi?: boolean;
 

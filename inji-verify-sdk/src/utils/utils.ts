@@ -27,15 +27,8 @@ export const isMobileDevice = (): boolean => {
   return isMobileUA || isTabletUA;
 };
 
-export const isDcApiSupported = (props: {
-  enableDcApi: boolean;
-  isSameDeviceFlowEnabled: boolean;
-  clientId: string;
-}): boolean => {
-  if (!props.enableDcApi) return false;
-  if (!props.isSameDeviceFlowEnabled) return false;
-  if (!isMobileDevice()) return false;
-  if (!props.clientId.startsWith("decentralized_identifier:")) return false;
+export const isDcApiSupported = (clientId: string): boolean => {
+  if (!clientId.startsWith("decentralized_identifier:")) return false;
   if (typeof window.DigitalCredential === "undefined") return false;
   const allows = window.DigitalCredential.userAgentAllowsProtocol;
   if (typeof allows !== "function") return false;

@@ -449,4 +449,136 @@ describe("OpenID4VPVerification UI Tests", () => {
       expect(qrValue as string).toContain("dcql_query=");
     });
   });
+
+  describe("cross-device DC API", () => {
+    const didClientId = "decentralized_identifier:did:web:example.com";
+    const originalUserAgent = navigator.userAgent;
+    const originalDigitalCredential = window.DigitalCredential;
+    const originalCredentials = navigator.credentials;
+
+    const mockMobileDcApi = () => {
+      Object.defineProperty(navigator, "userAgent", {
+        configurable: true,
+        value:
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+      });
+      window.DigitalCredential = {
+        userAgentAllowsProtocol: jest.fn(() => true),
+      } as unknown as typeof DigitalCredential;
+      const get = jest.fn().mockResolvedValue({
+        protocol: "openid4vp-v1-signed",
+        data: { vp_token: { cred: "token" } },
+      });
+      Object.defineProperty(navigator, "credentials", {
+        configurable: true,
+        value: { get },
+      });
+      return get;
+    };
+
+    afterEach(() => {
+      Object.defineProperty(navigator, "userAgent", {
+        configurable: true,
+        value: originalUserAgent,
+      });
+      Object.defineProperty(navigator, "credentials", {
+        configurable: true,
+        value: originalCredentials,
+      });
+      if (originalDigitalCredential === undefined) {
+        delete (window as { DigitalCredential?: unknown }).DigitalCredential;
+      } else {
+        window.DigitalCredential = originalDigitalCredential;
+      }
+    });
+
+    it("uses DC API instead of QR when enableDcApi, mobile, and DC API are supported", async () => {
+      const credentialsGet = mockMobileDcApi();
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce({
+          status: 201,
+          json: async () => ({
+            transactionId: "txn-dc",
+            requestId: "req-dc",
+            requestUri: "https://example.com/verify/v2/vp-request/req-dc",
+            responseUri: "https://example.com/verify/vp-submission/dc-api",
+            authorizationDetails: {
+              ...authorizationDetails(),
+              responseMode: "dc_api",
+            },
+          }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => "signed.jwt.here",
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({}),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            credentialResults: [],
+            transactionId: "txn-dc",
+          }),
+        });
+      global.fetch = fetchMock;
+
+      renderComponent({
+        clientId: didClientId,
+        enableDcApi: true,
+        isSameDeviceFlowEnabled: false,
+        triggerElement,
+        onVPReceived,
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+      await waitFor(() => {
+        expect(credentialsGet).toHaveBeenCalled();
+      });
+      expect(screen.queryByTestId("ovp-qr")).not.toBeInTheDocument();
+
+      const sessionBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(sessionBody.responseMode).toBe("dc_api");
+      expect(onVPReceived).toHaveBeenCalledWith("txn-dc");
+    });
+
+    it("still shows QR on cross-device when enableDcApi is false", async () => {
+      mockMobileDcApi();
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          status: 201,
+          json: async () => ({
+            transactionId: "txn-qr",
+            requestId: "req-qr",
+            authorizationDetails: authorizationDetails(),
+          }),
+        })
+        .mockResolvedValue({
+          status: 200,
+          json: async () => ({ status: "PENDING" }),
+        }) as jest.Mock;
+
+      renderComponent({
+        clientId: didClientId,
+        enableDcApi: false,
+        isSameDeviceFlowEnabled: false,
+        triggerElement,
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("ovp-qr")).toBeInTheDocument();
+      });
+      expect(navigator.credentials.get).not.toHaveBeenCalled();
+    });
+  });
 });

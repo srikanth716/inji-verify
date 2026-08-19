@@ -362,14 +362,21 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     }
   };
 
-  const handleTriggerClick = () => {
-    if (isSameDeviceFlowEnabled && isDcApiSupported({enableDcApi, isSameDeviceFlowEnabled, clientId})) {
+  const shouldUseDcApi = () =>
+    enableDcApi && isMobileDevice() && isDcApiSupported(clientId);
+
+  const startVerificationFlow = () => {
+    if (shouldUseDcApi()) {
       processDcAPIFlow();
     } else if (isSameDeviceFlowEnabled) {
       processDeepLinkFlow();
     } else {
       processQRCodeGenerationFlow();
     }
+  };
+
+  const handleTriggerClick = () => {
+    startVerificationFlow();
   };
 
   useEffect(() => {
@@ -447,13 +454,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
 
   useEffect(() => {
     if (!triggerElement) {
-      if (isSameDeviceFlowEnabled && isDcApiSupported({enableDcApi, isSameDeviceFlowEnabled, clientId})) {
-        processDcAPIFlow();
-      } else if (isSameDeviceFlowEnabled) {
-        processDeepLinkFlow();
-      } else {
-        processQRCodeGenerationFlow();
-      }
+      startVerificationFlow();
     }
   }, [triggerElement, isSameDeviceFlowEnabled]);
 
