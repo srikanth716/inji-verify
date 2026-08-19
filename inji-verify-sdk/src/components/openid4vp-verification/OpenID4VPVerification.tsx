@@ -16,7 +16,7 @@ import {
   vpResultSubmission,
   isAppError,
 } from "../../utils/api";
-import {clearUrl, summariseVPResult, normalizeVp, isDcApiSupported, isMobileDevice, normalizeDcApiTimeoutMs} from "../../utils/utils";
+import {clearUrl, summariseVPResult, normalizeVp, isMobileDevice, normalizeDcApiTimeoutMs} from "../../utils/utils";
 import { QrData } from "../../types/OVPSchemeQrData";
 import { DC_API_PROTOCOL, DEFAULT_DC_API_TIMEOUT_MS, DEFAULT_PROTOCOL, VP_FORMATS_SUPPORTED } from "../../utils/constants";
 
@@ -362,17 +362,19 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     }
   };
 
-  const shouldUseDcApi = () =>
-    enableDcApi && isMobileDevice() && isDcApiSupported(clientId);
-
   const startVerificationFlow = () => {
-    if (shouldUseDcApi()) {
-      processDcAPIFlow();
-    } else if (isSameDeviceFlowEnabled) {
-      processDeepLinkFlow();
-    } else {
-      processQRCodeGenerationFlow();
+    if (isSameDeviceFlowEnabled) {
+      if (webWalletBaseUrl) {
+        processDeepLinkFlow();
+      } else if (enableDcApi) {
+        processDcAPIFlow();
+      } else {
+        processDeepLinkFlow();
+      }
+      return;
     }
+
+    processQRCodeGenerationFlow();
   };
 
   const handleTriggerClick = () => {

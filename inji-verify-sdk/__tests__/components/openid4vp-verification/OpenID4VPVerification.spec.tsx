@@ -254,10 +254,8 @@ describe("OpenID4VPVerification UI Tests", () => {
       isSameDeviceFlowEnabled: false,
     });
 
-    // Trigger the creation of the VP request
     fireEvent.click(screen.getByRole("button", { name: "Verify" }));
 
-    // Wait for the VP result to be received
     await waitFor(() => {
       expect(onVPReceived).toHaveBeenCalledWith(mockTransactionId); // Expect txnId
     });
@@ -450,7 +448,7 @@ describe("OpenID4VPVerification UI Tests", () => {
     });
   });
 
-  describe("cross-device DC API", () => {
+  describe("cross-device QR", () => {
     const didClientId = "decentralized_identifier:did:web:example.com";
     const originalUserAgent = navigator.userAgent;
     const originalDigitalCredential = window.DigitalCredential;
@@ -492,66 +490,9 @@ describe("OpenID4VPVerification UI Tests", () => {
       }
     });
 
-    it("uses DC API instead of QR when enableDcApi, mobile, and DC API are supported", async () => {
+    it("always generates a Verify SDK QR, even when enableDcApi is true", async () => {
       const credentialsGet = mockMobileDcApi();
       const fetchMock = jest
-        .fn()
-        .mockResolvedValueOnce({
-          status: 201,
-          json: async () => ({
-            transactionId: "txn-dc",
-            requestId: "req-dc",
-            requestUri: "https://example.com/verify/v2/vp-request/req-dc",
-            responseUri: "https://example.com/verify/vp-submission/dc-api",
-            authorizationDetails: {
-              ...authorizationDetails(),
-              responseMode: "dc_api",
-            },
-          }),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          text: async () => "signed.jwt.here",
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: async () => ({}),
-        })
-        .mockResolvedValueOnce({
-          ok: true,
-          status: 200,
-          json: async () => ({
-            credentialResults: [],
-            transactionId: "txn-dc",
-          }),
-        });
-      global.fetch = fetchMock;
-
-      renderComponent({
-        clientId: didClientId,
-        enableDcApi: true,
-        isSameDeviceFlowEnabled: false,
-        triggerElement,
-        onVPReceived,
-      });
-
-      fireEvent.click(screen.getByRole("button", { name: "Verify" }));
-
-      await waitFor(() => {
-        expect(credentialsGet).toHaveBeenCalled();
-      });
-      expect(screen.queryByTestId("ovp-qr")).not.toBeInTheDocument();
-
-      const sessionBody = JSON.parse(fetchMock.mock.calls[0][1].body);
-      expect(sessionBody.responseMode).toBe("dc_api");
-      expect(onVPReceived).toHaveBeenCalledWith("txn-dc");
-    });
-
-    it("still shows QR on cross-device when enableDcApi is false", async () => {
-      mockMobileDcApi();
-      global.fetch = jest
         .fn()
         .mockResolvedValueOnce({
           status: 201,
@@ -564,11 +505,12 @@ describe("OpenID4VPVerification UI Tests", () => {
         .mockResolvedValue({
           status: 200,
           json: async () => ({ status: "PENDING" }),
-        }) as jest.Mock;
+        });
+      global.fetch = fetchMock;
 
       renderComponent({
         clientId: didClientId,
-        enableDcApi: false,
+        enableDcApi: true,
         isSameDeviceFlowEnabled: false,
         triggerElement,
       });
@@ -578,7 +520,88 @@ describe("OpenID4VPVerification UI Tests", () => {
       await waitFor(() => {
         expect(screen.getByTestId("ovp-qr")).toBeInTheDocument();
       });
-      expect(navigator.credentials.get).not.toHaveBeenCalled();
+      expect(credentialsGet).not.toHaveBeenCalled();
+      const sessionBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(sessionBody.responseMode).toBe("direct_post");
+    });
+  });
+
+  describe("same-device web wallet", () => {
+    const didClientId = "decentralized_identifier:did:web:example.com";
+    const originalUserAgent = navigator.userAgent;
+    const originalDigitalCredential = window.DigitalCredential;
+    const originalCredentials = navigator.credentials;
+
+    afterEach(() => {
+      Object.defineProperty(navigator, "userAgent", {
+        configurable: true,
+        value: originalUserAgent,
+      });
+      Object.defineProperty(navigator, "credentials", {
+        configurable: true,
+        value: originalCredentials,
+      });
+      if (originalDigitalCredential === undefined) {
+        delete (window as { DigitalCredential?: unknown }).DigitalCredential;
+      } else {
+        window.DigitalCredential = originalDigitalCredential;
+      }
+    });
+
+    it("redirects to webWalletBaseUrl instead of using DC API", async () => {
+      Object.defineProperty(navigator, "userAgent", {
+        configurable: true,
+        value:
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+      });
+      const credentialsGet = jest.fn();
+      window.DigitalCredential = {
+        userAgentAllowsProtocol: jest.fn(() => true),
+      } as unknown as typeof DigitalCredential;
+      Object.defineProperty(navigator, "credentials", {
+        configurable: true,
+        value: { get: credentialsGet },
+      });
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        status: 201,
+        json: async () => ({
+          transactionId: "txn-ww",
+          requestId: "req-ww",
+          authorizationDetails: authorizationDetails(),
+        }),
+      }) as jest.Mock;
+
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        writable: true,
+        value: {
+          origin: "https://client.example.com",
+          search: "",
+          hash: "",
+          href: "https://client.example.com/",
+          pathname: "/",
+        },
+      });
+
+      renderComponent({
+        clientId: didClientId,
+        enableDcApi: true,
+        isSameDeviceFlowEnabled: true,
+        webWalletBaseUrl: "https://wallet.example.com",
+        triggerElement,
+      });
+
+      expect(window.location.href).not.toContain("/authorize?");
+
+      fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+      await waitFor(() => {
+        expect(window.location.href).toContain(
+          "https://wallet.example.com/authorize?",
+        );
+      });
+      expect(credentialsGet).not.toHaveBeenCalled();
     });
   });
 });
