@@ -548,19 +548,68 @@ describe("OpenID4VPVerification UI Tests", () => {
       }
     });
 
-    it("redirects to webWalletBaseUrl instead of using DC API", async () => {
+    it("throws when enableDcApi and webWalletBaseUrl are both set", async () => {
+      const errorMessage =
+        "enableDcApi and webWalletBaseUrl cannot be used together. Choose either Digital Credentials API or a web wallet redirect.";
+      const consoleErrorMock = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      class ErrorBoundary extends React.Component<
+        { children: React.ReactNode },
+        { error: Error | null }
+      > {
+        constructor(props: { children: React.ReactNode }) {
+          super(props);
+          this.state = { error: null };
+        }
+
+        static getDerivedStateFromError(error: Error) {
+          return { error };
+        }
+
+        render() {
+          if (this.state.error) {
+            return (
+              <div data-testid="error-message">{this.state.error.message}</div>
+            );
+          }
+          return this.props.children;
+        }
+      }
+
+      render(
+        <ErrorBoundary>
+          <OpenID4VPVerification
+            verifyServiceUrl="https://example.com/verify"
+            clientId={didClientId}
+            protocol="testopenid4vp://"
+            dcqlQuery={dcqlQuery}
+            onVPReceived={jest.fn()}
+            onQrCodeExpired={jest.fn()}
+            onError={jest.fn()}
+            enableDcApi={true}
+            webWalletBaseUrl="https://wallet.example.com"
+            isSameDeviceFlowEnabled={true}
+            triggerElement={<button>Verify</button>}
+          />
+        </ErrorBoundary>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("error-message")).toHaveTextContent(
+          errorMessage,
+        );
+      });
+
+      consoleErrorMock.mockRestore();
+    });
+
+    it("redirects to webWalletBaseUrl when enableDcApi is false", async () => {
       Object.defineProperty(navigator, "userAgent", {
         configurable: true,
         value:
           "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-      });
-      const credentialsGet = jest.fn();
-      window.DigitalCredential = {
-        userAgentAllowsProtocol: jest.fn(() => true),
-      } as unknown as typeof DigitalCredential;
-      Object.defineProperty(navigator, "credentials", {
-        configurable: true,
-        value: { get: credentialsGet },
       });
 
       global.fetch = jest.fn().mockResolvedValueOnce({
@@ -586,13 +635,11 @@ describe("OpenID4VPVerification UI Tests", () => {
 
       renderComponent({
         clientId: didClientId,
-        enableDcApi: true,
+        enableDcApi: false,
         isSameDeviceFlowEnabled: true,
         webWalletBaseUrl: "https://wallet.example.com",
         triggerElement,
       });
-
-      expect(window.location.href).not.toContain("/authorize?");
 
       fireEvent.click(screen.getByRole("button", { name: "Verify" }));
 
@@ -601,7 +648,6 @@ describe("OpenID4VPVerification UI Tests", () => {
           "https://wallet.example.com/authorize?",
         );
       });
-      expect(credentialsGet).not.toHaveBeenCalled();
     });
   });
 });

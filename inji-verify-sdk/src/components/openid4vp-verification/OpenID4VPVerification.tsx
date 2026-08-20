@@ -444,6 +444,11 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     if (!onError) {
       throw new Error("onError callback is required");
     }
+    if (enableDcApi && webWalletBaseUrl) {
+      throw new Error(
+        "enableDcApi and webWalletBaseUrl cannot be used together. Choose either Digital Credentials API or a web wallet redirect."
+      );
+    }
   }, [
     createVPRequest,
     onError,
@@ -452,6 +457,8 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
     onVPReceived,
     dcqlQuery,
     triggerElement,
+    enableDcApi,
+    webWalletBaseUrl,
   ]);
 
   useEffect(() => {

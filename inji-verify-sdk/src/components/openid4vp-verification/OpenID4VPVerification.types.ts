@@ -179,8 +179,10 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
   isSameDeviceFlowEnabled?: boolean;
 
   /**
-   * A selected web wallet (`webWalletBaseUrl`) always redirects and takes priority over DC API.
-   * Same-device without `webWalletBaseUrl`: use the W3C Digital Credentials API.
+   * Same-device only: use the W3C Digital Credentials API (`response_mode=dc_api`).
+   * Defaults to false. Mutually exclusive with `webWalletBaseUrl` — passing both
+   * throws on mount/update so integrators fail fast.
+   * When only `webWalletBaseUrl` is set, same-device redirects to that wallet.
    * Cross-device always uses the Verify SDK OpenID4VP QR (`direct_post`).
    */
   enableDcApi?: boolean;
