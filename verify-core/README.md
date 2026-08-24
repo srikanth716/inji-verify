@@ -80,12 +80,22 @@ entities to be picked up.
 > scheduled job, or a plain `ApplicationContext` — `DeferredResult#onTimeout()` never fires.
 > `DeferredResult` has no timer of its own, so the call will simply hang instead of timing out.
 
-> **⚠️ Security: override the default keystore before deploying anything.** `verify-core` ships
-> with a sample Ed25519 keystore (`src/main/resources/sample-keystore/test.p12`, alias `test`,
-> password `mosip`) that `inji.keystore.file.path`/`inji.keystore.file.pass` point at by default.
-> Its private key is bundled in the published jar, so it is **public to anyone who depends on
-> `verify-core`**. It exists purely so the module builds/tests/runs out of the box for local
-> development — it is deliberately named/labelled as an obvious placeholder, not branded as
-> anything official. Any real deployment (via `verify-service` or your own embedding app) **must**
-> override both properties with its own privately-held keystore; leaving the default in place lets
-> anyone forge validly-signed `did:web` VP requests appearing to come from your deployment.
+### ⚠️ Production deployment
+
+**Replace the default keystore before deploying to any real environment.**
+
+`verify-core` includes a sample keystore (`src/main/resources/sample-keystore/test.p12`) for local development. Its private key is included in the published JAR and is therefore **not secure for production use**.
+
+Configure `inji.keystore.file.path` and `inji.keystore.file.pass` to point to your own privately-held keystore. Otherwise, attackers could forge valid VP requests that appear to come from your deployment.
+
+The keystore must contain an **Ed25519 key**. RSA and other EC keys are not currently supported.
+
+If using `x509_san_dns`:
+
+- The certificate must contain a `dNSName` SAN matching `inji.verify.x509-san-dns.host`.
+- The certificate must be valid (not expired or not-yet-valid).
+- `inji.vp-submission.base-url` must use **HTTPS** in non-local environments.
+- If the wallet does not already trust your certificate, use the same host for `inji.vp-submission.base-url` and `inji.verify.x509-san-dns.host`.
+- If the keystore has no certificate chain configured (or an empty one), request creation fails immediately with `CLIENT_ID_CERTIFICATE_CHAIN_MISSING` — you won't get a `requestUri` a wallet could later fail to fetch.
+
+Certificates are **not rotated automatically**, so renew the certificate and update the configured keystore before it expires.
