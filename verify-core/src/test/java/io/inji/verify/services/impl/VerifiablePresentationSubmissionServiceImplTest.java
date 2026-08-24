@@ -2513,7 +2513,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         @Test
         void originAudience_passes_whenDidClientIdAndKbJwtAudIsOrigin() {
             String originAud = "origin:https://verify.example.com";
-            String didClientId = Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER + "did:web:verify.example.com";
+            String didClientId = Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER + ":did:web:verify.example.com";
             DCQLQueryDto dcql = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(
                             "cred1", "dc+sd-jwt",
@@ -2593,7 +2593,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
 
         @Test
         void originAudience_passes_whenDidClientIdAndProofDomainIsOrigin() {
-            String didClientId = Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER + "did:web:verify.example.com";
+            String didClientId = Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER + ":did:web:verify.example.com";
             DCQLQueryDto dcql = new DCQLQueryDto(
                     List.of(new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null)),
                     null);
