@@ -30,11 +30,10 @@ import io.inji.verify.repository.VPSubmissionRepository;
 import io.inji.verify.services.KeyManagementService;
 import io.inji.verify.shared.Constants;
 import io.inji.verify.services.VerifiablePresentationRequestService;
+import io.inji.verify.utils.OriginAudienceResolver;
 import io.inji.verify.utils.SecurityUtils;
 import io.inji.verify.utils.Utils;
-import io.inji.verify.utils.VerifierOriginResolver;
 import io.inji.verify.validator.DcqlValidator;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -111,7 +110,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     }
 
     @Override
-    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest) {
+    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate, Optional<String> submissionOrigin) {
         log.info("Creating authorization request");
         dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
         validateX509SanDnsHost(vpRequestCreate.getClientId());
@@ -148,7 +147,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
             if (!isSignedRequestScheme(vpRequestCreate.getClientId())) {
                 throw new VPRequestValidationException(ErrorCode.DC_API_REQUIRES_SIGNED_CLIENT_ID);
             }
-            String verifierOrigin = VerifierOriginResolver.resolve(httpRequest)
+            String verifierOrigin = OriginAudienceResolver.canonicalize(submissionOrigin.orElse(null))
                     .orElseThrow(() -> new VPRequestValidationException(ErrorCode.VERIFIER_ORIGIN_REQUIRED));
             expectedOrigins = List.of(verifierOrigin);
             responseUri = verifyServiceBaseUrl + Constants.VP_DC_API_SUBMISSION_URI;

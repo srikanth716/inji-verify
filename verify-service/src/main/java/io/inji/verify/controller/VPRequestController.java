@@ -13,6 +13,7 @@ import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.VPRequestNotFoundException;
 import io.inji.verify.exception.VPRequestValidationException;
 import io.inji.verify.services.VerifiablePresentationRequestService;
+import io.inji.verify.utils.SubmissionOriginExtractor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -147,7 +148,8 @@ public class VPRequestController {
     private ResponseEntity<Object> processCreateVPRequest(
             VPRequestCreateDto vpRequestCreate, HttpServletRequest httpRequest, boolean createCookie) {
         VPRequestResponseDto authorizationRequestResponse =
-                verifiablePresentationRequestService.createAuthorizationRequest(vpRequestCreate, httpRequest);
+                verifiablePresentationRequestService.createAuthorizationRequest(
+                        vpRequestCreate, SubmissionOriginExtractor.from(httpRequest));
 
         if (createCookie) {
             String transactionId = authorizationRequestResponse.getTransactionId();

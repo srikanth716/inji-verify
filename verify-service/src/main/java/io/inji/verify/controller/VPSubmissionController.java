@@ -8,6 +8,7 @@ import io.inji.verify.exception.RedirectUriGenerationException;
 import io.inji.verify.exception.VPAlreadySubmittedException;
 import io.inji.verify.exception.VPRequestValidationException;
 import io.inji.verify.services.VerifiablePresentationSubmissionService;
+import io.inji.verify.utils.SubmissionOriginExtractor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -93,7 +94,7 @@ public class VPSubmissionController {
             }
 
             Map<String, Object> response = verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                    vpToken, state, error, errorDescription);
+                    vpToken, state, error, errorDescription, SubmissionOriginExtractor.from(request));
             return ResponseEntity.status(HttpStatus.OK).body(response);
         } catch (VPRequestValidationException e) {
             log.error("VP submission validation error: {}", e.getMessage());
@@ -142,10 +143,10 @@ public class VPSubmissionController {
         }
 
         try {
-            // Same service entry + DCQL validation pipeline as direct-post; requireDcApi=true
-            // enforces response_mode=dc_api, origin audience, and skips redirect_uri.
+            // Same service entry + DCQL validation pipeline as direct-post; stored response_mode
+            // drives origin checks and redirect_uri generation.
             verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                    vpToken, requestId, error, errorDescription, request, true);
+                    vpToken, requestId, error, errorDescription, SubmissionOriginExtractor.from(request));
             return ResponseEntity.ok().build();
         } catch (VPRequestValidationException e) {
             log.error("DC API VP submission validation error: {}", e.getMessage());

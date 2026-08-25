@@ -4,9 +4,9 @@ import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.shared.Constants;
 import org.junit.jupiter.api.Test;
-import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -16,6 +16,16 @@ class OriginAudienceResolverTest {
     void toOriginAudience_prefixesOriginWithoutTrailingSlash() {
         assertEquals("origin:https://verify.example.com",
                 OriginAudienceResolver.toOriginAudience("https://verify.example.com"));
+    }
+
+    @Test
+    void canonicalize_stripsPathAndNormalizes() {
+        assertEquals("https://verify.example.com",
+                OriginAudienceResolver.canonicalize("https://verify.example.com/path?q=1").orElseThrow());
+        assertEquals("https://verify.example.com:8443",
+                OriginAudienceResolver.canonicalize("https://verify.example.com:8443/").orElseThrow());
+        assertTrue(OriginAudienceResolver.canonicalize("ftp://verify.example.com").isEmpty());
+        assertTrue(OriginAudienceResolver.canonicalize(null).isEmpty());
     }
 
     @Test
@@ -37,9 +47,8 @@ class OriginAudienceResolverTest {
                 "decentralized_identifier:did:web:verify.example.com",
                 null, null, "nonce-value-123456", "https://verify.example.com/cb",
                 false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
-        MockHttpServletRequest request = new MockHttpServletRequest();
 
-        OriginAudienceResolver.ResolveResult result = OriginAudienceResolver.resolve(auth, request);
+        OriginAudienceResolver.ResolveResult result = OriginAudienceResolver.resolve(auth, Optional.empty());
 
         assertTrue(result.isOk());
         assertEquals("decentralized_identifier:did:web:verify.example.com", result.expectedAudience());
@@ -52,10 +61,9 @@ class OriginAudienceResolverTest {
                 null, null, "nonce-value-123456", null,
                 false, false, Constants.RESPONSE_MODE_DC_API,
                 List.of("https://verify.example.com"));
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Origin", "https://verify.example.com");
 
-        OriginAudienceResolver.ResolveResult result = OriginAudienceResolver.resolve(auth, request);
+        OriginAudienceResolver.ResolveResult result =
+                OriginAudienceResolver.resolve(auth, Optional.of("https://verify.example.com"));
 
         assertTrue(result.isOk());
         assertEquals("origin:https://verify.example.com", result.expectedAudience());
@@ -68,9 +76,8 @@ class OriginAudienceResolverTest {
                 null, null, "nonce-value-123456", null,
                 false, false, Constants.RESPONSE_MODE_DC_API,
                 List.of("https://verify.example.com"));
-        MockHttpServletRequest request = new MockHttpServletRequest();
 
-        OriginAudienceResolver.ResolveResult result = OriginAudienceResolver.resolve(auth, request);
+        OriginAudienceResolver.ResolveResult result = OriginAudienceResolver.resolve(auth, Optional.empty());
 
         assertFalse(result.isOk());
         assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, result.error());
@@ -83,10 +90,9 @@ class OriginAudienceResolverTest {
                 null, null, "nonce-value-123456", null,
                 false, false, Constants.RESPONSE_MODE_DC_API,
                 List.of("https://verify.example.com"));
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Origin", "https://evil.example.com");
 
-        OriginAudienceResolver.ResolveResult result = OriginAudienceResolver.resolve(auth, request);
+        OriginAudienceResolver.ResolveResult result =
+                OriginAudienceResolver.resolve(auth, Optional.of("https://evil.example.com"));
 
         assertFalse(result.isOk());
         assertEquals(ErrorCode.SUBMISSION_ORIGIN_NOT_ALLOWED, result.error());

@@ -76,7 +76,6 @@ import io.mosip.vercred.vcverifier.data.VPVerificationStatus;
 import io.mosip.vercred.vcverifier.data.VerificationResult;
 import io.mosip.vercred.vcverifier.data.VerificationStatus;
 import jakarta.validation.Validator;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -136,28 +135,21 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
      * Runs the full VP submission flow. This is the single entry point the controller (or a
      * consumer embedding this service directly) needs to call.
      * <p>
-     * Validation order is unchanged. If a check fails after the session is known to be
-     * active, the failure is persisted (so the verifier can fetch a result instead of
-     * polling until expiry) and then rethrown to the wallet.
+     * Behavior is driven by the stored authorization request {@code response_mode}, not by which
+     * HTTP endpoint was used. After {@code state} is validated, validation failures are persisted
+     * so the verifier can fetch a result instead of polling until expiry. A blank state cannot be
+     * persisted (no correlation key).
      * <p>
      * Not annotated {@code @Transactional}: each {@code save} commits on its own so the
-     * status listener can observe the DB row. Wrapping the whole method would delay that
-     * commit until this method returns.
+     * status listener can observe the DB row.
      */
-    @Override
-    public Map<String, Object> submitVerifiablePresentation(String vpToken, String state, String error, String errorDescription)
-            throws VPRequestValidationException, RedirectUriGenerationException, VPAlreadySubmittedException, InvalidVpTokenException {
-        return submitVerifiablePresentation(vpToken, state, error, errorDescription, null, false);
-    }
-
     @Override
     public Map<String, Object> submitVerifiablePresentation(
             String vpToken,
             String state,
             String error,
             String errorDescription,
-            jakarta.servlet.http.HttpServletRequest httpRequest,
-            boolean requireDcApi)
+            Optional<String> submissionOrigin)
             throws VPRequestValidationException, RedirectUriGenerationException, VPAlreadySubmittedException, InvalidVpTokenException {
         // --- 1. Validate request parameters ---
         validateSubmissionRequest(vpToken, error, errorDescription);
@@ -166,27 +158,24 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         validateState(state);
 
         try {
-            return submitValidatedPresentation(vpToken, state, error, errorDescription, httpRequest, requireDcApi);
+            return submitValidatedPresentation(vpToken, state, error, errorDescription, submissionOrigin);
         } catch (VPRequestValidationException | InvalidVpTokenException ex) {
-            if (!isProtocolReject(ex)) {
-                saveFailedSubmission(state, vpToken, ex);
-                verifiablePresentationRequestService.invokeVpRequestStatusListener(state);
-            }
+            saveFailedSubmission(state, vpToken, ex);
+            verifiablePresentationRequestService.invokeVpRequestStatusListener(state);
             throw ex;
         }
     }
 
     /**
-     * Existing submission validations and success persist, unchanged. Failures bubble to
-     * {@link #submitVerifiablePresentation} so they can be saved before being returned.
+     * Existing submission validations and success persist. Failures bubble so they can be saved
+     * before being returned to the wallet.
      */
     private Map<String, Object> submitValidatedPresentation(
             String vpToken,
             String state,
             String error,
             String errorDescription,
-            HttpServletRequest httpRequest,
-            boolean requireDcApi)
+            Optional<String> submissionOrigin)
             throws VPRequestValidationException, RedirectUriGenerationException, VPAlreadySubmittedException, InvalidVpTokenException {
         // --- 3. Validate vp_token structure if present ---
         if (StringUtils.hasText(vpToken)) {
@@ -203,15 +192,9 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
 
         AuthorizationRequestResponseDto authDetails = authRequestCreateResponse.getAuthorizationDetails();
         boolean storedIsDcApi = Constants.RESPONSE_MODE_DC_API.equals(authDetails.getResponseMode());
-        // The stored response mode decides which endpoint may finalize the session. Both
-        // directions are enforced so an error-only submission cannot terminate a dc_api
-        // session through the direct-post endpoint without an origin check.
-        if (requireDcApi != storedIsDcApi) {
-            throw new VPRequestValidationException(ErrorCode.DC_API_RESPONSE_MODE_REQUIRED);
-        }
         // DC API: submission Origin must be in expected_origins (including error-only responses).
         if (storedIsDcApi) {
-            OriginAudienceResolver.ResolveResult origin = OriginAudienceResolver.resolve(authDetails, httpRequest);
+            OriginAudienceResolver.ResolveResult origin = OriginAudienceResolver.resolve(authDetails, submissionOrigin);
             if (!origin.isOk()) {
                 throw new VPRequestValidationException(origin.error());
             }
@@ -230,14 +213,14 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
 
         // ---- 7. Validate client_id / origin audience and nonce for all token types.
         if (dcqlTokensDto != null) {
-            validateClientIdAndNonce(dcqlTokensDto, authRequestCreateResponse, httpRequest);
+            validateClientIdAndNonce(dcqlTokensDto, authRequestCreateResponse, submissionOrigin);
         }
 
-        // ---- 8. generate response_code and build redirect_uri as required (direct-post only)
+        // ---- 8. generate response_code and build redirect_uri as required (direct_post only)
         Map<String, Object> response = new HashMap<>();
         String responseCode = null;
         Timestamp responseCodeExpiryAt = null;
-        if (!requireDcApi) {
+        if (!storedIsDcApi) {
             responseCode = generateResponseCode(authDetails);
             if (responseCode != null) {
                 log.debug("Generated response code for state {}", state);
@@ -398,8 +381,8 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
      * extracted from a vp_token. Audience is resolved via {@link OriginAudienceResolver}
      * ({@code client_id} for direct_post; {@code origin:…} for dc_api).
      */
-    private void validateClientIdAndNonce(DcqlTokensDto dcqlTokensDto, AuthorizationRequestCreateResponse authRequest, HttpServletRequest httpRequest) {
-        OriginAudienceResolver.ResolveResult audience = OriginAudienceResolver.resolve(authRequest.getAuthorizationDetails(), httpRequest);
+    private void validateClientIdAndNonce(DcqlTokensDto dcqlTokensDto, AuthorizationRequestCreateResponse authRequest, Optional<String> submissionOrigin) {
+        OriginAudienceResolver.ResolveResult audience = OriginAudienceResolver.resolve(authRequest.getAuthorizationDetails(), submissionOrigin);
         if (!audience.isOk()) {
             throw new VPRequestValidationException(audience.error());
         }
@@ -748,19 +731,6 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         log.debug("VP submission saved successfully for state: {}", state);
 
 	}
-
-    /**
-     * Endpoint / origin identity failures must not close the session — the correct client can still submit.
-     */
-    private boolean isProtocolReject(RuntimeException ex) {
-        if (!(ex instanceof VPRequestValidationException vpEx)) {
-            return false;
-        }
-        ErrorCode code = vpEx.getErrorCode();
-        return code == ErrorCode.DC_API_RESPONSE_MODE_REQUIRED
-                || code == ErrorCode.VERIFIER_ORIGIN_REQUIRED
-                || code == ErrorCode.SUBMISSION_ORIGIN_NOT_ALLOWED;
-    }
 
     /**
      * Saves a failed VP submission so the verifier session can close. Best-effort: a concurrent

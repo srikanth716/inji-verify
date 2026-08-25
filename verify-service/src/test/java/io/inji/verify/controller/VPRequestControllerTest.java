@@ -133,7 +133,7 @@ public class VPRequestControllerTest {
     }
 
     @Test
-    void should_forwardOriginOnHttpServletRequest_when_dcApiVpRequest() throws Exception {
+    void should_forwardOrigin_when_dcApiVpRequest() throws Exception {
         VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", null, 0L, "https://verify.example.com/v1/verify/v2/vp-request/rId", null);
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
@@ -143,14 +143,15 @@ public class VPRequestControllerTest {
                         .content(validDcApiVpRequestJson()))
                 .andExpect(status().isCreated());
 
-        ArgumentCaptor<HttpServletRequest> requestCaptor = ArgumentCaptor.forClass(HttpServletRequest.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<java.util.Optional<String>> originCaptor = ArgumentCaptor.forClass(java.util.Optional.class);
         verify(verifiablePresentationRequestService, times(1))
-                .createAuthorizationRequest(any(), requestCaptor.capture());
-        assertEquals("https://verify.example.com", requestCaptor.getValue().getHeader("Origin"));
+                .createAuthorizationRequest(any(), originCaptor.capture());
+        assertEquals(java.util.Optional.of("https://verify.example.com"), originCaptor.getValue());
     }
 
     @Test
-    void should_forwardOriginOnHttpServletRequest_when_dcApiVpSessionRequest() throws Exception {
+    void should_forwardOrigin_when_dcApiVpSessionRequest() throws Exception {
         VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", null, 0L, "https://verify.example.com/v1/verify/v2/vp-request/rId", null);
         when(verifiablePresentationRequestService.createAuthorizationRequest(any(), any())).thenReturn(responseDto);
 
@@ -160,10 +161,11 @@ public class VPRequestControllerTest {
                         .content(validDcApiVpRequestJson()))
                 .andExpect(status().isCreated());
 
-        ArgumentCaptor<HttpServletRequest> requestCaptor = ArgumentCaptor.forClass(HttpServletRequest.class);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<java.util.Optional<String>> originCaptor = ArgumentCaptor.forClass(java.util.Optional.class);
         verify(verifiablePresentationRequestService, times(1))
-                .createAuthorizationRequest(any(), requestCaptor.capture());
-        assertEquals("https://verify.example.com", requestCaptor.getValue().getHeader("Origin"));
+                .createAuthorizationRequest(any(), originCaptor.capture());
+        assertEquals(java.util.Optional.of("https://verify.example.com"), originCaptor.getValue());
     }
 
     @Test

@@ -37,7 +37,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.junit.jupiter.api.Assertions.*;
 import org.mockito.ArgumentCaptor;
-import org.springframework.mock.web.MockHttpServletRequest;
 
 class VerifiablePresentationRequestServiceImplTest {
 
@@ -83,7 +82,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 minimalDcqlQuery(),
                 false);
 
-        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, null);
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, Optional.empty());
 
         assertNotNull(responseDto);
         assertEquals("test_transaction_id", responseDto.getTransactionId());
@@ -104,7 +103,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 minimalDcqlQuery(),
                 false);
 
-        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, null);
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, Optional.empty());
 
         assertNotNull(responseDto);
         assertTrue(responseDto.getTransactionId().startsWith(Constants.TRANSACTION_ID_PREFIX));
@@ -123,7 +122,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 dcqlQuery,
                 false);
 
-        service.createAuthorizationRequest(vpRequestCreateDto, null);
+        service.createAuthorizationRequest(vpRequestCreateDto, Optional.empty());
 
         verify(mockDcqlValidator, times(1)).validate(dcqlQuery);
     }
@@ -142,7 +141,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 .when(mockDcqlValidator).validate(any(DCQLQueryDto.class));
         try {
             assertThrows(VPRequestValidationException.class,
-                    () -> service.createAuthorizationRequest(vpRequestCreateDto, null));
+                    () -> service.createAuthorizationRequest(vpRequestCreateDto, Optional.empty()));
         } finally {
             // mockDcqlValidator is a shared static mock (initialized once in @BeforeAll); reset it
             // so this failure stub doesn't leak into other tests in this class.
@@ -463,7 +462,7 @@ class VerifiablePresentationRequestServiceImplTest {
             VPRequestCreateDto dto = new VPRequestCreateDto(
                     "x509_san_dns:test.example.com", "tx_x509", null, minimalDcqlQuery(), false);
 
-            VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
+            VPRequestResponseDto response = service.createAuthorizationRequest(dto, Optional.empty());
 
             assertNotNull(response);
             assertNotNull(response.getRequestUri(), "x509_san_dns should use the by-reference (request_uri) flow");
@@ -480,7 +479,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 "x509_san_dns:other-host.example.com", "tx_x509_mismatch", null, minimalDcqlQuery(), false);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                () -> service.createAuthorizationRequest(dto, null));
+                () -> service.createAuthorizationRequest(dto, Optional.empty()));
         assertEquals(ErrorCode.CLIENT_ID_HOST_MISMATCH, ex.getErrorCode());
     }
 
@@ -496,7 +495,7 @@ class VerifiablePresentationRequestServiceImplTest {
                         minimalDcqlQuery(), false);
 
                 VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                        () -> service.createAuthorizationRequest(dto, null),
+                        () -> service.createAuthorizationRequest(dto, Optional.empty()),
                         "expected rejection for invalid DNS name: " + invalidDns);
                 assertEquals(ErrorCode.CLIENT_ID_DNS_NAME_INVALID, ex.getErrorCode());
             } finally {
@@ -520,7 +519,7 @@ class VerifiablePresentationRequestServiceImplTest {
             VPRequestCreateDto dto = new VPRequestCreateDto(
                     "x509_san_dns:verify.acmecorp.example", "tx_x509_override", null, minimalDcqlQuery(), false);
 
-            VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
+            VPRequestResponseDto response = service.createAuthorizationRequest(dto, Optional.empty());
 
             assertNotNull(response);
             assertNotNull(response.getRequestUri());
@@ -541,7 +540,7 @@ class VerifiablePresentationRequestServiceImplTest {
                     "x509_san_dns:test.example.com", "tx_x509_no_cert", null, minimalDcqlQuery(), false);
 
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                    () -> service.createAuthorizationRequest(dto, null));
+                    () -> service.createAuthorizationRequest(dto, Optional.empty()));
             assertEquals(ErrorCode.CLIENT_ID_CERTIFICATE_CHAIN_MISSING, ex.getErrorCode());
         } finally {
             // mockKeyManagementService is a shared static mock (initialized once in @BeforeAll); reset
@@ -560,7 +559,7 @@ class VerifiablePresentationRequestServiceImplTest {
                     "x509_san_dns:test.example.com", "tx_x509_empty_cert", null, minimalDcqlQuery(), false);
 
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                    () -> service.createAuthorizationRequest(dto, null));
+                    () -> service.createAuthorizationRequest(dto, Optional.empty()));
             assertEquals(ErrorCode.CLIENT_ID_CERTIFICATE_CHAIN_MISSING, ex.getErrorCode());
         } finally {
             reset(mockKeyManagementService);
@@ -700,7 +699,7 @@ class VerifiablePresentationRequestServiceImplTest {
                     "x509_san_dns:test.example.com", "tx_x509_insecure", null, minimalDcqlQuery(), false);
 
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                    () -> service.createAuthorizationRequest(dto, null));
+                    () -> service.createAuthorizationRequest(dto, Optional.empty()));
             assertEquals(ErrorCode.REQUEST_URI_INSECURE, ex.getErrorCode());
         } finally {
             service.verifyServiceBaseUrl = originalBaseUrl;
@@ -717,7 +716,7 @@ class VerifiablePresentationRequestServiceImplTest {
                     "x509_san_dns:test.example.com", "tx_x509_hostless", null, minimalDcqlQuery(), false);
 
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                    () -> service.createAuthorizationRequest(dto, null));
+                    () -> service.createAuthorizationRequest(dto, Optional.empty()));
             assertEquals(ErrorCode.REQUEST_URI_INSECURE, ex.getErrorCode());
         } finally {
             service.verifyServiceBaseUrl = originalBaseUrl;
@@ -739,7 +738,7 @@ class VerifiablePresentationRequestServiceImplTest {
             VPRequestCreateDto dto = new VPRequestCreateDto(
                     "x509_san_dns:test.example.com", "tx_x509_local", null, minimalDcqlQuery(), false);
 
-            VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
+            VPRequestResponseDto response = service.createAuthorizationRequest(dto, Optional.empty());
 
             assertNotNull(response);
             assertNotNull(response.getRequestUri());
@@ -764,7 +763,7 @@ class VerifiablePresentationRequestServiceImplTest {
             VPRequestCreateDto dto = new VPRequestCreateDto(
                     "x509_san_dns:test.example.com", "tx_x509_https", null, minimalDcqlQuery(), false);
 
-            VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
+            VPRequestResponseDto response = service.createAuthorizationRequest(dto, Optional.empty());
 
             assertNotNull(response);
             assertNotNull(response.getRequestUri());
@@ -787,7 +786,7 @@ class VerifiablePresentationRequestServiceImplTest {
             VPRequestCreateDto dto = new VPRequestCreateDto(
                     "decentralized_identifier:did:example:verifier", "tx_dec_id_http", null, minimalDcqlQuery(), false);
 
-            VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
+            VPRequestResponseDto response = service.createAuthorizationRequest(dto, Optional.empty());
 
             assertNotNull(response);
             assertNotNull(response.getRequestUri());
@@ -867,10 +866,8 @@ class VerifiablePresentationRequestServiceImplTest {
                 false,
                 Constants.RESPONSE_MODE_DC_API);
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Origin", "https://verify.example.com");
-
-        VPRequestResponseDto responseDto = service.createAuthorizationRequest(dto, request);
+        Optional<String> submissionOrigin = Optional.of("https://verify.example.com");
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(dto, submissionOrigin);
 
         assertNotNull(responseDto.getRequestUri());
         assertNotNull(responseDto.getResponseUri());
@@ -896,11 +893,9 @@ class VerifiablePresentationRequestServiceImplTest {
                 false,
                 Constants.RESPONSE_MODE_DC_API);
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Origin", "https://verify.example.com");
-
+        Optional<String> submissionOrigin = Optional.of("https://verify.example.com");
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                () -> service.createAuthorizationRequest(dto, request));
+                () -> service.createAuthorizationRequest(dto, submissionOrigin));
 
         assertEquals(ErrorCode.DC_API_REQUIRES_SIGNED_CLIENT_ID, ex.getErrorCode());
     }
@@ -923,11 +918,9 @@ class VerifiablePresentationRequestServiceImplTest {
                 false,
                 Constants.RESPONSE_MODE_DC_API);
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Origin", "https://verify.example.com");
-
+        Optional<String> submissionOrigin = Optional.of("https://verify.example.com");
         try {
-            VPRequestResponseDto responseDto = service.createAuthorizationRequest(dto, request);
+            VPRequestResponseDto responseDto = service.createAuthorizationRequest(dto, submissionOrigin);
 
             assertNotNull(responseDto.getRequestUri());
             assertNotNull(responseDto.getResponseUri());
@@ -957,11 +950,9 @@ class VerifiablePresentationRequestServiceImplTest {
                 true,
                 Constants.RESPONSE_MODE_DC_API);
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Origin", "https://verify.example.com");
-
+        Optional<String> submissionOrigin = Optional.of("https://verify.example.com");
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                () -> service.createAuthorizationRequest(dto, request));
+                () -> service.createAuthorizationRequest(dto, submissionOrigin));
 
         assertEquals(ErrorCode.DC_API_RESPONSE_CODE_NOT_SUPPORTED, ex.getErrorCode());
         verify(mockAuthorizationRequestCreateResponseRepository, never()).save(any());
@@ -978,10 +969,9 @@ class VerifiablePresentationRequestServiceImplTest {
                 false,
                 Constants.RESPONSE_MODE_DC_API);
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-
+        Optional<String> submissionOrigin = Optional.empty();
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                () -> service.createAuthorizationRequest(dto, request));
+                () -> service.createAuthorizationRequest(dto, submissionOrigin));
 
         assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, ex.getErrorCode());
     }
@@ -1001,10 +991,9 @@ class VerifiablePresentationRequestServiceImplTest {
                 false,
                 Constants.RESPONSE_MODE_DC_API);
 
-        MockHttpServletRequest request = new MockHttpServletRequest();
-        request.addHeader("Referer", "https://verify.example.com/verify");
+        Optional<String> submissionOrigin = Optional.of("https://verify.example.com/verify");
 
-        VPRequestResponseDto responseDto = service.createAuthorizationRequest(dto, request);
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(dto, submissionOrigin);
 
         assertNotNull(responseDto.getRequestUri());
         ArgumentCaptor<AuthorizationRequestCreateResponse> captor =
@@ -1069,7 +1058,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 minimalDcqlQuery(),
                 true);
 
-        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, null);
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, Optional.empty());
 
         assertNotNull(responseDto);
         assertEquals("test_transaction_id", responseDto.getTransactionId());
@@ -1087,7 +1076,7 @@ class VerifiablePresentationRequestServiceImplTest {
 
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", validNonce, minimalDcqlQuery(), false);
 
-        VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
+        VPRequestResponseDto response = service.createAuthorizationRequest(dto, Optional.empty());
 
         assertEquals(validNonce, response.getAuthorizationDetails().getNonce());
     }
@@ -1099,7 +1088,7 @@ class VerifiablePresentationRequestServiceImplTest {
 
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", null, minimalDcqlQuery(), false);
 
-        VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
+        VPRequestResponseDto response = service.createAuthorizationRequest(dto, Optional.empty());
 
         assertNotNull(response.getAuthorizationDetails().getNonce());
         assertFalse(response.getAuthorizationDetails().getNonce().isBlank());
@@ -1112,7 +1101,7 @@ class VerifiablePresentationRequestServiceImplTest {
 
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", "   ", minimalDcqlQuery(), false);
 
-        VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
+        VPRequestResponseDto response = service.createAuthorizationRequest(dto, Optional.empty());
 
         // blank nonce must NOT be used — a generated nonce must replace it
         assertNotNull(response.getAuthorizationDetails().getNonce());
@@ -1129,7 +1118,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 "decentralized_identifier:did:example:verifier",
                 "tx_dec_id", null, minimalDcqlQuery(), false);
 
-        VPRequestResponseDto response = service.createAuthorizationRequest(dto, null);
+        VPRequestResponseDto response = service.createAuthorizationRequest(dto, Optional.empty());
 
         assertNotNull(response);
         assertEquals("tx_dec_id", response.getTransactionId());
@@ -1154,7 +1143,7 @@ class VerifiablePresentationRequestServiceImplTest {
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", "invalid nonce value!", minimalDcqlQuery(), false);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                () -> service.createAuthorizationRequest(dto, null));
+                () -> service.createAuthorizationRequest(dto, Optional.empty()));
 
         assertEquals(ErrorCode.NONCE_INVALID, ex.getErrorCode());
     }
@@ -1164,7 +1153,7 @@ class VerifiablePresentationRequestServiceImplTest {
         VPRequestCreateDto dto = new VPRequestCreateDto("client", "tx", "short", minimalDcqlQuery(), false);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
-                () -> service.createAuthorizationRequest(dto, null));
+                () -> service.createAuthorizationRequest(dto, Optional.empty()));
 
         assertEquals(ErrorCode.NONCE_INVALID, ex.getErrorCode());
     }
@@ -1181,7 +1170,7 @@ class VerifiablePresentationRequestServiceImplTest {
                 minimalDcqlQuery(),
                 false);
 
-        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, null);
+        VPRequestResponseDto responseDto = service.createAuthorizationRequest(vpRequestCreateDto, Optional.empty());
 
         assertNotNull(responseDto);
         assertEquals("test_transaction_id", responseDto.getTransactionId());
