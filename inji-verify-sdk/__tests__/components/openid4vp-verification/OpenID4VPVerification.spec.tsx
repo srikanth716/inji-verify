@@ -449,4 +449,123 @@ describe("OpenID4VPVerification UI Tests", () => {
       expect(qrValue as string).toContain("dcql_query=");
     });
   });
+
+  it("should omit responseCodeValidationRequired for cross-device QR flow", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      status: 201,
+      json: async () => ({
+        transactionId: "txn-xd",
+        requestId: "req-xd",
+        authorizationDetails: authorizationDetails(),
+      }),
+    }) as jest.Mock;
+
+    renderComponent({
+      isSameDeviceFlowEnabled: false,
+      triggerElement,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(body.responseCodeValidationRequired).toBeUndefined();
+  });
+
+  it("should request responseCodeValidationRequired for same-device mobile flow", async () => {
+    const originalUserAgent = navigator.userAgent;
+    Object.defineProperty(navigator, "userAgent", {
+      value:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15",
+      configurable: true,
+    });
+
+    const locationMock = {
+      origin: "https://client.example.com",
+      search: "",
+      hash: "",
+      href: "https://client.example.com/",
+      pathname: "/",
+    };
+    Object.defineProperty(window, "location", {
+      value: locationMock,
+      writable: true,
+    });
+
+    global.fetch = jest.fn().mockResolvedValue({
+      status: 201,
+      json: async () => ({
+        transactionId: "txn-sd",
+        requestId: "req-sd",
+        authorizationDetails: authorizationDetails(),
+      }),
+    }) as jest.Mock;
+
+    renderComponent({
+      isSameDeviceFlowEnabled: true,
+      triggerElement,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(body.responseCodeValidationRequired).toBe(true);
+    expect(locationMock.href).toContain("testopenid4vp://authorize?");
+
+    Object.defineProperty(navigator, "userAgent", {
+      value: originalUserAgent,
+      configurable: true,
+    });
+  });
+
+  it("should request responseCodeValidationRequired for same-device web wallet flow", async () => {
+    const locationMock = {
+      origin: "https://client.example.com",
+      search: "",
+      hash: "",
+      href: "https://client.example.com/",
+      pathname: "/",
+    };
+    Object.defineProperty(window, "location", {
+      value: locationMock,
+      writable: true,
+    });
+
+    global.fetch = jest.fn().mockResolvedValue({
+      status: 201,
+      json: async () => ({
+        transactionId: "txn-ww",
+        requestId: "req-ww",
+        authorizationDetails: authorizationDetails(),
+      }),
+    }) as jest.Mock;
+
+    renderComponent({
+      isSameDeviceFlowEnabled: true,
+      webWalletBaseUrl: "https://wallet.example.com/",
+      triggerElement,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalled();
+    });
+
+    const [, options] = (global.fetch as jest.Mock).mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(body.responseCodeValidationRequired).toBe(true);
+    expect(locationMock.href.startsWith("https://wallet.example.com/authorize?")).toBe(
+      true
+    );
+  });
 });

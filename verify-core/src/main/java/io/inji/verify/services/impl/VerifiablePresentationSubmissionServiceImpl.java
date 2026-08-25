@@ -177,7 +177,7 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
             validateClientIdAndNonce(dcqlTokensDto, authRequestCreateResponse);
         }
 
-        // ---- 8. generate response_code and build redirect_uri as required
+        // ---- 8. generate response_code and build redirect_uri when responseCodeValidationRequired
         Map<String, Object> response = new HashMap<>();
         String responseCode = generateResponseCode(authRequestCreateResponse.getAuthorizationDetails());
         Timestamp responseCodeExpiryAt = null;
@@ -1139,7 +1139,15 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
 		if (authRequest != null && authRequest.getAuthorizationDetails() != null) {
 			responseCodeValidationRequired = authRequest.getAuthorizationDetails().isResponseCodeValidationRequired();
 		}
-        if (responseCodeValidationRequired) validateResponseCode(responseCode, submission, isResponseCodeMandatory);
+        if (responseCodeValidationRequired) {
+            // Same-device mobile: original tab may resume via cookie without response_code
+            // (wallet may have opened a different default browser).
+            if (isResponseCodeMandatory && !StringUtils.hasText(responseCode)) {
+                log.debug("Skipping response_code validation for cookie-authenticated session result");
+            } else {
+                validateResponseCode(responseCode, submission, isResponseCodeMandatory);
+            }
+        }
 
         if (submission.getError() != null && !submission.getError().isEmpty())
             throw new VPSubmissionWalletError(submission.getError(), submission.getErrorDescription());

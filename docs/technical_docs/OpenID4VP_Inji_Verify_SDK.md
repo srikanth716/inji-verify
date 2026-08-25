@@ -222,7 +222,7 @@ import { OpenID4VPVerification } from "@injistack/react-inji-verify-sdk";
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `isSameDeviceFlowEnabled` | `boolean` | `true` | When `true`, triggers same-device flow on click. When `false`, always shows QR code (cross-device) |
-| `webWalletBaseUrl` | `string` | — | Base URL of a web wallet. When set, redirects to `{webWalletBaseUrl}/authorize?...` and enables `responseCodeValidationRequired` |
+| `webWalletBaseUrl` | `string` | — | Base URL of a web wallet. When set, redirects to `{webWalletBaseUrl}/authorize?...` instead of a native wallet deep link. Same-device flows (this and mobile) set `responseCodeValidationRequired` so submission returns `redirect_uri`. |
 | `triggerElement` | `ReactNode` | — | UI element that starts the flow on click. If omitted, the flow starts automatically on mount |
 | `transactionId` | `string` | — | Optional. Reuse an existing transaction instead of generating one |
 | `protocol` | `string` | `openid4vp://` | URI scheme prefix for QR code / deep link construction |
@@ -265,6 +265,16 @@ isSameDeviceFlowEnabled = true (default)
   → Desktop without webWalletBaseUrl
       → Error: MISSING_WEB_WALLET_BASE_URL
 ```
+
+**`redirect_uri` after VP submission**
+
+Same-device flows set the existing `responseCodeValidationRequired` flag. The backend then generates a `response_code` and returns `redirect_uri` after VP submission (existing behaviour). Cross-device QR omits the flag and receives an empty `200 {}`.
+
+| Flow | `responseCodeValidationRequired` | After VP submission |
+|---|---|---|
+| Cross-device (QR) | omitted / `false` | `200 {}` — no `redirect_uri` |
+| Same-device mobile | `true` | `{ "redirect_uri": "https://.../#response_code=..." }`. Original tab can still resume via `visibilitychange` + session cookie |
+| Same-device web wallet | `true` | `{ "redirect_uri": "https://.../#response_code=..." }` |
 
 For flow diagrams covering cross-device, same-device mobile, same-device web wallet, and server-to-server flows, see [OpenID4VP-1.0.0.md](./OpenID4VP-1.0.0.md).
 
