@@ -146,7 +146,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                 throw new VPRequestValidationException(ErrorCode.DC_API_RESPONSE_CODE_NOT_SUPPORTED);
             }
             if (!isSignedRequestScheme(vpRequestCreate.getClientId())) {
-                throw new VPRequestValidationException(ErrorCode.DC_API_REQUIRES_DID_CLIENT_ID);
+                throw new VPRequestValidationException(ErrorCode.DC_API_REQUIRES_SIGNED_CLIENT_ID);
             }
             String verifierOrigin = VerifierOriginResolver.resolve(httpRequest)
                     .orElseThrow(() -> new VPRequestValidationException(ErrorCode.VERIFIER_ORIGIN_REQUIRED));
@@ -173,7 +173,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         log.info("Authorization request created with responseMode={}", responseMode);
 
         String clientId = vpRequestCreate.getClientId();
-        if (isDcApi || isSignedRequestScheme(clientId)) {
+        if (isSignedRequestScheme(clientId)) {
             String requestUri = verifyServiceBaseUrl + Constants.VP_REQUEST_URI + "/" + requestId;
             return new VPRequestResponseDto(transactionId, requestId, null, expiresAt, requestUri, isDcApi ? responseUri : null);
         }

@@ -38,7 +38,7 @@ public enum ErrorCode {
     DCQL_ALL_CREDENTIAL_SETS_OPTIONAL("dcql_query.credential_sets","credential_sets must contain at least one required entry."),
     CLIENT_ID_REQUIRED("invalid_request","client_id is required"),
     INVALID_RESPONSE_MODE("invalid_request", "responseMode must be direct_post or dc_api."),
-    DC_API_REQUIRES_DID_CLIENT_ID("invalid_request", "DC API response_mode requires a decentralized_identifier or x509_san_dns client_id."),
+    DC_API_REQUIRES_SIGNED_CLIENT_ID("invalid_request", "DC API response_mode requires a decentralized_identifier or x509_san_dns client_id."),
     VERIFIER_ORIGIN_REQUIRED("invalid_request", "Unable to determine verifier origin from Origin or Referer headers."),
     SUBMISSION_ORIGIN_NOT_ALLOWED("invalid_request", "Submission Origin is not in the authorization request expected_origins."),
     DC_API_RESPONSE_MODE_REQUIRED("invalid_request", "This endpoint only accepts submissions for response_mode=dc_api."),

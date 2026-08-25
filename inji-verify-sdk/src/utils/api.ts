@@ -177,7 +177,7 @@ export const vpSessionRequest = async (
 
 export const getVpRequestJwt = async (requestUri: string, signal?: AbortSignal): Promise<string> => {
   try {
-    const response = await fetch(requestUri);
+    const response = await fetch(requestUri, { signal });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       const record = errorData as Record<string, unknown>;

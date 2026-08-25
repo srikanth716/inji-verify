@@ -16,7 +16,7 @@ import {
   vpResultSubmission,
   isAppError,
 } from "../../utils/api";
-import {clearUrl, summariseVPResult, normalizeVp, isMobileDevice, normalizeDcApiTimeoutMs} from "../../utils/utils";
+import {clearUrl, summariseVPResult, normalizeVp, isMobileDevice, normalizeDcApiTimeoutMs, isDcApiSupported, isSignedRequestScheme, isRedirectUriClientId} from "../../utils/utils";
 import { QrData } from "../../types/OVPSchemeQrData";
 import { DC_API_PROTOCOL, DEFAULT_DC_API_TIMEOUT_MS, DEFAULT_PROTOCOL, VP_FORMATS_SUPPORTED } from "../../utils/constants";
 
@@ -68,7 +68,7 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         if (data.authorizationDetails.dcqlQuery) {
           params.set("dcql_query", JSON.stringify(data.authorizationDetails.dcqlQuery));
         }
-        if(clientId.startsWith("decentralized_identifier:") || clientId.startsWith("redirect_uri:")) {
+        if (isSignedRequestScheme(clientId) || isRedirectUriClientId(clientId)) {
           params.set(
             "client_metadata",
             JSON.stringify({
@@ -238,6 +238,17 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   };
 
   const processDeepLinkFlow = async () => {
+    // Web wallet redirect works on desktop and mobile when webWalletBaseUrl is set.
+    // Desktop cannot launch a native wallet protocol, so same-device without a web
+    // wallet URL (and without DC API) is invalid.
+    if (!webWalletBaseUrl && !isMobileDevice()) {
+      onError({
+        errorMessage:"On desktop, same-device flow requires a web wallet URL (webWalletBaseUrl.",
+        errorCode: "MISSING_WEB_WALLET_BASE_URL"
+      });
+      return;
+    }
+
     const data = await createVPRequest(false, "direct_post");
     if (!data) return;
     const authParams = getAuthorizationRequestParams(data);
@@ -247,18 +258,21 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
       while (end > 0 && webWalletBaseUrl[end - 1] === "/") end--;
       const baseUrl = webWalletBaseUrl.slice(0, end);
       window.location.href = `${baseUrl}/authorize?${authParams}`;
-    } else if (isMobileDevice()) {
-      window.location.href = `${protocol || DEFAULT_PROTOCOL}authorize?${authParams}`;
-    } else {
-      onError({
-        errorMessage: "Same device flow can be enabled in desktop mode for only Web Wallets. Provide a valid webWalletBaseUrl",
-        errorCode: "MISSING_WEB_WALLET_BASE_URL"
-      });
-      resetState();
+      return;
     }
+
+    window.location.href = `${protocol || DEFAULT_PROTOCOL}authorize?${authParams}`;
   };
 
   const processDcAPIFlow = async () => {
+    if (!isDcApiSupported(clientId)) {
+      onError({
+        errorCode: "DC_API_NOT_SUPPORTED",
+        errorMessage: "Digital Credentials API is not available for this browser or client_id. Use a signed-request client_id (decentralized_identifier or x509_san_dns) on a supported browser.",
+      });
+      return;
+    }
+
     const controller = new AbortController();
     const timeoutMs = normalizeDcApiTimeoutMs(dcApiTimeoutMs);
     const timeoutId = window.setTimeout(() => controller.abort("DC_API_TIMEOUT"), timeoutMs);
@@ -271,6 +285,15 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         onError({
           errorCode: "NO_AUTH_REQUEST",
           errorMessage: "VP session response missing requestUri",
+        });
+        resetState();
+        return;
+      }
+
+      if (!data.responseUri) {
+        onError({
+          errorCode: "DC_API_MISSING_RESPONSE_URI",
+          errorMessage: "VP session response missing responseUri for DC API submission",
         });
         resetState();
         return;
@@ -298,18 +321,23 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
         return;
       }
 
-      if (!data.responseUri) {
+      let submissionPayloadData: DcApiSubmissionData;
+      try {
+        const raw = credential.data;
+        submissionPayloadData = (typeof raw === "string" ? JSON.parse(raw) : raw) as DcApiSubmissionData;
+      } catch (error) {
         onError({
-          errorCode: "DC_API_MISSING_RESPONSE_URI",
-          errorMessage: "VP session response missing responseUri for DC API submission",
+          errorCode: "DC_API_INVALID_CREDENTIAL_DATA",
+          errorMessage:
+            error instanceof Error
+              ? error.message
+              : "Digital credential data is malformed",
         });
         resetState();
         return;
       }
 
       try {
-        const raw = credential.data;
-        const submissionPayloadData = (typeof raw === "string" ? JSON.parse(raw) : raw) as DcApiSubmissionData;
         await vpResultSubmission(data.responseUri, data.requestId, submissionPayloadData);
         await fetchVPResult();
       } catch (error) {
@@ -363,18 +391,15 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   };
 
   const startVerificationFlow = () => {
-    if (isSameDeviceFlowEnabled) {
-      if (webWalletBaseUrl) {
-        processDeepLinkFlow();
-      } else if (enableDcApi) {
-        processDcAPIFlow();
-      } else {
-        processDeepLinkFlow();
-      }
+    if (!isSameDeviceFlowEnabled) {
+      processQRCodeGenerationFlow();
       return;
     }
-
-    processQRCodeGenerationFlow();
+    if (enableDcApi && !webWalletBaseUrl) {
+      processDcAPIFlow();
+      return;
+    }
+    processDeepLinkFlow();
   };
 
   const handleTriggerClick = () => {

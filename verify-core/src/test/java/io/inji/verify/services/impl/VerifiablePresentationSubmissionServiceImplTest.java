@@ -2751,6 +2751,21 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             when(authorizationRequestCreateResponseRepository.findById(STATE)).thenReturn(Optional.of(authResponse));
         }
 
+        private void assertValidationFailurePersisted(String expectedError) {
+            ArgumentCaptor<VPSubmission> captor = ArgumentCaptor.forClass(VPSubmission.class);
+            verify(vpSubmissionRepository).save(captor.capture());
+            VPSubmission saved = captor.getValue();
+            assertEquals(expectedError, saved.getError());
+            assertNotNull(saved.getErrorDescription());
+            assertNull(saved.getResponseCode());
+            verify(verifiablePresentationRequestService).invokeVpRequestStatusListener(STATE);
+        }
+
+        private void assertSubmissionNotPersisted() {
+            verify(vpSubmissionRepository, never()).save(any());
+            verify(verifiablePresentationRequestService, never()).invokeVpRequestStatusListener(any());
+        }
+
         private AuthorizationRequestCreateResponse authRequestWithDcql(String credentialId) {
             DCQLQueryDto dcqlQuery = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(credentialId, "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null)),
@@ -2846,6 +2861,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "null", STATE, null, null));
             assertEquals(ErrorCode.VP_TOKEN_REQUIRED, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_REQUIRED.name());
         }
 
         @Test
@@ -2855,6 +2871,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "[{\"type\":\"VP\"}]", STATE, null, null));
             assertEquals(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT.name());
         }
 
         @Test
@@ -2864,6 +2881,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{}", STATE, null, null));
             assertEquals(ErrorCode.VP_TOKEN_MUST_HAVE_KEY_VALUE_PAIR, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_MUST_HAVE_KEY_VALUE_PAIR.name());
         }
 
         @Test
@@ -2873,6 +2891,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{\"cred1\":{\"type\":\"VP\"}}", STATE, null, null));
             assertEquals(ErrorCode.VP_TOKEN_VALUES_MUST_BE_ARRAYS, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_VALUES_MUST_BE_ARRAYS.name());
         }
 
         @Test
@@ -2882,6 +2901,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{\"cred1\":[]}", STATE, null, null));
             assertEquals(ErrorCode.VP_TOKEN_ARRAYS_MUST_HAVE_ELEMENTS, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_ARRAYS_MUST_HAVE_ELEMENTS.name());
         }
 
         @Test
@@ -2891,6 +2911,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{\"cred1\":[{}]}", STATE, null, null));
             assertEquals(ErrorCode.VP_TOKEN_ARRAY_ELEMENTS_INVALID, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_ARRAY_ELEMENTS_INVALID.name());
         }
 
         @Test
@@ -2900,6 +2921,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{\"cred1\":[{\"type\":\"VP\"}, \"sd-jwt-string\"]}", STATE, null, null));
             assertEquals(ErrorCode.VP_TOKEN_ALL_ELEMENTS_MUST_BE_OBJECTS, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_ALL_ELEMENTS_MUST_BE_OBJECTS.name());
         }
 
         @Test
@@ -2909,6 +2931,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{\"cred1\":[\"header.payload.sig~kb\", {\"type\":\"VP\"}]}", STATE, null, null));
             assertEquals(ErrorCode.VP_TOKEN_ALL_ELEMENTS_MUST_BE_SD_JWT, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_ALL_ELEMENTS_MUST_BE_SD_JWT.name());
         }
 
         @Test
@@ -2919,6 +2942,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             duplicateKeys, STATE, null, null));
             assertEquals(ErrorCode.DUPLICATE_QUERY_IDS_NOT_ALLOWED, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.DUPLICATE_QUERY_IDS_NOT_ALLOWED.name());
         }
 
         // ---- validateVpTokenAgainstDcql (delegates to the real DcqlValidator) ----
@@ -2933,6 +2957,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             vpTokenWithUnknownId, STATE, null, null));
             assertEquals(ErrorCode.VP_TOKEN_UNKNOWN_CREDENTIAL_ID, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_UNKNOWN_CREDENTIAL_ID.name());
         }
 
         private AuthorizationRequestCreateResponse dcApiAuthRequestWithLdp(String credentialId) {
@@ -2962,7 +2987,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                             "{\"cred1\":[{\"type\":[\"VerifiablePresentation\"]}]}",
                             STATE, null, null, dcApiRequest(), true));
             assertEquals(ErrorCode.DC_API_RESPONSE_MODE_REQUIRED, ex.getErrorCode());
-            verify(vpSubmissionRepository, never()).save(any());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2974,7 +2999,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             null, STATE, "access_denied", "user cancelled"));
             assertEquals(ErrorCode.DC_API_RESPONSE_MODE_REQUIRED, ex.getErrorCode());
-            verify(vpSubmissionRepository, never()).save(any());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -3003,7 +3028,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             vpToken, STATE, null, null, dcApiRequest(), true));
             assertEquals(ErrorCode.CLIENT_ID_VALIDATION_FAILED, ex.getErrorCode());
-            verify(vpSubmissionRepository, never()).save(any());
+            assertValidationFailurePersisted(ErrorCode.CLIENT_ID_VALIDATION_FAILED.name());
         }
 
         @Test
@@ -3017,7 +3042,52 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             vpToken, STATE, null, null, dcApiRequest(), true));
             assertEquals(ErrorCode.NONCE_VALIDATION_FAILED, ex.getErrorCode());
-            verify(vpSubmissionRepository, never()).save(any());
+            assertValidationFailurePersisted(ErrorCode.NONCE_VALIDATION_FAILED.name());
+        }
+
+        @Test
+        void submitVerifiablePresentation_dcApi_missingOrigin_rejected() {
+            stubActiveState();
+            stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));
+            org.springframework.mock.web.MockHttpServletRequest request =
+                    new org.springframework.mock.web.MockHttpServletRequest();
+
+            VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                    () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                            "{\"cred1\":[{\"type\":[\"VerifiablePresentation\"]}]}",
+                            STATE, null, null, request, true));
+            assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, ex.getErrorCode());
+            assertSubmissionNotPersisted();
+        }
+
+        @Test
+        void submitVerifiablePresentation_dcApi_originNotAllowed_rejected() {
+            stubActiveState();
+            stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));
+            org.springframework.mock.web.MockHttpServletRequest request =
+                    new org.springframework.mock.web.MockHttpServletRequest();
+            request.addHeader("Origin", "https://evil.example.com");
+
+            VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                    () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                            "{\"cred1\":[{\"type\":[\"VerifiablePresentation\"]}]}",
+                            STATE, null, null, request, true));
+            assertEquals(ErrorCode.SUBMISSION_ORIGIN_NOT_ALLOWED, ex.getErrorCode());
+            assertSubmissionNotPersisted();
+        }
+
+        @Test
+        void submitVerifiablePresentation_dcApi_walletError_missingOrigin_rejected() {
+            stubActiveState();
+            stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));
+            org.springframework.mock.web.MockHttpServletRequest request =
+                    new org.springframework.mock.web.MockHttpServletRequest();
+
+            VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                    () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                            null, STATE, "access_denied", "user cancelled", request, true));
+            assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, ex.getErrorCode());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -3030,7 +3100,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             null, STATE, "access_denied", null, dcApiRequest(), true));
             assertEquals(ErrorCode.VP_ALREADY_SUBMITTED, ex.getErrorCode());
-            verify(vpSubmissionRepository, never()).save(any());
+            assertSubmissionNotPersisted();
         }
 
         // ---- resolveRedirectUri ----

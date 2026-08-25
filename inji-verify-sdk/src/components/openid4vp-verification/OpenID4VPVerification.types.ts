@@ -182,6 +182,8 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
    * Same-device only: use the W3C Digital Credentials API (`response_mode=dc_api`).
    * Defaults to false. Mutually exclusive with `webWalletBaseUrl` — passing both
    * throws on mount/update so integrators fail fast.
+   * The flow still checks `isDcApiSupported(clientId)` at runtime (signed-request
+   * client_id, Chrome 144.0.7559.59+ security version, and protocol support).
    * When only `webWalletBaseUrl` is set, same-device redirects to that wallet.
    * Cross-device always uses the Verify SDK OpenID4VP QR (`direct_post`).
    */
@@ -218,7 +220,9 @@ export type OpenID4VPVerificationProps = ExclusiveCallbacks & {
   onError: (error: AppError) => void;
 
     /**
-     The base URL of the wallet.
+     * Same-device web wallet authorize URL (desktop and mobile). Mutually exclusive
+     * with `enableDcApi`. When omitted on mobile, the SDK falls back to a native
+     * wallet deep link; on desktop a web wallet URL or DC API is required.
      */
     webWalletBaseUrl?: string;
 

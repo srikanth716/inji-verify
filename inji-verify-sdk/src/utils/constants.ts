@@ -35,11 +35,18 @@ export const VALID_SD_JWT_TYPES = new Set(['vc+sd-jwt', 'dc+sd-jwt']);
 export const DC_API_PROTOCOL = "openid4vp-v1-signed";
 export const DEFAULT_DC_API_TIMEOUT_MS = 300_000;
 
+export const CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER = "decentralized_identifier";
+export const CLIENT_ID_PREFIX_X509_SAN_DNS = "x509_san_dns";
+export const CLIENT_ID_PREFIX_REDIRECT_URI = "redirect_uri";
+
+// CVE-2026-0904: Digital Credentials UI domain spoofing in Chrome prior to this version.
+export const MIN_CHROME_DC_API_VERSION = [144, 0, 7559, 59] as const;
+
 // OpenID4VP deep-link protocol used when no `protocol` prop is provided.
 export const DEFAULT_PROTOCOL = "openid4vp://";
 
 // VP formats advertised in `client_metadata.vp_formats_supported`
-// for decentralized_identifier / redirect_uri client_ids.
+// for signed-request (DID / x509_san_dns) and redirect_uri client_ids.
 export const VP_FORMATS_SUPPORTED = {
   ldp_vp: {
     proof_type: [

@@ -887,7 +887,7 @@ class VerifiablePresentationRequestServiceImplTest {
     }
 
     @Test
-    void should_throwDcApiRequiresDidClientId_when_clientIdIsNotDid() throws Exception {
+    void should_throwDcApiRequiresSignedClientId_when_clientIdIsNotSignedScheme() throws Exception {
         VPRequestCreateDto dto = new VPRequestCreateDto(
                 "test_client_id",
                 "tx1",
@@ -902,7 +902,7 @@ class VerifiablePresentationRequestServiceImplTest {
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                 () -> service.createAuthorizationRequest(dto, request));
 
-        assertEquals(ErrorCode.DC_API_REQUIRES_DID_CLIENT_ID, ex.getErrorCode());
+        assertEquals(ErrorCode.DC_API_REQUIRES_SIGNED_CLIENT_ID, ex.getErrorCode());
     }
 
     @Test

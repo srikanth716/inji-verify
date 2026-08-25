@@ -135,11 +135,14 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
     /**
      * Runs the full VP submission flow. This is the single entry point the controller (or a
      * consumer embedding this service directly) needs to call.
-     * Not annotated {@code @Transactional}: the only write in this flow is the single
-     * {@code vpSubmissionRepository.save(...)} in submitVpToken, which is already transactional
-     * on its own via Spring Data JPA's default repository behavior. Wrapping the whole method
-     * would also delay that save's commit until this method returns, which would make step 10's
-     * listener notification fire before the DB record is actually committed.
+     * <p>
+     * Validation order is unchanged. If a check fails after the session is known to be
+     * active, the failure is persisted (so the verifier can fetch a result instead of
+     * polling until expiry) and then rethrown to the wallet.
+     * <p>
+     * Not annotated {@code @Transactional}: each {@code save} commits on its own so the
+     * status listener can observe the DB row. Wrapping the whole method would delay that
+     * commit until this method returns.
      */
     @Override
     public Map<String, Object> submitVerifiablePresentation(String vpToken, String state, String error, String errorDescription)
@@ -162,6 +165,29 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         // --- 2. Validate state parameter and retrieve current VP request status ---
         validateState(state);
 
+        try {
+            return submitValidatedPresentation(vpToken, state, error, errorDescription, httpRequest, requireDcApi);
+        } catch (VPRequestValidationException | InvalidVpTokenException ex) {
+            if (!isProtocolReject(ex)) {
+                saveFailedSubmission(state, vpToken, ex);
+                verifiablePresentationRequestService.invokeVpRequestStatusListener(state);
+            }
+            throw ex;
+        }
+    }
+
+    /**
+     * Existing submission validations and success persist, unchanged. Failures bubble to
+     * {@link #submitVerifiablePresentation} so they can be saved before being returned.
+     */
+    private Map<String, Object> submitValidatedPresentation(
+            String vpToken,
+            String state,
+            String error,
+            String errorDescription,
+            HttpServletRequest httpRequest,
+            boolean requireDcApi)
+            throws VPRequestValidationException, RedirectUriGenerationException, VPAlreadySubmittedException, InvalidVpTokenException {
         // --- 3. Validate vp_token structure if present ---
         if (StringUtils.hasText(vpToken)) {
             validateVpTokenStructure(vpToken);
@@ -182,6 +208,13 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         // session through the direct-post endpoint without an origin check.
         if (requireDcApi != storedIsDcApi) {
             throw new VPRequestValidationException(ErrorCode.DC_API_RESPONSE_MODE_REQUIRED);
+        }
+        // DC API: submission Origin must be in expected_origins (including error-only responses).
+        if (storedIsDcApi) {
+            OriginAudienceResolver.ResolveResult origin = OriginAudienceResolver.resolve(authDetails, httpRequest);
+            if (!origin.isOk()) {
+                throw new VPRequestValidationException(origin.error());
+            }
         }
 
         // ---- 5. Validate against the DCQL if vp_token is present
@@ -715,6 +748,34 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         log.debug("VP submission saved successfully for state: {}", state);
 
 	}
+
+    /**
+     * Endpoint / origin identity failures must not close the session — the correct client can still submit.
+     */
+    private boolean isProtocolReject(RuntimeException ex) {
+        if (!(ex instanceof VPRequestValidationException vpEx)) {
+            return false;
+        }
+        ErrorCode code = vpEx.getErrorCode();
+        return code == ErrorCode.DC_API_RESPONSE_MODE_REQUIRED
+                || code == ErrorCode.VERIFIER_ORIGIN_REQUIRED
+                || code == ErrorCode.SUBMISSION_ORIGIN_NOT_ALLOWED;
+    }
+
+    /**
+     * Saves a failed VP submission so the verifier session can close. Best-effort: a concurrent
+     * successful submit should not replace the original validation error returned to the wallet.
+     */
+    private void saveFailedSubmission(String state, String vpToken, RuntimeException ex) {
+        String errorCode = ex instanceof VPRequestValidationException vpEx
+                ? vpEx.getErrorCode().name()
+                : ErrorCode.INVALID_VP_TOKEN.name();
+        try {
+            submitVpToken(null, vpToken, state, errorCode, ex.getMessage(), null, null);
+        } catch (VPAlreadySubmittedException e) {
+            log.warn("Could not save failed submission for state {}: {}", state, e.getMessage());
+        }
+    }
 
     private VPTokenResultDto processSubmission(VPSubmission vpSubmission, String transactionId, AuthorizationRequestCreateResponse authRequest) throws VPSubmissionWalletError,  InvalidVpTokenException, CredentialStatusCheckException, VPWithoutProofException {
         log.info("Processing VP submission");

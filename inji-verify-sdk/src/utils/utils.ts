@@ -1,4 +1,4 @@
-import {VALID_SD_JWT_TYPES, DC_API_PROTOCOL, DEFAULT_DC_API_TIMEOUT_MS} from "./constants";
+import {VALID_SD_JWT_TYPES, DC_API_PROTOCOL, DEFAULT_DC_API_TIMEOUT_MS, CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER, CLIENT_ID_PREFIX_X509_SAN_DNS, CLIENT_ID_PREFIX_REDIRECT_URI, MIN_CHROME_DC_API_VERSION} from "./constants";
 import {CredentialResult, VCVerificationV2Response} from "../components/qrcode-verification/QRCodeVerification.types";
 
 /** Max delay accepted by `window.setTimeout` (signed 32-bit int). */
@@ -27,8 +27,46 @@ export const isMobileDevice = (): boolean => {
   return isMobileUA || isTabletUA;
 };
 
+export const isSignedRequestScheme = (clientId?: string): boolean =>
+  typeof clientId === "string" &&
+  (clientId.startsWith(`${CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER}:`) ||
+    clientId.startsWith(`${CLIENT_ID_PREFIX_X509_SAN_DNS}:`));
+
+export const isRedirectUriClientId = (clientId?: string): boolean =>
+  typeof clientId === "string" &&
+  clientId.startsWith(`${CLIENT_ID_PREFIX_REDIRECT_URI}:`);
+
+/** Parse Chrome/CriOS version; null when the UA is not Chromium-based. */
+const parseChromiumVersion = (userAgent: string): number[] | null => {
+  const match = userAgent.match(/(?:Chrome|CriOS)\/(\d+)(?:\.(\d+)\.(\d+)\.(\d+))?/);
+  if (!match) return null;
+  return [
+    Number(match[1]),
+    Number(match[2] || 0),
+    Number(match[3] || 0),
+    Number(match[4] || 0),
+  ];
+};
+
+/**
+ * Chrome versions before 144.0.7559.59 are affected by CVE-2026-0904
+ * (Digital Credentials UI domain spoofing). Non-Chromium UAs skip this gate.
+ */
+export const isChromeDcApiSecurityVersionMet = (
+  userAgent: string = navigator.userAgent,
+): boolean => {
+  const version = parseChromiumVersion(userAgent);
+  if (version === null) return true;
+  for (let i = 0; i < MIN_CHROME_DC_API_VERSION.length; i++) {
+    if (version[i] > MIN_CHROME_DC_API_VERSION[i]) return true;
+    if (version[i] < MIN_CHROME_DC_API_VERSION[i]) return false;
+  }
+  return true;
+};
+
 export const isDcApiSupported = (clientId: string): boolean => {
-  if (!clientId.startsWith("decentralized_identifier:")) return false;
+  if (!isSignedRequestScheme(clientId)) return false;
+  if (!isChromeDcApiSecurityVersionMet()) return false;
   if (typeof window.DigitalCredential === "undefined") return false;
   const allows = window.DigitalCredential.userAgentAllowsProtocol;
   if (typeof allows !== "function") return false;
