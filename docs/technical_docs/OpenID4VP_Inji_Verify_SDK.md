@@ -268,11 +268,11 @@ isSameDeviceFlowEnabled = true (default)
 
 **`redirect_uri` after VP submission**
 
-Same-device flows set the existing `responseCodeValidationRequired` flag. The backend then generates a `response_code` and returns `redirect_uri` after VP submission (existing behaviour). Cross-device QR omits the flag and receives `200 OK`.
+Same-device flows set the existing `responseCodeValidationRequired` flag. The backend then generates a `response_code` and returns `redirect_uri` after VP submission (existing behaviour). Cross-device QR omits the flag and receives `200 OK` with `{}`.
 
 | Flow | `responseCodeValidationRequired` | After VP submission |
 |---|---|---|
-| Cross-device (QR) | omitted / `false` | `200 OK` — no `redirect_uri` |
+| Cross-device (QR) | omitted / `false` | `200 OK` with `{}` — no `redirect_uri` |
 | Same-device mobile | `true` | `{ "redirect_uri": "https://.../#response_code=..." }`. Original tab can still resume via `visibilitychange` + session cookie |
 | Same-device web wallet | `true` | `{ "redirect_uri": "https://.../#response_code=..." }` |
 

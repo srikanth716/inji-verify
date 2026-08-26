@@ -264,12 +264,14 @@ Wallet submits the Verifiable Presentation. Accepts `application/x-www-form-urle
 | `error_description` | No | Human-readable error detail |
 
 **Response — cross-device** (`responseCodeValidationRequired=false`)
-```
+
+```text
 200 OK
 {}
 ```
 
 **Response — same-device** (`responseCodeValidationRequired=true`, mobile wallet and web wallet)
+
 ```json
 { "redirect_uri": "https://verifier.example.com/#response_code=abc123" }
 ```
