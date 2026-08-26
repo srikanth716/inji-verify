@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.JOSEObjectType;
-import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSSigner;
 import com.nimbusds.jose.crypto.Ed25519Signer;
 import com.nimbusds.jose.jwk.OctetKeyPair;
 import com.nimbusds.jose.util.Base64;
@@ -30,10 +30,12 @@ import io.inji.verify.repository.VPSubmissionRepository;
 import io.inji.verify.services.KeyManagementService;
 import io.inji.verify.shared.Constants;
 import io.inji.verify.services.VerifiablePresentationRequestService;
+import io.inji.verify.utils.OriginAudienceResolver;
 import io.inji.verify.utils.SecurityUtils;
 import io.inji.verify.utils.Utils;
 import io.inji.verify.validator.DcqlValidator;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.async.DeferredResult;
@@ -44,7 +46,6 @@ import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.CertificateParsingException;
 import java.security.cert.X509Certificate;
 import java.text.ParseException;
-import java.util.regex.Pattern;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -55,7 +56,8 @@ import java.util.Date;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import org.springframework.beans.factory.annotation.Value;
+import java.util.regex.Pattern;
+
 import static io.inji.verify.shared.Constants.VP_FORMATS_SUPPORTED;
 
 @Service
@@ -91,7 +93,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
 
     private static final Pattern NONCE_PATTERN = Pattern.compile("^[A-Za-z0-9\\-._~]{16,}$");
     private static final Set<String> LOCAL_HOSTS = Set.of("localhost", "127.0.0.1", "::1", "0.0.0.0");
-   private static final Pattern DNS_NAME_PATTERN = Pattern.compile(
+    private static final Pattern DNS_NAME_PATTERN = Pattern.compile(
             "^(?=.{1,253}$)(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\\.(?!-)[A-Za-z0-9-]{1,63}(?<!-)){0,126}$");
 
     public VerifiablePresentationRequestServiceImpl(
@@ -108,7 +110,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
     }
 
     @Override
-    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate) {
+    public VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate, Optional<String> submissionOrigin) {
         log.info("Creating authorization request");
         dcqlValidator.validate(vpRequestCreate.getDcqlQuery());
         validateX509SanDnsHost(vpRequestCreate.getClientId());
@@ -126,32 +128,61 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         } else {
             nonce = SecurityUtils.generateNonce();
         }
-        String responseUri = verifyServiceBaseUrl + Constants.VP_RESPONSE_SUBMISSION_URI;
-
         boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
+        String responseMode = StringUtils.hasText(vpRequestCreate.getResponseMode())
+                ? vpRequestCreate.getResponseMode()
+                : Constants.RESPONSE_MODE_DIRECT_POST;
+        if (!Constants.RESPONSE_MODE_DIRECT_POST.equals(responseMode)
+                && !Constants.RESPONSE_MODE_DC_API.equals(responseMode)) {
+            throw new VPRequestValidationException(ErrorCode.INVALID_RESPONSE_MODE);
+        }
+
+        boolean isDcApi = Constants.RESPONSE_MODE_DC_API.equals(responseMode);
+        List<String> expectedOrigins = null;
+        String responseUri;
+        if (isDcApi) {
+            if (responseCodeValidationRequired) {
+                throw new VPRequestValidationException(ErrorCode.DC_API_RESPONSE_CODE_NOT_SUPPORTED);
+            }
+            if (!isSignedRequestScheme(vpRequestCreate.getClientId())) {
+                throw new VPRequestValidationException(ErrorCode.DC_API_REQUIRES_SIGNED_CLIENT_ID);
+            }
+            String verifierOrigin = OriginAudienceResolver.canonicalize(submissionOrigin.orElse(null))
+                    .orElseThrow(() -> new VPRequestValidationException(ErrorCode.VERIFIER_ORIGIN_REQUIRED));
+            expectedOrigins = List.of(verifierOrigin);
+            responseUri = verifyServiceBaseUrl + Constants.VP_DC_API_SUBMISSION_URI;
+        } else {
+            responseUri = verifyServiceBaseUrl + Constants.VP_DIRECT_POST_SUBMISSION_URI;
+        }
+
         AuthorizationRequestResponseDto authorizationRequestResponseDto = new AuthorizationRequestResponseDto(
                 vpRequestCreate.getClientId(),
                 vpRequestCreate.getDcqlQuery(),
-                null, // presentationDefinition is deprecated and should not be used, set to null for backward compatibility
+                null,
                 nonce,
                 responseUri,
-                false, //acceptVPWithoutHolderProof is deprecated and should not be used, set to false for backward compatibility
-                responseCodeValidationRequired
+                false,
+                responseCodeValidationRequired,
+                responseMode,
+                expectedOrigins
         );
 
         AuthorizationRequestCreateResponse authorizationRequestCreateResponse = new AuthorizationRequestCreateResponse(requestId, transactionId, authorizationRequestResponseDto, expiresAt);
         authorizationRequestCreateResponseRepository.save(authorizationRequestCreateResponse);
-        log.info("Authorization request created");
-        if (isSignedRequestScheme(vpRequestCreate.getClientId())) {
-            String requestUri = verifyServiceBaseUrl + Constants.VP_REQUEST_URI;
-            return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), null, authorizationRequestCreateResponse.getExpiresAt(), "%s/%s".formatted(requestUri, authorizationRequestCreateResponse.getRequestId()));
+        log.info("Authorization request created with responseMode={}", responseMode);
+
+        String clientId = vpRequestCreate.getClientId();
+        if (isSignedRequestScheme(clientId)) {
+            String requestUri = verifyServiceBaseUrl + Constants.VP_REQUEST_URI + "/" + requestId;
+            return new VPRequestResponseDto(transactionId, requestId, null, expiresAt, requestUri, isDcApi ? responseUri : null);
         }
-        return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), authorizationRequestCreateResponse.getAuthorizationDetails(), authorizationRequestCreateResponse.getExpiresAt(), null);
+        return new VPRequestResponseDto(transactionId, requestId, authorizationRequestResponseDto, expiresAt, null, null);
     }
 
     private static boolean isSignedRequestScheme(String clientId) {
-        return clientId.startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER + ":")
-                || clientId.startsWith(Constants.CLIENT_ID_PREFIX_X509_SAN_DNS + ":");
+        return clientId != null && (
+                clientId.startsWith(Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER + ":")
+                        || clientId.startsWith(Constants.CLIENT_ID_PREFIX_X509_SAN_DNS + ":"));
     }
 
     /**
@@ -348,6 +379,8 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                     ? verifierDid.replaceFirst("^(" + Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER
                             + "|" + Constants.CLIENT_ID_PREFIX_X509_SAN_DNS + "):", "")
                     : verifierDid;
+            boolean isDcApi = Constants.RESPONSE_MODE_DC_API.equals(authorizationRequest.getResponseMode());
+
             JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                     .issuer(issuer)
                     .audience(Constants.AUD_SELF_ISSUED)
@@ -355,10 +388,16 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                     .claim("client_id", verifierDid)
                     .jwtID(UUID.randomUUID().toString())
                     .claim("response_type", authorizationRequest.getResponseType())
-                    .claim("response_mode", Constants.RESPONSE_MODE)
-                    .claim("nonce", authorizationRequest.getNonce())
-                    .claim("state", state)
-                    .claim("response_uri", authorizationRequest.getResponseUri());
+                    .claim("response_mode", authorizationRequest.getResponseMode())
+                    .claim("nonce", authorizationRequest.getNonce());
+
+            if (isDcApi) {
+                claimsBuilder.claim("expected_origins", authorizationRequest.getExpectedOrigins());
+            } else {
+                claimsBuilder
+                        .claim("state", state)
+                        .claim("response_uri", authorizationRequest.getResponseUri());
+            }
 
             if (verifierDid != null && isSignedRequestScheme(verifierDid)) {
                 claimsBuilder.claim(
@@ -367,15 +406,13 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                 );
             }
 
-            JWTClaimsSet claimsSet = claimsBuilder.build();
-
             // DCQL-only: never emit presentation_definition / presentation_definition_uri claims (spec).
             if (authorizationRequest.getDcqlQuery() != null) {
                 String dcqlQueryJson = objectMapper.writeValueAsString(authorizationRequest.getDcqlQuery());
-                claimsSet = new JWTClaimsSet.Builder(claimsSet)
-                        .claim("dcql_query", JSONObjectUtils.parse(dcqlQueryJson))
-                        .build();
+                claimsBuilder.claim("dcql_query", JSONObjectUtils.parse(dcqlQueryJson));
             }
+
+            JWTClaimsSet claimsSet = claimsBuilder.build();
 
             JWSHeader.Builder jwsHeaderBuilder = new JWSHeader.Builder(JWSAlgorithm.EdDSA)
                     .type(new JOSEObjectType("oauth-authz-req+jwt"));

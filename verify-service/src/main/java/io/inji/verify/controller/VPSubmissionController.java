@@ -1,28 +1,32 @@
 package io.inji.verify.controller;
 
 import io.inji.verify.dto.core.ErrorDto;
+import io.inji.verify.dto.submission.DcApiVpSubmissionRequestDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.InvalidVpTokenException;
 import io.inji.verify.exception.RedirectUriGenerationException;
 import io.inji.verify.exception.VPAlreadySubmittedException;
 import io.inji.verify.exception.VPRequestValidationException;
 import io.inji.verify.services.VerifiablePresentationSubmissionService;
-import io.inji.verify.shared.Constants;
+import io.inji.verify.utils.SubmissionOriginExtractor;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -64,7 +68,7 @@ public class VPSubmissionController {
                     description = "VP submission processed successfully. If a response code was generated, the response will include a redirect_uri for the client to be redirected to."
             )
     })
-    @PostMapping(path = Constants.VP_RESPONSE_SUBMISSION_URI, consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    @PostMapping(path = "/v2/vp-submission/direct-post", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public ResponseEntity<?> submitVP(
             @Parameter(description = "The vp_token containing the Verifiable Presentation data. This parameter is optional but either this or the error parameter must be provided. If provided, it must be a valid JSON object with specific structure rules.")
             @RequestParam(value = "vp_token", required = false) String vpToken,
@@ -79,9 +83,7 @@ public class VPSubmissionController {
         // Log incoming request parameters
         log.debug("Received VP submission with state: {}, error: {}, error_description: {}", state, error,
                 errorDescription);
-        if (StringUtils.hasText(vpToken)) {
-            log.debug("Received VP submission with vp_token length: {}", vpToken.length());
-        }
+        logVpTokenLength("VP", vpToken);
 
         try {
             for (String key : request.getParameterMap().keySet()) {
@@ -90,27 +92,84 @@ public class VPSubmissionController {
                 }
             }
 
+            // Always empty: dc_api sessions must not complete via direct-post (fail closed with VERIFIER_ORIGIN_REQUIRED).
             Map<String, Object> response = verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                    vpToken, state, error, errorDescription);
+                    vpToken, state, error, errorDescription, Optional.empty());
             return ResponseEntity.status(HttpStatus.OK).body(response);
-        } catch (VPRequestValidationException e) {
-            log.error("VP submission validation error: {}", e.getMessage());
-            ErrorCode errorCode = e.getErrorCode();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorDto(errorCode.getErrorCode(), e.getMessage()));
-        } catch (RedirectUriGenerationException e) {
-            log.error("Failed to build redirect_uri: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ErrorDto(ErrorCode.REDIRECT_URI_NOT_FOUND));
-        } catch (VPAlreadySubmittedException e) {
-            log.debug("VP submission already exists for state {}: {}", state, e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorDto(ErrorCode.VP_ALREADY_SUBMITTED));
-        } catch (InvalidVpTokenException e) {
-            log.error("Invalid VP token structure for state {}", state);
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorDto("invalid_vp_token", "The vp_token structure is invalid: " + e.getMessage()));
+        } catch (VPRequestValidationException | VPAlreadySubmittedException | InvalidVpTokenException
+                 | RedirectUriGenerationException e) {
+            return toErrorResponse(e, state);
         }
+    }
+
+    @Operation(summary = "Submit Verifiable Presentation via Digital Credentials API (JSON). Correlates with requestId; no response_code/redirect_uri.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "VP submission accepted (empty body).")
+    })
+    @PostMapping(path = "/vp-submission/dc-api", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> submitVpDcApi(
+            @Valid @RequestBody DcApiVpSubmissionRequestDto body,
+            HttpServletRequest request) {
+        if (body == null || !StringUtils.hasText(body.getRequestId())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorDto(ErrorCode.INVALID_REQUEST_ID_MISSING));
+        }
+
+        String requestId = body.getRequestId();
+        String error = body.getError();
+        String errorDescription = body.getErrorDescription();
+        final String vpToken;
+        if (body.getVpToken() != null && !body.getVpToken().isNull()) {
+            vpToken = body.getVpToken().toString();
+        } else {
+            vpToken = null;
+        }
+
+        log.debug("Received DC API VP submission with requestId: {}, error: {}", requestId, error);
+        logVpTokenLength("DC API VP", vpToken);
+
+        try {
+            // Same service entry + DCQL validation pipeline as direct-post; stored response_mode
+            // drives origin checks and redirect_uri generation.
+            verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                    vpToken, requestId, error, errorDescription, SubmissionOriginExtractor.from(request));
+            return ResponseEntity.ok().build();
+        } catch (VPRequestValidationException | VPAlreadySubmittedException | InvalidVpTokenException
+                 | RedirectUriGenerationException e) {
+            return toErrorResponse(e, requestId);
+        }
+    }
+
+    private void logVpTokenLength(String label, String vpToken) {
+        if (StringUtils.hasText(vpToken)) {
+            log.debug("Received {} submission with vp_token length: {}", label, vpToken.length());
+        }
+    }
+
+    private ResponseEntity<?> toErrorResponse(Exception e, String correlationId) {
+        if (e instanceof VPRequestValidationException ex) {
+            log.error("VP submission validation error: {}", ex.getMessage());
+            return badRequest(ex.getErrorCode(), ex.getMessage());
+        }
+        if (e instanceof VPAlreadySubmittedException ex) {
+            log.debug("VP submission already exists for {}: {}", correlationId, ex.getMessage());
+            return badRequest(ErrorCode.VP_ALREADY_SUBMITTED, null);
+        }
+        if (e instanceof InvalidVpTokenException ex) {
+            log.error("Invalid VP token structure for {}: {}", correlationId, ex.getMessage());
+            return badRequest(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT, null);
+        }
+        // only RedirectUriGenerationException left
+        log.error("Failed to build redirect_uri: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorDto(ErrorCode.REDIRECT_URI_NOT_FOUND));
+    }
+
+    private static ResponseEntity<?> badRequest(ErrorCode errorCode, String message) {
+        ErrorDto body = message != null
+                ? new ErrorDto(errorCode.getErrorCode(), message)
+                : new ErrorDto(errorCode);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     /**

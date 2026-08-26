@@ -20,10 +20,15 @@ public final class Constants {
 
     public static final int DEFAULT_EXPIRY = 300;
 
-    public static final String VP_RESPONSE_SUBMISSION_URI = "/v2/vp-submission/direct-post";
+    public static final String VP_DIRECT_POST_SUBMISSION_URI = "/v2/vp-submission/direct-post";
+    public static final String VP_DC_API_SUBMISSION_URI = "/vp-submission/dc-api";
+    /** @deprecated use {@link #VP_DIRECT_POST_SUBMISSION_URI} */
+    @Deprecated
+    public static final String VP_RESPONSE_SUBMISSION_URI = VP_DIRECT_POST_SUBMISSION_URI;
     public static final String VP_REQUEST_URI = "/v2/vp-request";
     public static final String RESPONSE_TYPE =  "vp_token";
-    public static final String RESPONSE_MODE =  "direct_post";
+    public static final String RESPONSE_MODE_DIRECT_POST =  "direct_post";
+    public static final String RESPONSE_MODE_DC_API = "dc_api";
     public static final String COOKIE_NAME = "transaction_id";
 
     public static final String TRANSACTION_ID_PREFIX = "txn";

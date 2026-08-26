@@ -9,9 +9,14 @@ import jakarta.validation.constraints.NotNull;
 import org.springframework.web.context.request.async.DeferredResult;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface VerifiablePresentationRequestService {
-    VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate);
+    /**
+     * Creates an authorization request. For DC API, pass the raw Origin/Referer from the web
+     * layer so {@code expected_origins} can be derived; server-to-server callers may pass empty.
+     */
+    VPRequestResponseDto createAuthorizationRequest(VPRequestCreateDto vpRequestCreate, Optional<String> submissionOrigin);
 
     VPRequestStatusDto getCurrentRequestStatus(String requestId);
 

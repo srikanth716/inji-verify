@@ -20,4 +20,6 @@ public class VPRequestResponseDto {
     Long expiresAt;
     @Schema (description = "URI for the VP request.")
     String requestUri;
+    @Schema (description = "URI for the SDK to submit the VP. Present when response_mode is dc_api.")
+    String responseUri;
 }
