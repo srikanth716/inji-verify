@@ -239,8 +239,11 @@ updateStrategy:
 ## extraEnvVars:
 ##   - name: FOO
 ##     value: "bar"
+## VP_SUBMISSION_SUPPORTED is typically set at install time (see deploy/inji-verify-ui/install.sh).
 ##
-extraEnvVars: []
+extraEnvVars:
+  - name: ENABLE_DC_API
+    value: "true"
 
 ## ConfigMap with extra environment variables
 ##
