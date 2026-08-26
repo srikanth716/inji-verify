@@ -13,10 +13,9 @@ import {
   waitFor,
   fireEvent,
   act,
-  cleanup,
+  cleanup
 } from "@testing-library/react";
 import OpenID4VPVerification from "../../../src/components/openid4vp-verification/OpenID4VPVerification";
-import { it } from "node:test";
 
 jest.mock("qrcode.react", () => ({
   QRCodeSVG: ({ value }: { value: string }) => (
@@ -752,7 +751,7 @@ describe("OpenID4VPVerification UI Tests", () => {
       }
     });
 
-    test("falls back to deep-link silently when DC API is unsupported on mobile", async () => {
+    it("falls back to deep-link silently when DC API is unsupported on mobile", async () => {
       delete (window as { DigitalCredential?: unknown }).DigitalCredential;
       Object.defineProperty(navigator, "userAgent", {
         configurable: true,
@@ -799,7 +798,7 @@ describe("OpenID4VPVerification UI Tests", () => {
       expect(sessionBody.responseMode).toBe("direct_post");
     });
 
-    test("does not surface DC_API_NOT_SUPPORTED when falling back on desktop without a web wallet", async () => {
+    it("does not surface DC_API_NOT_SUPPORTED when falling back on desktop without a web wallet", async () => {
       delete (window as { DigitalCredential?: unknown }).DigitalCredential;
       const fetchMock = jest.fn();
       global.fetch = fetchMock;
