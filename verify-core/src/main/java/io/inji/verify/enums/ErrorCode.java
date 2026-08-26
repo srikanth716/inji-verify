@@ -41,6 +41,7 @@ public enum ErrorCode {
     DC_API_REQUIRES_SIGNED_CLIENT_ID("invalid_request", "DC API response_mode requires a decentralized_identifier or x509_san_dns client_id."),
     VERIFIER_ORIGIN_REQUIRED("invalid_request", "Unable to determine verifier origin from Origin or Referer headers."),
     SUBMISSION_ORIGIN_NOT_ALLOWED("invalid_request", "Submission Origin is not in the authorization request expected_origins."),
+    ORIGIN_AUDIENCE_VALIDATION_FAILED("invalid_request", "Origin audience validation failed due to invalid domain/aud."),
     DC_API_RESPONSE_CODE_NOT_SUPPORTED("invalid_request", "responseCodeValidationRequired is not supported with response_mode=dc_api."),
     INVALID_REQUEST_ID_MISSING("invalid_request", "requestId is required and cannot be empty."),
     CLIENT_ID_HOST_MISMATCH("invalid_request", "For the x509_san_dns client_id scheme, the DNS name in client_id must match this deployment's configured inji.verify.x509-san-dns.host."),

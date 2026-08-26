@@ -265,14 +265,6 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
   };
 
   const processDcAPIFlow = async () => {
-    if (!isDcApiSupported(clientId)) {
-      onError({
-        errorCode: "DC_API_NOT_SUPPORTED",
-        errorMessage: "Digital Credentials API is not available for this browser or client_id. Use a signed-request client_id (decentralized_identifier or x509_san_dns) on a supported browser.",
-      });
-      return;
-    }
-
     const controller = new AbortController();
     const timeoutMs = normalizeDcApiTimeoutMs(dcApiTimeoutMs);
     const timeoutId = window.setTimeout(() => controller.abort("DC_API_TIMEOUT"), timeoutMs);
@@ -395,7 +387,9 @@ const OpenID4VPVerification: React.FC<OpenID4VPVerificationProps> = ({
       processQRCodeGenerationFlow();
       return;
     }
-    if (enableDcApi && !webWalletBaseUrl) {
+    // Prefer DC API when enabled and supported; otherwise fall back to deep-link
+    // silently (unsupported browser / client_id must not surface DC_API_NOT_SUPPORTED).
+    if (enableDcApi && !webWalletBaseUrl && isDcApiSupported(clientId)) {
       processDcAPIFlow();
       return;
     }

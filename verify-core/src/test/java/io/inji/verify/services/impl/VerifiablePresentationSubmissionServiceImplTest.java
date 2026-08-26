@@ -2375,10 +2375,11 @@ public class VerifiablePresentationSubmissionServiceImplTest {
     }
 
     @Nested
-    class ProcessSdJwtClientIdAndNonce {
+    class ProcessSdJwtAudienceAndNonce {
 
         private static final String EXPECTED_NONCE = "test-nonce-value";
         private static final String EXPECTED_CLIENT_ID = "https://verifier.example.com";
+        private static final String ORIGIN_AUD = "origin:https://verify.example.com";
 
         private static String b64(String json) {
             return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes());
@@ -2407,16 +2408,6 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         private static final String SD_JWT_NO_KB =
                 CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~";
 
-        /** SD-JWT with KB-JWT missing the iat claim. */
-        private static final String SD_JWT_IAT_MISSING =
-                CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~"
-                + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"" + EXPECTED_CLIENT_ID + "\"}") + "." + KB_SIG;
-
-        /** SD-JWT with KB-JWT iat 2 minutes in the future (beyond 60s clock skew). */
-        private static final String SD_JWT_IAT_IN_FUTURE =
-                CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~"
-                + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"" + EXPECTED_CLIENT_ID + "\",\"iat\":" + (NOW_SEC + 120) + "}") + "." + KB_SIG;
-
         /** Builds an auth request with require_cryptographic_holder_binding=true for "cred1". */
         private AuthorizationRequestResponseDto buildAuthRequest() {
             DCQLQueryDto dcql = new DCQLQueryDto(
@@ -2435,42 +2426,40 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         }
 
         @Test
-        void shouldReturnNull_whenKbJwtHasValidNonceAndAud() {
-            ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), tokens(SD_JWT_VALID_KB), EXPECTED_CLIENT_ID);
-            assertNull(result);
+        void clientId_passes_whenKbJwtAudMatches() {
+            assertNull(verifiablePresentationSubmissionService
+                    .processSdJwtClientId(buildAuthRequest(), tokens(SD_JWT_VALID_KB)));
         }
 
         @Test
-        void shouldReturnNull_whenSdJwtTokensMapIsEmpty() {
-            ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), new HashMap<>(), EXPECTED_CLIENT_ID);
-            assertNull(result);
+        void clientId_passes_whenSdJwtTokensMapIsEmpty() {
+            assertNull(verifiablePresentationSubmissionService
+                    .processSdJwtClientId(buildAuthRequest(), new HashMap<>()));
         }
 
         @Test
-        void shouldReturnClientIdValidationFailed_whenKbJwtAudMismatch() {
+        void clientId_fails_whenKbJwtAudMismatch() {
             ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), tokens(SD_JWT_WRONG_AUD), EXPECTED_CLIENT_ID);
+                    .processSdJwtClientId(buildAuthRequest(), tokens(SD_JWT_WRONG_AUD));
             assertEquals(ErrorCode.CLIENT_ID_VALIDATION_FAILED, result);
         }
 
         @Test
-        void shouldReturnClientIdValidationFailed_whenKbJwtIsAbsent() {
+        void clientId_fails_whenKbJwtIsAbsent() {
             ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), tokens(SD_JWT_NO_KB), EXPECTED_CLIENT_ID);
+                    .processSdJwtClientId(buildAuthRequest(), tokens(SD_JWT_NO_KB));
             assertEquals(ErrorCode.CLIENT_ID_VALIDATION_FAILED, result);
         }
 
         @Test
-        void shouldReturnNonceValidationFailed_whenKbJwtNonceMismatch() {
+        void nonce_fails_whenKbJwtNonceMismatch() {
             ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), tokens(SD_JWT_WRONG_NONCE), EXPECTED_CLIENT_ID);
+                    .validateSdJwtNonce(buildAuthRequest(), tokens(SD_JWT_WRONG_NONCE));
             assertEquals(ErrorCode.NONCE_VALIDATION_FAILED, result);
         }
 
         @Test
-        void shouldReturnNull_whenHolderBindingNotRequired() {
+        void clientId_skips_whenHolderBindingNotRequired() {
             DCQLQueryDto dcql = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(
                             "cred1", "dc+sd-jwt",
@@ -2480,39 +2469,34 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             AuthorizationRequestResponseDto authRequest = new AuthorizationRequestResponseDto(
                     EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
 
-            // Even a token with wrong aud/nonce passes when binding is not required
-            ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(authRequest, tokens(SD_JWT_WRONG_AUD), authRequest.getClientId());
-            assertNull(result);
+            assertNull(verifiablePresentationSubmissionService
+                    .processSdJwtClientId(authRequest, tokens(SD_JWT_WRONG_AUD)));
+            assertNull(verifiablePresentationSubmissionService
+                    .validateSdJwtNonce(authRequest, tokens(SD_JWT_WRONG_NONCE)));
         }
 
         @Test
-        void originAudience_passes_whenKbJwtAudMatchesOrigin() {
-            String originAud = "origin:https://verify.example.com";
+        void origin_passes_whenKbJwtAudMatchesOrigin() {
             String sdJwt = CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~"
-                    + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"" + originAud + "\",\"iat\":" + NOW_SEC + "}") + "." + KB_SIG;
+                    + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"" + ORIGIN_AUD + "\",\"iat\":" + NOW_SEC + "}") + "." + KB_SIG;
             String sdJwtLegacySlash = CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~"
                     + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"origin:https://verify.example.com/\",\"iat\":" + NOW_SEC + "}") + "." + KB_SIG;
 
             assertNull(verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), tokens(sdJwt), originAud));
+                    .processSdJwtOrigin(buildAuthRequest(), tokens(sdJwt), ORIGIN_AUD));
             assertNull(verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), tokens(sdJwtLegacySlash), originAud));
+                    .processSdJwtOrigin(buildAuthRequest(), tokens(sdJwtLegacySlash), ORIGIN_AUD));
         }
 
         @Test
-        void originAudience_fails_whenKbJwtAudIsClientId() {
+        void origin_fails_whenKbJwtAudIsClientId() {
             ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(
-                            buildAuthRequest(),
-                            tokens(SD_JWT_VALID_KB),
-                            "origin:https://verify.example.com");
-            assertEquals(ErrorCode.CLIENT_ID_VALIDATION_FAILED, result);
+                    .processSdJwtOrigin(buildAuthRequest(), tokens(SD_JWT_VALID_KB), ORIGIN_AUD);
+            assertEquals(ErrorCode.ORIGIN_AUDIENCE_VALIDATION_FAILED, result);
         }
 
         @Test
-        void originAudience_passes_whenDidClientIdAndKbJwtAudIsOrigin() {
-            String originAud = "origin:https://verify.example.com";
+        void origin_passes_whenDidClientIdAndKbJwtAudIsOrigin() {
             String didClientId = Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER + ":did:web:verify.example.com";
             DCQLQueryDto dcql = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(
@@ -2524,15 +2508,15 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     didClientId, dcql, null, EXPECTED_NONCE, "responseUri", false, false,
                     Constants.RESPONSE_MODE_DC_API, List.of("https://verify.example.com"));
             String sdJwt = CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~"
-                    + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"" + originAud + "\",\"iat\":" + NOW_SEC + "}") + "." + KB_SIG;
+                    + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"" + ORIGIN_AUD + "\",\"iat\":" + NOW_SEC + "}") + "." + KB_SIG;
 
             assertNull(verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(authRequest, tokens(sdJwt), originAud));
+                    .processSdJwtOrigin(authRequest, tokens(sdJwt), ORIGIN_AUD));
         }
     }
 
     @Nested
-    class ProcessLdpVpClientIdAndNonce {
+    class ProcessLdpVpAudienceAndNonce {
 
         private static final String EXPECTED_NONCE = "test-nonce-value";
         private static final String EXPECTED_CLIENT_ID = "https://verifier.example.com";
@@ -2558,51 +2542,44 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         }
 
         @Test
-        void clientIdAudience_passes() {
-            assertNull(verifiablePresentationSubmissionService.processLdpVpClientIdAndNonce(
-                    buildAuthRequest(), tokens(EXPECTED_CLIENT_ID, EXPECTED_NONCE), EXPECTED_CLIENT_ID));
+        void clientId_passes() {
+            assertNull(verifiablePresentationSubmissionService.processLdpVpClientId(
+                    buildAuthRequest(), tokens(EXPECTED_CLIENT_ID, EXPECTED_NONCE)));
         }
 
         @Test
-        void originAudience_passes_whenProofDomainMatchesOrigin() {
-            assertNull(verifiablePresentationSubmissionService.processLdpVpClientIdAndNonce(
-                    buildAuthRequest(), tokens(ORIGIN_AUD, EXPECTED_NONCE), ORIGIN_AUD));
-            assertNull(verifiablePresentationSubmissionService.processLdpVpClientIdAndNonce(
-                    buildAuthRequest(),
-                    tokens("origin:https://verify.example.com/", EXPECTED_NONCE),
-                    ORIGIN_AUD));
+        void origin_passes_whenProofDomainMatchesOrigin() {
+            assertNull(verifiablePresentationSubmissionService.processLdpVpOrigin(
+                    tokens(ORIGIN_AUD, EXPECTED_NONCE), ORIGIN_AUD));
+            assertNull(verifiablePresentationSubmissionService.processLdpVpOrigin(
+                    tokens("origin:https://verify.example.com/", EXPECTED_NONCE), ORIGIN_AUD));
         }
 
         @Test
-        void originAudience_fails_whenProofDomainIsAttackerOrigin() {
-            ErrorCode result = verifiablePresentationSubmissionService.processLdpVpClientIdAndNonce(
-                    buildAuthRequest(),
-                    tokens("https://attacker.example.com", EXPECTED_NONCE),
-                    ORIGIN_AUD);
-            assertEquals(ErrorCode.CLIENT_ID_VALIDATION_FAILED, result);
+        void origin_fails_whenProofDomainIsAttackerOrigin() {
+            ErrorCode result = verifiablePresentationSubmissionService.processLdpVpOrigin(
+                    tokens("https://attacker.example.com", EXPECTED_NONCE), ORIGIN_AUD);
+            assertEquals(ErrorCode.ORIGIN_AUDIENCE_VALIDATION_FAILED, result);
         }
 
         @Test
-        void originAudience_fails_whenProofDomainIsClientId() {
-            ErrorCode result = verifiablePresentationSubmissionService.processLdpVpClientIdAndNonce(
-                    buildAuthRequest(),
-                    tokens(EXPECTED_CLIENT_ID, EXPECTED_NONCE),
-                    ORIGIN_AUD);
-            assertEquals(ErrorCode.CLIENT_ID_VALIDATION_FAILED, result);
+        void origin_fails_whenProofDomainIsClientId() {
+            ErrorCode result = verifiablePresentationSubmissionService.processLdpVpOrigin(
+                    tokens(EXPECTED_CLIENT_ID, EXPECTED_NONCE), ORIGIN_AUD);
+            assertEquals(ErrorCode.ORIGIN_AUDIENCE_VALIDATION_FAILED, result);
         }
 
         @Test
-        void originAudience_passes_whenDidClientIdAndProofDomainIsOrigin() {
-            String didClientId = Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER + ":did:web:verify.example.com";
-            DCQLQueryDto dcql = new DCQLQueryDto(
-                    List.of(new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null)),
-                    null);
-            AuthorizationRequestResponseDto authRequest = new AuthorizationRequestResponseDto(
-                    didClientId, dcql, null, EXPECTED_NONCE, "responseUri", false, false,
-                    Constants.RESPONSE_MODE_DC_API, List.of("https://verify.example.com"));
+        void nonce_fails_whenChallengeMismatch() {
+            ErrorCode result = verifiablePresentationSubmissionService.validateLdpNonce(
+                    buildAuthRequest(), tokens(EXPECTED_CLIENT_ID, "wrong-nonce"));
+            assertEquals(ErrorCode.NONCE_VALIDATION_FAILED, result);
+        }
 
-            assertNull(verifiablePresentationSubmissionService.processLdpVpClientIdAndNonce(
-                    authRequest, tokens(ORIGIN_AUD, EXPECTED_NONCE), ORIGIN_AUD));
+        @Test
+        void origin_passes_whenDidClientIdAndProofDomainIsOrigin() {
+            assertNull(verifiablePresentationSubmissionService.processLdpVpOrigin(
+                    tokens(ORIGIN_AUD, EXPECTED_NONCE), ORIGIN_AUD));
         }
     }
 
@@ -2736,11 +2713,11 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         private static final String NONCE = "test-nonce-value";
 
         // validateSubmissionRequest, validateState, validateVpTokenStructure, validateVpTokenAgainstDcql
-        // and validateClientIdAndNonce are private (called only from submitVerifiablePresentation), so
+        // and validateAudienceAndNonce are private (called only from submitVerifiablePresentation), so
         // they're exercised here through that single public entry point rather than called directly.
-        // The client_id/nonce mismatch business rules themselves keep their own dedicated coverage in
-        // processLdpVpClientIdAndNonce/processSdJwtClientIdAndNonce/processSdJwtKbJwtIat's test classes
-        // below — validateClientIdAndNonce is just a thin orchestrator over those.
+        // Audience/nonce business rules keep dedicated coverage in ProcessSdJwtAudienceAndNonce /
+        // ProcessLdpVpAudienceAndNonce / ProcessSdJwtKbJwtIat. Only DCQL and audience/nonce rejections
+        // are persisted; earlier checks throw without burning the one-shot submission slot.
 
         private void stubActiveState() {
             when(verifiablePresentationRequestService.getCurrentRequestStatus(STATE))
@@ -2861,7 +2838,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "null", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_REQUIRED, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_REQUIRED.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2871,7 +2848,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "[{\"type\":\"VP\"}]", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2881,7 +2858,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_MUST_HAVE_KEY_VALUE_PAIR, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_MUST_HAVE_KEY_VALUE_PAIR.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2891,7 +2868,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{\"cred1\":{\"type\":\"VP\"}}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_VALUES_MUST_BE_ARRAYS, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_VALUES_MUST_BE_ARRAYS.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2901,7 +2878,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{\"cred1\":[]}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_ARRAYS_MUST_HAVE_ELEMENTS, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_ARRAYS_MUST_HAVE_ELEMENTS.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2911,7 +2888,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{\"cred1\":[{}]}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_ARRAY_ELEMENTS_INVALID, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_ARRAY_ELEMENTS_INVALID.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2921,7 +2898,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{\"cred1\":[{\"type\":\"VP\"}, \"sd-jwt-string\"]}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_ALL_ELEMENTS_MUST_BE_OBJECTS, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_ALL_ELEMENTS_MUST_BE_OBJECTS.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2931,7 +2908,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             "{\"cred1\":[\"header.payload.sig~kb\", {\"type\":\"VP\"}]}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_ALL_ELEMENTS_MUST_BE_SD_JWT, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_ALL_ELEMENTS_MUST_BE_SD_JWT.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2942,7 +2919,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             duplicateKeys, STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.DUPLICATE_QUERY_IDS_NOT_ALLOWED, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.DUPLICATE_QUERY_IDS_NOT_ALLOWED.name());
+            assertSubmissionNotPersisted();
         }
 
         // ---- validateVpTokenAgainstDcql (delegates to the real DcqlValidator) ----
@@ -2979,7 +2956,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             null, STATE, "access_denied", "user cancelled", Optional.empty()));
             assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.VERIFIER_ORIGIN_REQUIRED.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -3007,8 +2984,8 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             vpToken, STATE, null, null, Optional.of("https://verify.example.com")));
-            assertEquals(ErrorCode.CLIENT_ID_VALIDATION_FAILED, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.CLIENT_ID_VALIDATION_FAILED.name());
+            assertEquals(ErrorCode.ORIGIN_AUDIENCE_VALIDATION_FAILED, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.ORIGIN_AUDIENCE_VALIDATION_FAILED.name());
         }
 
         @Test
@@ -3035,7 +3012,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                             "{\"cred1\":[{\"type\":[\"VerifiablePresentation\"]}]}",
                             STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.VERIFIER_ORIGIN_REQUIRED.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -3048,7 +3025,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                             "{\"cred1\":[{\"type\":[\"VerifiablePresentation\"]}]}",
                             STATE, null, null, Optional.of("https://evil.example.com")));
             assertEquals(ErrorCode.SUBMISSION_ORIGIN_NOT_ALLOWED, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.SUBMISSION_ORIGIN_NOT_ALLOWED.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -3060,7 +3037,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
                             null, STATE, "access_denied", "user cancelled", Optional.empty()));
             assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, ex.getErrorCode());
-            assertValidationFailurePersisted(ErrorCode.VERIFIER_ORIGIN_REQUIRED.name());
+            assertSubmissionNotPersisted();
         }
 
         @Test

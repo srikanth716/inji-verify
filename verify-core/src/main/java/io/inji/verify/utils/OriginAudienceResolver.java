@@ -1,8 +1,6 @@
 package io.inji.verify.utils;
 
-import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
 import io.inji.verify.enums.ErrorCode;
-import io.inji.verify.shared.Constants;
 import org.springframework.util.StringUtils;
 
 import java.net.URI;
@@ -11,12 +9,9 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Resolves the expected audience string for VP holder-binding checks and canonicalizes
- * verifier / submission origins for DC API {@code expected_origins}.
- * <p>
- * For {@code dc_api}, returns {@code origin:<canonical-origin>} (no trailing slash);
- * otherwise {@code client_id}. Origin / Referer extraction stays in the web layer; this
- * class only receives an optional raw origin string.
+ * Canonicalizes verifier / submission origins and resolves the OpenID4VP origin-bound
+ * audience for DC API holder-binding checks. Origin / Referer extraction stays in the web
+ * layer; this class only receives an optional raw origin string.
  */
 public final class OriginAudienceResolver {
 
@@ -57,10 +52,6 @@ public final class OriginAudienceResolver {
             String scheme = uri.getScheme();
             String host = uri.getHost();
             if (scheme == null || host == null) {
-                // Origin header is typically already "https://host" without path
-                if (raw.matches("^https?://[^/]+$")) {
-                    return Optional.of(stripTrailingSlash(raw.trim()));
-                }
                 return Optional.empty();
             }
             if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) {
@@ -81,30 +72,18 @@ public final class OriginAudienceResolver {
     }
 
     /**
-     * For {@code response_mode=dc_api}: require submission Origin ∈ persisted {@code expected_origins},
-     * then return {@code origin:<Origin>}. Otherwise return the auth request {@code client_id}.
+     * Require submission Origin ∈ {@code expectedOrigins}, then return {@code origin:<Origin>}.
      *
      * @param submissionOrigin raw Origin or Referer from the web layer (may be empty)
      */
-    public static ResolveResult resolve(AuthorizationRequestResponseDto authRequest, Optional<String> submissionOrigin) {
-        if (authRequest == null) {
-            return ResolveResult.fail(ErrorCode.NO_MATCHING_VP_REQUEST);
-        }
-        if (!Constants.RESPONSE_MODE_DC_API.equals(authRequest.getResponseMode())) {
-            String clientId = authRequest.getClientId();
-            if (!StringUtils.hasText(clientId)) {
-                return ResolveResult.fail(ErrorCode.CLIENT_ID_VALIDATION_FAILED);
-            }
-            return ResolveResult.ok(clientId);
-        }
-
+    public static ResolveResult resolveOriginAudience(List<String> expectedOrigins, Optional<String> submissionOrigin) {
         Optional<String> canonicalSubmission = canonicalize(submissionOrigin.orElse(null));
         if (canonicalSubmission.isEmpty()) {
             return ResolveResult.fail(ErrorCode.VERIFIER_ORIGIN_REQUIRED);
         }
 
         String origin = canonicalSubmission.get();
-        if (!isOriginAllowed(authRequest.getExpectedOrigins(), origin)) {
+        if (!isOriginAllowed(expectedOrigins, origin)) {
             return ResolveResult.fail(ErrorCode.SUBMISSION_ORIGIN_NOT_ALLOWED);
         }
         return ResolveResult.ok(toOriginAudience(origin));
@@ -147,12 +126,5 @@ public final class OriginAudienceResolver {
             }
         }
         return false;
-    }
-
-    private static String stripTrailingSlash(String value) {
-        if (value.endsWith("/")) {
-            return value.substring(0, value.length() - 1);
-        }
-        return value;
     }
 }

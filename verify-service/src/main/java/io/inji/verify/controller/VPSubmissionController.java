@@ -26,7 +26,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * Controller to handle Verifiable Presentation (VP) submission requests.
@@ -82,38 +84,20 @@ public class VPSubmissionController {
         // Log incoming request parameters
         log.debug("Received VP submission with state: {}, error: {}, error_description: {}", state, error,
                 errorDescription);
-        if (StringUtils.hasText(vpToken)) {
-            log.debug("Received VP submission with vp_token length: {}", vpToken.length());
-        }
+        logVpTokenLength("VP", vpToken);
 
-        try {
+        return handleSubmission(state, () -> {
             for (String key : request.getParameterMap().keySet()) {
                 if (!ALLOWED_PARAMS.contains(key)) {
                     throw new VPRequestValidationException(ErrorCode.UNKNOWN_PARAMETER, "Invalid parameter: " + sanitizeParamName(key));
                 }
             }
 
+            // Always empty: dc_api sessions must not complete via direct-post (fail closed with VERIFIER_ORIGIN_REQUIRED).
             Map<String, Object> response = verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                    vpToken, state, error, errorDescription, SubmissionOriginExtractor.from(request));
+                    vpToken, state, error, errorDescription, Optional.empty());
             return ResponseEntity.status(HttpStatus.OK).body(response);
-        } catch (VPRequestValidationException e) {
-            log.error("VP submission validation error: {}", e.getMessage());
-            ErrorCode errorCode = e.getErrorCode();
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorDto(errorCode.getErrorCode(), e.getMessage()));
-        } catch (RedirectUriGenerationException e) {
-            log.error("Failed to build redirect_uri: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new ErrorDto(ErrorCode.REDIRECT_URI_NOT_FOUND));
-        } catch (VPAlreadySubmittedException e) {
-            log.debug("VP submission already exists for state {}: {}", state, e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorDto(ErrorCode.VP_ALREADY_SUBMITTED));
-        } catch (InvalidVpTokenException e) {
-            log.error("Invalid VP token structure for state {}: {}", state, e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorDto(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT));
-        }
+        });
     }
 
     @Operation(summary = "Submit Verifiable Presentation via Digital Credentials API (JSON). Correlates with requestId; no response_code/redirect_uri.")
@@ -132,33 +116,49 @@ public class VPSubmissionController {
         String requestId = body.getRequestId();
         String error = body.getError();
         String errorDescription = body.getErrorDescription();
-        String vpToken = null;
+        final String vpToken;
         if (body.getVpToken() != null && !body.getVpToken().isNull()) {
             vpToken = body.getVpToken().toString();
+        } else {
+            vpToken = null;
         }
 
         log.debug("Received DC API VP submission with requestId: {}, error: {}", requestId, error);
-        if (StringUtils.hasText(vpToken)) {
-            log.debug("Received DC API VP submission with vp_token length: {}", vpToken.length());
-        }
+        logVpTokenLength("DC API VP", vpToken);
 
-        try {
+        return handleSubmission(requestId, () -> {
             // Same service entry + DCQL validation pipeline as direct-post; stored response_mode
             // drives origin checks and redirect_uri generation.
             verifiablePresentationSubmissionService.submitVerifiablePresentation(
                     vpToken, requestId, error, errorDescription, SubmissionOriginExtractor.from(request));
             return ResponseEntity.ok().build();
+        });
+    }
+
+    private void logVpTokenLength(String label, String vpToken) {
+        if (StringUtils.hasText(vpToken)) {
+            log.debug("Received {} submission with vp_token length: {}", label, vpToken.length());
+        }
+    }
+
+    private ResponseEntity<?> handleSubmission(String correlationId, Supplier<ResponseEntity<?>> action) {
+        try {
+            return action.get();
         } catch (VPRequestValidationException e) {
-            log.error("DC API VP submission validation error: {}", e.getMessage());
+            log.error("VP submission validation error: {}", e.getMessage());
             ErrorCode errorCode = e.getErrorCode();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ErrorDto(errorCode.getErrorCode(), e.getMessage()));
+        } catch (RedirectUriGenerationException e) {
+            log.error("Failed to build redirect_uri: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ErrorDto(ErrorCode.REDIRECT_URI_NOT_FOUND));
         } catch (VPAlreadySubmittedException e) {
-            log.debug("VP submission already exists for requestId {}: {}", requestId, e.getMessage());
+            log.debug("VP submission already exists for {}: {}", correlationId, e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ErrorDto(ErrorCode.VP_ALREADY_SUBMITTED));
         } catch (InvalidVpTokenException e) {
-            log.error("Invalid VP token structure for requestId {}: {}", requestId, e.getMessage());
+            log.error("Invalid VP token structure for {}: {}", correlationId, e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(new ErrorDto(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT));
         }

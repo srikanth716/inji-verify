@@ -86,7 +86,8 @@ class VPSubmissionControllerTest {
 
         controller.submitVP(VALID_VP_TOKEN, STATE, null, null, request);
 
-        verify(vpSubmissionService).submitVerifiablePresentation(eq(VALID_VP_TOKEN), eq(STATE), isNull(), isNull(), any());
+        verify(vpSubmissionService).submitVerifiablePresentation(
+                eq(VALID_VP_TOKEN), eq(STATE), isNull(), isNull(), eq(java.util.Optional.empty()));
     }
 
     // ---- success paths ----
@@ -124,12 +125,15 @@ class VPSubmissionControllerTest {
         params.put("error", new String[]{"access_denied"});
         params.put("error_description", new String[]{"user cancelled"});
         when(request.getParameterMap()).thenReturn(params);
-        when(vpSubmissionService.submitVerifiablePresentation(isNull(), eq(STATE), eq("access_denied"), eq("user cancelled"), any()))
+        when(vpSubmissionService.submitVerifiablePresentation(
+                isNull(), eq(STATE), eq("access_denied"), eq("user cancelled"), eq(java.util.Optional.empty())))
                 .thenReturn(new HashMap<>());
 
         ResponseEntity<?> response = controller.submitVP(null, STATE, "access_denied", "user cancelled", request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(vpSubmissionService).submitVerifiablePresentation(
+                isNull(), eq(STATE), eq("access_denied"), eq("user cancelled"), eq(java.util.Optional.empty()));
     }
 
     // ---- exception mapping ----
@@ -217,7 +221,7 @@ class VPSubmissionControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNull(response.getBody());
         verify(vpSubmissionService).submitVerifiablePresentation(
-                eq(body.getVpToken().toString()), eq(STATE), isNull(), isNull(), any());
+                eq(body.getVpToken().toString()), eq(STATE), isNull(), isNull(), any(java.util.Optional.class));
     }
 
     @Test

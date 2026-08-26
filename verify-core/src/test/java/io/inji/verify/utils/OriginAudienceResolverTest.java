@@ -1,8 +1,6 @@
 package io.inji.verify.utils;
 
-import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
 import io.inji.verify.enums.ErrorCode;
-import io.inji.verify.shared.Constants;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -26,6 +24,7 @@ class OriginAudienceResolverTest {
                 OriginAudienceResolver.canonicalize("https://verify.example.com:8443/").orElseThrow());
         assertTrue(OriginAudienceResolver.canonicalize("ftp://verify.example.com").isEmpty());
         assertTrue(OriginAudienceResolver.canonicalize(null).isEmpty());
+        assertTrue(OriginAudienceResolver.canonicalize("not-a-uri").isEmpty());
     }
 
     @Test
@@ -42,57 +41,27 @@ class OriginAudienceResolverTest {
     }
 
     @Test
-    void directPost_returnsClientId() {
-        AuthorizationRequestResponseDto auth = new AuthorizationRequestResponseDto(
-                "decentralized_identifier:did:web:verify.example.com",
-                null, null, "nonce-value-123456", "https://verify.example.com/cb",
-                false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
-
-        OriginAudienceResolver.ResolveResult result = OriginAudienceResolver.resolve(auth, Optional.empty());
-
-        assertTrue(result.isOk());
-        assertEquals("decentralized_identifier:did:web:verify.example.com", result.expectedAudience());
-    }
-
-    @Test
-    void dcApi_returnsOriginAudience_whenOriginInExpectedOrigins() {
-        AuthorizationRequestResponseDto auth = new AuthorizationRequestResponseDto(
-                "decentralized_identifier:did:web:verify.example.com",
-                null, null, "nonce-value-123456", null,
-                false, false, Constants.RESPONSE_MODE_DC_API,
-                List.of("https://verify.example.com"));
-
-        OriginAudienceResolver.ResolveResult result =
-                OriginAudienceResolver.resolve(auth, Optional.of("https://verify.example.com"));
+    void resolveOriginAudience_returnsOriginAudience_whenOriginInExpectedOrigins() {
+        OriginAudienceResolver.ResolveResult result = OriginAudienceResolver.resolveOriginAudience(
+                List.of("https://verify.example.com"), Optional.of("https://verify.example.com"));
 
         assertTrue(result.isOk());
         assertEquals("origin:https://verify.example.com", result.expectedAudience());
     }
 
     @Test
-    void dcApi_fails_whenOriginMissing() {
-        AuthorizationRequestResponseDto auth = new AuthorizationRequestResponseDto(
-                "decentralized_identifier:did:web:verify.example.com",
-                null, null, "nonce-value-123456", null,
-                false, false, Constants.RESPONSE_MODE_DC_API,
-                List.of("https://verify.example.com"));
-
-        OriginAudienceResolver.ResolveResult result = OriginAudienceResolver.resolve(auth, Optional.empty());
+    void resolveOriginAudience_fails_whenOriginMissing() {
+        OriginAudienceResolver.ResolveResult result = OriginAudienceResolver.resolveOriginAudience(
+                List.of("https://verify.example.com"), Optional.empty());
 
         assertFalse(result.isOk());
         assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, result.error());
     }
 
     @Test
-    void dcApi_fails_whenOriginNotAllowed() {
-        AuthorizationRequestResponseDto auth = new AuthorizationRequestResponseDto(
-                "decentralized_identifier:did:web:verify.example.com",
-                null, null, "nonce-value-123456", null,
-                false, false, Constants.RESPONSE_MODE_DC_API,
-                List.of("https://verify.example.com"));
-
-        OriginAudienceResolver.ResolveResult result =
-                OriginAudienceResolver.resolve(auth, Optional.of("https://evil.example.com"));
+    void resolveOriginAudience_fails_whenOriginNotAllowed() {
+        OriginAudienceResolver.ResolveResult result = OriginAudienceResolver.resolveOriginAudience(
+                List.of("https://verify.example.com"), Optional.of("https://evil.example.com"));
 
         assertFalse(result.isOk());
         assertEquals(ErrorCode.SUBMISSION_ORIGIN_NOT_ALLOWED, result.error());

@@ -13,6 +13,7 @@ import {
   waitFor,
   fireEvent,
   act,
+  cleanup,
 } from "@testing-library/react";
 import OpenID4VPVerification from "../../../src/components/openid4vp-verification/OpenID4VPVerification";
 import { it } from "node:test";
@@ -61,6 +62,7 @@ describe("OpenID4VPVerification UI Tests", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    cleanup();
     // Mock window.location for each test (jsdom may not have hash/search)
     Object.defineProperty(window, "location", {
       value: {
@@ -72,6 +74,10 @@ describe("OpenID4VPVerification UI Tests", () => {
       },
       writable: true,
     });
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   // Helper function to render the component with common props
@@ -746,7 +752,54 @@ describe("OpenID4VPVerification UI Tests", () => {
       }
     });
 
-    it("does not create a VP request when DC API is unsupported", async () => {
+    test("falls back to deep-link silently when DC API is unsupported on mobile", async () => {
+      delete (window as { DigitalCredential?: unknown }).DigitalCredential;
+      Object.defineProperty(navigator, "userAgent", {
+        configurable: true,
+        value:
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+      });
+
+      const fetchMock = jest.fn().mockResolvedValueOnce({
+        status: 201,
+        json: async () => ({
+          transactionId: "txn-fallback",
+          requestId: "req-fallback",
+          authorizationDetails: authorizationDetails(),
+        }),
+      });
+      global.fetch = fetchMock;
+
+      Object.defineProperty(window, "location", {
+        configurable: true,
+        writable: true,
+        value: {
+          origin: "https://client.example.com",
+          search: "",
+          hash: "",
+          href: "https://client.example.com/",
+          pathname: "/",
+        },
+      });
+
+      renderComponent({
+        clientId: didClientId,
+        enableDcApi: true,
+        isSameDeviceFlowEnabled: true,
+        triggerElement,
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+      await waitFor(() => {
+        expect(window.location.href).toContain("testopenid4vp://authorize?");
+      });
+      expect(onError).not.toHaveBeenCalled();
+      const sessionBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect(sessionBody.responseMode).toBe("direct_post");
+    });
+
+    test("does not surface DC_API_NOT_SUPPORTED when falling back on desktop without a web wallet", async () => {
       delete (window as { DigitalCredential?: unknown }).DigitalCredential;
       const fetchMock = jest.fn();
       global.fetch = fetchMock;
@@ -762,9 +815,12 @@ describe("OpenID4VPVerification UI Tests", () => {
 
       await waitFor(() => {
         expect(onError).toHaveBeenCalledWith(
-          expect.objectContaining({ errorCode: "DC_API_NOT_SUPPORTED" }),
+          expect.objectContaining({ errorCode: "MISSING_WEB_WALLET_BASE_URL" }),
         );
       });
+      expect(onError).not.toHaveBeenCalledWith(
+        expect.objectContaining({ errorCode: "DC_API_NOT_SUPPORTED" }),
+      );
       expect(fetchMock).not.toHaveBeenCalled();
     });
   });
