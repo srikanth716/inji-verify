@@ -1,5 +1,6 @@
 package io.inji.verify.utils;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.authlete.cbor.CBORDecoder;
 import com.authlete.cbor.CBORItem;
 import com.authlete.cbor.CBORTaggedItem;
@@ -43,20 +44,167 @@ import static io.ipfs.multibase.Base16.bytesToHex;
 @Component
 public final class Utils {
 
-    private static final Set<String> VALID_SD_JWT_TYPES = Set.of("vc+sd-jwt", "dc+sd-jwt");
+    private static final Set<String> VALID_SD_JWT_TYPES = Set.of(Constants.FORMAT_DC_SD_JWT, Constants.FORMAT_VC_SD_JWT);
 
     public static String generateID(String prefix) {
         return prefix + "_" + UUID.randomUUID();
     }
 
     public static boolean isSdJwt(String vpToken) {
-        String[] jwtParts = vpToken.split("~")[0].split("\\.");
-        if (jwtParts.length != 3) {
+        try {
+            return VALID_SD_JWT_TYPES.contains(extractSdJwtTyp(vpToken));
+        } catch (Exception e) {
             return false;
         }
-        String header = decodeBase64Json(jwtParts[0]);
-        String typ = new JSONObject(header).optString("typ", "");
-        return VALID_SD_JWT_TYPES.contains(typ);
+    }
+
+    /**
+     * Extracts the {@code typ} header claim from an SD-JWT (or any JWT-like token).
+     * Splits on {@code ~} to get the credential JWT, then decodes the base64url header.
+     * Returns an empty string if the token is malformed or the header cannot be decoded.
+     */
+    private static String extractSdJwtTyp(String token) {
+        try {
+            String[] jwtParts = token.split("~")[0].split("\\.");
+            if (jwtParts.length != 3) {
+                return "";
+            }
+            String header = decodeBase64Json(jwtParts[0]);
+            return new JSONObject(header).optString("typ", "");
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /**
+     * Returns true if the SD-JWT payload contains a non-null, non-empty {@code cnf} claim,
+     * indicating the credential supports Holder Binding. Per OpenID4VP §6.4.2: SD-JWTs without a
+     * {@code cnf} claim cannot be returned when {@code require_cryptographic_holder_binding} is true.
+     * A {@code cnf} value that is null or an empty object does not carry key material and is treated
+     * as absent.
+     * Returns false if the payload cannot be decoded, the cnf claim is absent, null, or empty.
+     */
+    public static boolean hasSdJwtCnfClaim(String sdJwt) {
+        try {
+            String[] jwtParts = sdJwt.split("~")[0].split("\\.");
+            String payloadJson = decodeBase64Json(jwtParts[1]);
+            JSONObject payload = new JSONObject(payloadJson);
+            if (!payload.has("cnf") || payload.isNull("cnf")) {
+                return false;
+            }
+            Object cnf = payload.get("cnf");
+            if (cnf instanceof JSONObject) {
+                return !((JSONObject) cnf).isEmpty();
+            }
+            // cnf can also be a string (JWK thumbprint form) — non-empty string is valid
+            if (cnf instanceof String) {
+                return !((String) cnf).isBlank();
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Decodes and returns the payload of the Key Binding JWT (KB-JWT) from an SD-JWT string.
+     * The KB-JWT is the last '~'-delimited segment and must itself be a three-part JWT.
+     * Returns null if the KB-JWT is absent, malformed, or its payload cannot be decoded.
+     */
+    public static JSONObject extractKbJwtPayload(String sdJwt) {
+        String[] parts = sdJwt.split("~", -1);
+        String kbJwt = parts[parts.length - 1];
+        if (kbJwt.isEmpty()) return null;
+        String[] jwtParts = kbJwt.split("\\.");
+        if (jwtParts.length != 3) return null;
+        try {
+            String payloadJson = decodeBase64Json(jwtParts[1]);
+            return new JSONObject(payloadJson);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Checks whether an SD-JWT string contains a Key Binding JWT (KB-JWT).
+     * Per the IETF SD-JWT spec, the KB-JWT is the last ~-delimited part and is itself a full JWT
+     * (three Base64url segments separated by dots). An SD-JWT without a KB-JWT ends with a trailing ~
+     * (the last part after splitting on ~ is empty).
+     */
+    public static boolean hasSdJwtKeyBinding(String sdJwt) {
+        String[] parts = sdJwt.split("~", -1); // -1 preserves trailing empty string
+        String lastPart = parts[parts.length - 1];
+        return !lastPart.isEmpty() && lastPart.split("\\.").length == 3;
+    }
+
+    /**
+     * Extracts the vct claim directly from the SD-JWT's JWT payload.
+     * Per the SD-JWT VC spec, vct is always in the unsecured payload and is never selectively disclosable.
+     * Returns null if the payload cannot be decoded or the vct claim is absent.
+     */
+    public static String extractSdJwtVct(String sdJwt) {
+        try {
+            String[] jwtParts = sdJwt.split("~")[0].split("\\.");
+            String payloadJson = decodeBase64Json(jwtParts[1]);
+            return new JSONObject(payloadJson).optString("vct", null);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns true if a credential's type value satisfies a required type from type_values.
+     * Supports exact match and local-name extraction via two IRI separators:
+     *   '#' fragment:  "VerifiableCredential" matches "https://www.w3.org/2018/credentials#VerifiableCredential"
+     *   '/' path:      "DriversLicense"       matches "https://example.org/types/DriversLicense"
+     * Per DCQL spec: if a type is not defined in any @context it remains a relative IRI,
+     * so JSON-LD processing may be skipped and the local name is treated as the expanded type.
+     * '#' is tried before '/' because fragment identifiers are the more common IRI pattern in VC contexts.
+     */
+    public static boolean ldpTypeMatches(String credentialType, String requiredType) {
+        if (credentialType.equals(requiredType)) return true;
+        int hashIndex = requiredType.lastIndexOf('#');
+        if (hashIndex >= 0) {
+            return credentialType.equals(requiredType.substring(hashIndex + 1));
+        }
+        int slashIndex = requiredType.lastIndexOf('/');
+        return slashIndex >= 0 && credentialType.equals(requiredType.substring(slashIndex + 1));
+    }
+
+    /**
+     * Extracts all values from the "type" field of an ldp_vc JSON node into a Set.
+     * Supports both forms allowed by the VC Data Model:
+     *   - a single string:  "type": "VerifiableCredential"
+     *   - an array of strings: "type": ["VerifiableCredential", "UniversityDegreeCredential"]
+     * Returns an empty set for null or any other node type.
+     */
+    public static Set<String> extractLdpTypes(JsonNode item) {
+        Set<String> types = new HashSet<>();
+        JsonNode typeNode = item.get("type");
+        if (typeNode == null) return types;
+        if (typeNode.isTextual()) {
+            types.add(typeNode.asText());
+        } else if (typeNode.isArray()) {
+            typeNode.forEach(t -> types.add(t.asText()));
+        }
+        return types;
+    }
+
+    public static boolean isLdpFormat(JsonNode item, String formatType) {
+        JsonNode typeNode = item.get("type");
+        if (typeNode == null) {
+            return false;
+        }
+        if (typeNode.isArray()) {
+            for (JsonNode typeValue : typeNode) {
+                if (formatType.equalsIgnoreCase(typeValue.asText())) {
+                    return true;
+                }
+            }
+        } else if (typeNode.isTextual()) {
+            return formatType.equalsIgnoreCase(typeNode.asText());
+        }
+        return false;
     }
 
     public static boolean isCwt(String credential) {
@@ -223,14 +371,15 @@ public final class Utils {
     private static Map<String, Object> extractLdpClaims(String verifiableCredential) {
         try {
             JSONObject vcObject = new JSONObject(verifiableCredential);
-            JSONObject credentialSubject = vcObject.optJSONObject("credentialSubject");
+            JSONObject credentialSubject = vcObject.optJSONObject(Constants.KEY_CREDENTIAL_SUBJECT);
             return credentialSubject != null ? credentialSubject.toMap() : Map.of();
         } catch (Exception e) {
             throw new InvalidCredentialException("Failed to extract JSON claims", e);
         }
     }
 
-    private static Map<String, Object> extractSdJwtClaims(String verifiableCredential, List<String> metaClaims) {
+    /** Returns all claims from an SD-JWT (payload + disclosures decoded), minus any meta claims. */
+    public static Map<String, Object> extractSdJwtClaims(String verifiableCredential, List<String> metaClaims) {
         try {
             SDJWT sdjwt = SDJWT.parse(verifiableCredential);
             String payloadJson = decodeBase64Json(sdjwt.getCredentialJwt().split("\\.")[1]);
@@ -238,11 +387,55 @@ public final class Utils {
             List<Disclosure> disclosures = sdjwt.getDisclosures();
             SDObjectDecoder decoder = new SDObjectDecoder();
             Map<String, Object> claims = new HashMap<>(decoder.decode(payloadClaims, disclosures));
+            // Authlete's top-level decode does not always expand nested `_sd` digests that
+            // appear inside a selectively disclosed object (common for Multipaz EU PID
+            // age_equal_or_over / "18"). Walk the tree and decode remaining SD objects.
+            expandNestedSdClaims(claims, disclosures, decoder);
             excludeMetaClaims(metaClaims, claims);
             return claims;
         } catch (Exception e) {
             throw new InvalidCredentialException("Failed to extract SD-JWT claims", e);
         }
+    }
+
+    /**
+     * Recursively applies remaining SD-JWT disclosures to nested maps/lists that still
+     * contain {@code _sd} (or array ellipsis) after the top-level {@link SDObjectDecoder#decode}.
+     */
+    private static void expandNestedSdClaims(Map<String, Object> claims,
+                                             List<Disclosure> disclosures,
+                                             SDObjectDecoder decoder) {
+        for (Map.Entry<String, Object> entry : claims.entrySet()) {
+            entry.setValue(expandSdValue(entry.getValue(), disclosures, decoder));
+        }
+    }
+
+    private static Object expandSdValue(Object value,
+                                        List<Disclosure> disclosures,
+                                        SDObjectDecoder decoder) {
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> nested = new HashMap<>();
+            for (Map.Entry<?, ?> e : map.entrySet()) {
+                if (e.getKey() != null) {
+                    nested.put(String.valueOf(e.getKey()), e.getValue());
+                }
+            }
+            if (nested.containsKey("_sd")) {
+                nested = new HashMap<>(decoder.decode(nested, disclosures));
+            }
+            for (Map.Entry<String, Object> e : nested.entrySet()) {
+                e.setValue(expandSdValue(e.getValue(), disclosures, decoder));
+            }
+            return nested;
+        }
+        if (value instanceof List<?> list) {
+            List<Object> decoded = new ArrayList<>(decoder.decode(list, disclosures));
+            for (int i = 0; i < decoded.size(); i++) {
+                decoded.set(i, expandSdValue(decoded.get(i), disclosures, decoder));
+            }
+            return decoded;
+        }
+        return value;
     }
 
     private static void excludeMetaClaims(List<String> metaClaims, Map<String, Object> claims) {
@@ -260,7 +453,9 @@ public final class Utils {
             }
 
             if (Utils.isSdJwt(verifiableCredential)) {
-                return CredentialFormat.VC_SD_JWT;
+                return Constants.FORMAT_VC_SD_JWT.equals(extractSdJwtTyp(verifiableCredential))
+                        ? CredentialFormat.VC_SD_JWT
+                        : CredentialFormat.DC_SD_JWT;
             }
 
             return CredentialFormat.LDP_VC;

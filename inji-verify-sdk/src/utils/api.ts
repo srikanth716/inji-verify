@@ -1,14 +1,29 @@
 import {
     AppError,
-    PresentationDefinition,
+    DcApiSubmissionData,
+    DcqlQuery,
     VPRequestBody, VPVerificationRequest,
 } from "../components/openid4vp-verification/OpenID4VPVerification.types";
 import { vcSubmissionBody, VCVerificationV2Request, VCVerificationV2Response} from "../components/qrcode-verification/QRCodeVerification.types";
 import { QrData } from "../types/OVPSchemeQrData";
 import { isCWT } from "./cborUtils";
 
+const base64UrlEncode = (bytes: Uint8Array): string =>
+  btoa(String.fromCharCode.apply(null, Array.from(bytes)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+
 const generateNonce = (): string => {
-  return btoa(Date.now().toString());
+  if (!window.crypto?.getRandomValues) {
+    throw new Error(
+      "Web Crypto API is required. This SDK supports only browsers with crypto.getRandomValues()."
+    );
+  }
+
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  return base64UrlEncode(bytes);
 };
 
 export const vcVerificationV2 = async (credential: unknown, url: string, config?: VCVerificationV2Request): Promise<VCVerificationV2Response> => {
@@ -76,48 +91,12 @@ export const vcSubmission = async (
   }
 };
 
-export const vpRequest = async (
-  url: string,
-  clientId: string,
-  txnId?: string,
-  presentationDefinitionId?: string,
-  presentationDefinition?: PresentationDefinition,
-  acceptVPWithoutHolderProof?: boolean
-) => {
-  const requestBody: VPRequestBody = {
-    clientId: clientId,
-    nonce: generateNonce(),
-    acceptVPWithoutHolderProof: acceptVPWithoutHolderProof
-  };
-
-  if (txnId) requestBody.transactionId = txnId;
-  if (presentationDefinitionId)
-    requestBody.presentationDefinitionId = presentationDefinitionId;
-  if (presentationDefinition)
-    requestBody.presentationDefinition = presentationDefinition;
-
-  const requestOptions = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(requestBody),
-  };
-
-  try {
-    const response = await fetch(url + "/vp-request", requestOptions);
-    if (response.status !== 201) throw new Error("Failed to create VP request");
-    const data: QrData = await response.json();
-    return data;
-  } catch (error) {
-    console.error(error);
-    if (error instanceof Error) {
-      throw Error(error.message);
-    } else {
-      throw new Error("An unknown error occurred");
-    }
-  }
-};
+export const isAppError = (error: unknown): error is AppError => (
+  typeof error === 'object' &&
+  error !== null &&
+  'errorMessage' in error &&
+  typeof (error as Record<string, unknown>).errorMessage === 'string'
+);
 
 export const vpRequestStatus = async (url: string, reqId: string, abortSignal = false) => {
   try {
@@ -138,51 +117,116 @@ export const vpRequestStatus = async (url: string, reqId: string, abortSignal = 
   }
 };
 
-const isAppError = (error: unknown): error is AppError => (
-  typeof error === 'object' &&
-  error !== null &&
-  'errorMessage' in error &&
-  typeof (error as Record<string, unknown>).errorMessage === 'string'
-);
-
 export const vpSessionRequest = async (
   url: string,
+  dcqlQuery: DcqlQuery,
   clientId: string,
   txnId?: string,
-  presentationDefinitionId?: string,
-  presentationDefinition?: PresentationDefinition,
-  acceptVPWithoutHolderProof?: boolean,
-  responseCodeValidationRequired?: boolean
+  responseCodeValidationRequired?: boolean,
+  responseMode?: "direct_post" | "dc_api"
 ) => {
   const requestBody: VPRequestBody = {
     clientId: clientId,
     nonce: generateNonce(),
-    acceptVPWithoutHolderProof: acceptVPWithoutHolderProof,
+    dcqlQuery,
   };
-
   if (txnId) requestBody.transactionId = txnId;
-  if (presentationDefinitionId)
-    requestBody.presentationDefinitionId = presentationDefinitionId;
-  if (presentationDefinition)
-    requestBody.presentationDefinition = presentationDefinition;
   if (responseCodeValidationRequired) {
     requestBody.responseCodeValidationRequired = true;
   }
+  if (responseMode) {
+    requestBody.responseMode = responseMode;
+  }
 
   try {
-    const response = await fetch(url + "/vp-session-request", {
+    const response = await fetch(url + "/v2/vp-session-request", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       credentials: "include",
+      // Keep an origin-bearing Referer as a best-effort fallback when Origin is stripped.
+      referrerPolicy: "origin",
       body: JSON.stringify(requestBody),
     });
-    if (response.status !== 201) throw new Error("Failed to create VP request");
+    if (response.status !== 201) {
+      const errorData = await response.json().catch(() => ({}));
+      const record = errorData as Record<string, unknown>;
+      throw {
+        errorCode: record.errorCode as string | undefined,
+        errorMessage:
+          (record.errorMessage as string) ||
+          (record.error as string) ||
+          "Failed to create VP request",
+      } as AppError;
+    }
     const data: QrData = await response.json();
     return data;
   } catch (error) {
     console.error(error);
+    if (isAppError(error)) {
+      throw error;
+    }
+    if (error instanceof Error) {
+      throw Error(error.message);
+    } else {
+      throw new Error("An unknown error occurred");
+    }
+  }
+};
+
+export const getVpRequestJwt = async (requestUri: string, signal?: AbortSignal): Promise<string> => {
+  try {
+    const response = await fetch(requestUri, { signal });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const record = errorData as Record<string, unknown>;
+      throw {
+        errorCode: (record.errorCode as string) || "NO_AUTH_REQUEST",
+        errorMessage:
+          (record.errorMessage as string) ||
+          (record.error as string) ||
+          "Failed to fetch authorization request JWT",
+      } as AppError;
+    }
+    return await response.text();
+  } catch (error) {
+    if (isAppError(error)) {
+      throw error;
+    }
+    if (error instanceof Error) {
+      throw Error(error.message);
+    } else {
+      throw new Error("An unknown error occurred");
+    }
+  }
+};
+
+export const vpResultSubmission = async (responseUri: string, requestId: string, data: DcApiSubmissionData): Promise<void> => {
+  try {
+    const response = await fetch(responseUri, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      referrerPolicy: "origin",
+      body: JSON.stringify({ ...data, requestId }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const record = errorData as Record<string, unknown>;
+      throw {
+        errorCode: (record.errorCode as string) || "DC_API_SUBMIT_FAILED",
+        errorMessage:
+          (record.errorMessage as string) ||
+          (record.error as string) ||
+          "Failed to submit DC API presentation",
+      } as AppError;
+    }
+  } catch (error) {
+    if (isAppError(error)) {
+      throw error;
+    }
     if (error instanceof Error) {
       throw Error(error.message);
     } else {

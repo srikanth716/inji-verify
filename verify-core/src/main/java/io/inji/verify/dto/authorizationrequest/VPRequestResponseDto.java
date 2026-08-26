@@ -13,4 +13,6 @@ public class VPRequestResponseDto {
     AuthorizationRequestResponseDto authorizationDetails;
     Long expiresAt;
     String requestUri;
+    @Schema (description = "URI for the SDK to submit the VP. Present when response_mode is dc_api.")
+    String responseUri;
 }

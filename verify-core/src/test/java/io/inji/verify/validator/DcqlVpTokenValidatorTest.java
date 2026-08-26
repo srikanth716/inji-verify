@@ -1425,6 +1425,20 @@ class DcqlVpTokenValidatorTest {
             ".eyJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyJTb190cDJ4S1BUZ25HWVI5X3FTUzBwMDJVU1hueDlFLWRuOUlwV0ZVXzBjIl19" +
             ".sig~WyJzYWx0MyIsImFkZHJlc3MiLHsiY2l0eSI6IlNwcmluZ2ZpZWxkIn1d~";
 
+    // Flat dotted disclosure used by Multipaz EU PID: claim name "age_equal_or_over.18" = true
+    // Disclosure: WyJzYWx0QWdlMTgiLCJhZ2VfZXF1YWxfb3Jfb3Zlci4xOCIsdHJ1ZV0
+    private static final String SD_JWT_AGE_OVER_18_DOTTED =
+            "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9" +
+            ".eyJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyJ2TmtZY3ZvU0k0NTI4Q0Q4VWJNT0pYdGhtU09IWXk1V09aR1hBbjNXZ1BNIl19" +
+            ".sig~WyJzYWx0QWdlMTgiLCJhZ2VfZXF1YWxfb3Jfb3Zlci4xOCIsdHJ1ZV0~";
+
+    // Nested Multipaz-style age claim: {"age_equal_or_over":{"18":true}}
+    // Disclosure: WyJzYWx0QWdlT2JqIiwiYWdlX2VxdWFsX29yX292ZXIiLHsiMTgiOnRydWV9XQ
+    private static final String SD_JWT_AGE_OVER_18_NESTED =
+            "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9" +
+            ".eyJfc2RfYWxnIjoic2hhLTI1NiIsIl9zZCI6WyJlVllWZ3BZc0pCSFR4X1FmS0FMYmtEZFIxRndobDdkaFhmWlRtZDFHVXEwIl19" +
+            ".sig~WyJzYWx0QWdlT2JqIiwiYWdlX2VxdWFsX29yX292ZXIiLHsiMTgiOnRydWV9XQ~";
+
     // {"emails": ["alice@example.com", "bob@example.com"]}
     private static final String SD_JWT_EMAILS_ARRAY =
             "eyJhbGciOiJFUzI1NiIsInR5cCI6ImRjK3NkLWp3dCJ9" +
@@ -1492,6 +1506,42 @@ class DcqlVpTokenValidatorTest {
 
         assertDoesNotThrow(() -> validator.validateVpTokenAgainstDcql(query,
                 sdJwtToken("cred1", SD_JWT_ADDRESS_CITY)));
+    }
+
+    @Test
+    void shouldPass_whenSdJwtDottedClaimNameMatchesNestedDcqlPath() {
+        // Multipaz discloses age as claim name "age_equal_or_over.18"; DCQL path is ["age_equal_or_over","18"]
+        List<ClaimQueryDto> claims = List.of(
+                new ClaimQueryDto("age_over_18", List.of("age_equal_or_over", "18"), List.of(true)));
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(sdJwtCredentialQueryWithClaims("cred1", claims)), null);
+
+        assertDoesNotThrow(() -> validator.validateVpTokenAgainstDcql(query,
+                sdJwtToken("cred1", SD_JWT_AGE_OVER_18_DOTTED)));
+    }
+
+    @Test
+    void shouldPass_whenSdJwtNestedAgeClaimPresent() {
+        List<ClaimQueryDto> claims = List.of(
+                new ClaimQueryDto("age_over_18", List.of("age_equal_or_over", "18"), List.of(true)));
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(sdJwtCredentialQueryWithClaims("cred1", claims)), null);
+
+        assertDoesNotThrow(() -> validator.validateVpTokenAgainstDcql(query,
+                sdJwtToken("cred1", SD_JWT_AGE_OVER_18_NESTED)));
+    }
+
+    @Test
+    void shouldPass_whenSdJwtNestedAgeClaimPathUsesIntegerStep() {
+        // Nested object {"age_equal_or_over":{"18":true}} with path step Integer 18
+        // (Jackson deserializes unquoted 18 in DCQL JSON as Integer → array-index branch).
+        List<ClaimQueryDto> claims = List.of(
+                new ClaimQueryDto("age_over_18", List.of("age_equal_or_over", 18), List.of(true)));
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(sdJwtCredentialQueryWithClaims("cred1", claims)), null);
+
+        assertDoesNotThrow(() -> validator.validateVpTokenAgainstDcql(query,
+                sdJwtToken("cred1", SD_JWT_AGE_OVER_18_NESTED)));
     }
 
     @Test
