@@ -171,10 +171,10 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         log.debug("Authorization request resolved for state: {}", state);
 
         AuthorizationRequestResponseDto authDetails = authRequestCreateResponse.getAuthorizationDetails();
-        boolean storedIsDcApi = Constants.RESPONSE_MODE_DC_API.equals(authDetails.getResponseMode());
+        boolean isResponseModeDcApi = Constants.RESPONSE_MODE_DC_API.equals(authDetails.getResponseMode());
         String originAudience = null;
         // DC API: submission Origin must be in expected_origins (including error-only responses).
-        if (storedIsDcApi) {
+        if (isResponseModeDcApi) {
             OriginAudienceResolver.ResolveResult origin = OriginAudienceResolver.resolveOriginAudience(
                     authDetails.getExpectedOrigins(), submissionOrigin);
             if (!origin.isOk()) {
@@ -203,7 +203,7 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
         // ---- 7. Validate audience + nonce (persist on rejection)
         if (dcqlTokensDto != null) {
             try {
-                validateAudienceAndNonce(dcqlTokensDto, authDetails, storedIsDcApi, originAudience);
+                validateAudienceAndNonce(dcqlTokensDto, authDetails, isResponseModeDcApi, originAudience);
             } catch (VPRequestValidationException ex) {
                 saveRejectedSubmission(state, vpToken, ex);
                 verifiablePresentationRequestService.invokeVpRequestStatusListener(state);
@@ -211,19 +211,18 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
             }
         }
 
-        // ---- 8. generate response_code and build redirect_uri as required (direct_post only)
+        // ---- 8. generate response_code and build redirect_uri when required
+        // (generateResponseCode is a no-op unless responseCodeValidationRequired is set)
         Map<String, Object> response = new HashMap<>();
         String responseCode = null;
         Timestamp responseCodeExpiryAt = null;
-        if (!storedIsDcApi) {
-            responseCode = generateResponseCode(authDetails);
-            if (responseCode != null) {
-                log.debug("Generated response code for state {}", state);
-                responseCodeExpiryAt = generateResponseCodeExpiry();
-                String redirectUriWithResponseCode = resolveRedirectUri(responseCode);
-                log.debug("Built redirect URI with response code for state {}", state);
-                response.put("redirect_uri", redirectUriWithResponseCode);
-            }
+        responseCode = generateResponseCode(authDetails);
+        if (responseCode != null) {
+            log.debug("Generated response code for state {}", state);
+            responseCodeExpiryAt = generateResponseCodeExpiry();
+            String redirectUriWithResponseCode = resolveRedirectUri(responseCode);
+            log.debug("Built redirect URI with response code for state {}", state);
+            response.put("redirect_uri", redirectUriWithResponseCode);
         }
 
         // ---- 9. If all validations pass, proceed with VP submission processing
@@ -380,7 +379,7 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
     private void validateAudienceAndNonce(
             DcqlTokensDto dcqlTokensDto,
             AuthorizationRequestResponseDto authDetails,
-            boolean storedIsDcApi,
+            boolean isResponseModeDcApi,
             String originAudience) {
         Map<String, List<JSONObject>> ldpVpTokens = dcqlTokensDto.getLdpVpTokens() != null
                 ? dcqlTokensDto.getLdpVpTokens() : Collections.emptyMap();
@@ -388,7 +387,7 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
                 ? dcqlTokensDto.getSdJwtTokens() : Collections.emptyMap();
 
         if (!ldpVpTokens.isEmpty()) {
-            ErrorCode audienceError = storedIsDcApi
+            ErrorCode audienceError = isResponseModeDcApi
                     ? processLdpVpOrigin(ldpVpTokens, originAudience)
                     : processLdpVpClientId(authDetails, ldpVpTokens);
             if (audienceError != null) {
@@ -400,7 +399,7 @@ public class VerifiablePresentationSubmissionServiceImpl implements VerifiablePr
             }
         }
         if (!sdJwtTokens.isEmpty()) {
-            ErrorCode audienceError = storedIsDcApi
+            ErrorCode audienceError = isResponseModeDcApi
                     ? processSdJwtOrigin(authDetails, sdJwtTokens, originAudience)
                     : processSdJwtClientId(authDetails, sdJwtTokens);
             if (audienceError != null) {
