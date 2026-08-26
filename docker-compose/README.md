@@ -82,7 +82,7 @@ Located in: `config/`
 * `clientIdPrefix`
 
   * `decentralized_identifier` → Uses `request_uri` (DID-based signed JWT)
-  * `x509_san_dns` → Uses `request_uri` (X.509 SAN DNS signed JWT); UI `CLIENT_ID_X509` must match `inji.verify.x509-san-dns.host`
+  * `x509_san_dns` → Uses `request_uri` (X.509 SAN DNS signed JWT); set UI `CLIENT_ID_X509` as `x509_san_dns:<host>`, where only `<host>` must match `inji.verify.x509-san-dns.host`
   * `pre_registered` → Embedded request; wallet must have `inji-verify-ui` registered as trusted verifier
 * `dcqlQuery` → DCQL credential query (`type_values` for `ldp_vc`, `vct_values` for SD-JWT)
 

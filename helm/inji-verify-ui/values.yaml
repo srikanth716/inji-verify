@@ -411,6 +411,10 @@ inji_verify:
   port: '8000'
 inji_verify_service:
   host: 'inji-verify-service.injiverify'
+## DNS SAN host used to build CLIENT_ID_X509 (`x509_san_dns:<host>`).
+## Must match inji-verify-service `INJI_X509_SAN_DNS_HOST` / `inji.verify.x509-san-dns.host`
+## and the certificate dNSName SAN. Override in production when replacing the default cert.
+x509SanDnsHost: "test.example.com"
 istio:
   enabled: true
   ingressController:
