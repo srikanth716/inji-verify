@@ -92,9 +92,9 @@ paths:
 
         | Flow Type | Value | Behavior |
         |---|---|---|
-        | Cross Device Flow | `false` | `/v2/vp-submission` returns HTTP 200 only |
-        | Same Device – Web Wallet | `true` | `/v2/vp-submission` returns `redirect_uri` with `response_code` |
-        | Same Device – Mobile Wallet | `true` | `/v2/vp-submission` returns `redirect_uri` with `response_code`. Original tab can still resume via session cookie if `response_code` is not presented. |
+        | Cross Device Flow | `false` | `/v2/vp-submission/direct-post` returns HTTP 200 only |
+        | Same Device – Web Wallet | `true` | `/v2/vp-submission/direct-post` returns `redirect_uri` with `response_code` |
+        | Same Device – Mobile Wallet | `true` | `/v2/vp-submission/direct-post` returns `redirect_uri` with `response_code`. Original tab can still resume via session cookie if `response_code` is not presented. |
 
       operationId: createVPRequestV2
       tags:
@@ -884,7 +884,7 @@ paths:
 
         The session is identified using a **`transaction_id` cookie** (required, base64-encoded). If the cookie is missing or invalid, returns **401 Unauthorized** with `VP_SESSION_INVALID`.
 
-        If the corresponding Authorization Request has `responseCodeValidationRequired=true`, `/v2/vp-submission` returns `redirect_uri` with `response_code`. For `/vp-session-results`, `response_code` is required when resuming from that redirect (web wallet). Same-device mobile can omit it and still fetch results via the session cookie (original-tab fallback). When provided, `response_code` must be valid, unexpired, and unused.
+        If the corresponding Authorization Request has `responseCodeValidationRequired=true`, `/v2/vp-submission/direct-post` returns `redirect_uri` with `response_code`. For `/vp-session-results`, `response_code` is required when resuming from that redirect (web wallet). Same-device mobile can omit it and still fetch results via the session cookie (original-tab fallback). When provided, `response_code` must be valid, unexpired, and unused.
 
         After processing, the session cookie is cleared to prevent reuse.
 
@@ -1194,7 +1194,7 @@ components:
           description: DCQL query specifying the credentials to request, per OpenID4VP v1.0. Required. `presentationDefinition` and `presentationDefinitionId` are not supported.
         responseCodeValidationRequired:
           type: boolean
-          description: 'If `true`, `/v2/vp-submission` returns a `redirect_uri` with `response_code`. Use `true` for same-device flows (mobile wallet and web wallet). Default: `false` (cross-device QR).'
+          description: 'If `true`, `/v2/vp-submission/direct-post` returns a `redirect_uri` with `response_code`. Use `true` for same-device flows (mobile wallet and web wallet). Default: `false` (cross-device QR).'
           default: false
           example: false
         transactionId:

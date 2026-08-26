@@ -479,9 +479,9 @@ sequenceDiagram
     VerifierBackend-->>UserBrowser: Set HttpOnly Cookie (transaction_id) + authorization request
     UserBrowser->>WebWallet: Open Web Wallet
     WebWallet->>VerifierBackend: POST /v2/vp-submission/direct-post (vp_token)
-    VerifierBackend-->>WebWallet: response_code
-    WebWallet-->>UserBrowser: Redirect with response_code
-    UserBrowser->>VerifierBackend: POST /vp-session-results?response_code=... (Cookie auto-sent)
+    VerifierBackend-->>WebWallet: redirect_uri#response_code=...
+    WebWallet-->>UserBrowser: Redirect to redirect_uri#response_code=...
+    UserBrowser->>VerifierBackend: POST /vp-session-results (Cookie auto-sent, JSON body: {"responseCode":"..."})
     VerifierBackend-->>UserBrowser: Verification result
 ```
 
