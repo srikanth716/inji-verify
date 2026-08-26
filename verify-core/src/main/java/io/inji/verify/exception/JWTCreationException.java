@@ -6,4 +6,8 @@ public class JWTCreationException extends RuntimeException {
     public JWTCreationException() {
         super(message);
     }
+
+    public JWTCreationException(Throwable cause) {
+        super(message, cause);
+    }
 }

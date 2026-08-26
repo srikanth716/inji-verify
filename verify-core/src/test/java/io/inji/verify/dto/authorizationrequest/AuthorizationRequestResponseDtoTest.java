@@ -25,7 +25,7 @@ public class AuthorizationRequestResponseDtoTest {
 
         AuthorizationRequestResponseDto responseDto =
                 new AuthorizationRequestResponseDto(
-                        clientId, DcqlTestFixtures.minimalDcqlDto(), null, nonce, responseUri, true, false);
+                        clientId, DcqlTestFixtures.minimalDcqlDto(), null, nonce, responseUri, true, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
 
         assertEquals(Constants.RESPONSE_TYPE, responseDto.getResponseType());
         assertEquals(clientId, responseDto.getClientId());
@@ -39,12 +39,26 @@ public class AuthorizationRequestResponseDtoTest {
     void serializedOutputOmitsLegacyPresentationDefinitionKeys() throws Exception {
         AuthorizationRequestResponseDto dto =
                 new AuthorizationRequestResponseDto(
-                        "c1", DcqlTestFixtures.minimalDcqlDto(), null, "n", "u", false, false);
+                        "c1", DcqlTestFixtures.minimalDcqlDto(), null, "n", "u", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
 
         JsonNode out = MAPPER.valueToTree(dto);
         assertFalse(out.has("presentation_definition"));
         assertFalse(out.has("presentation_definition_uri"));
         assertTrue(out.has("dcqlQuery"));
         assertEquals("c1", out.get("clientId").asText());
+        assertFalse(out.has("expectedOrigins"));
+        assertEquals(Constants.RESPONSE_MODE_DIRECT_POST, out.get("responseMode").asText());
+    }
+
+    @Test
+    void should_includeExpectedOrigins_when_dcApiResponseMode() throws Exception {
+        AuthorizationRequestResponseDto dto =
+                new AuthorizationRequestResponseDto(
+                        "c1", DcqlTestFixtures.minimalDcqlDto(), null, "n", null, false, false,
+                        Constants.RESPONSE_MODE_DC_API, java.util.List.of("https://verify.example.com"));
+
+        JsonNode out = MAPPER.valueToTree(dto);
+        assertTrue(out.has("expectedOrigins"));
+        assertEquals("https://verify.example.com", out.get("expectedOrigins").get(0).asText());
     }
 }

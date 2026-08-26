@@ -51,6 +51,7 @@ import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import io.inji.verify.shared.Constants;
 @Slf4j
 public class VerifiablePresentationSubmissionServiceImplTest {
 
@@ -131,7 +132,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             );
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -161,7 +162,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     "", "", "", null, false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -197,7 +198,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             );
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -232,7 +233,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -272,7 +273,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -306,7 +307,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -340,7 +341,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     , false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -410,7 +411,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     null, null, null, null, false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -436,7 +437,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     null, null, null, null, false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -463,7 +464,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -494,7 +495,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -521,7 +522,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -565,7 +566,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             );
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -604,7 +605,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -647,7 +648,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             );
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -670,7 +671,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         void testProcessSubmission_NoProof_Accepted() {
             String vpToken = "{\"type\":\"VerifiablePresentation\",\"verifiableCredential\":[\"vc1\"]}";
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "state", true, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "state", true, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
 
             AuthorizationRequestCreateResponse auth = mock(AuthorizationRequestCreateResponse.class);
             when(auth.getAuthorizationDetails()).thenReturn(authDetails);
@@ -706,7 +707,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -756,7 +757,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             when(mockSummary.getVerificationResult()).thenReturn(mockResult);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -807,7 +808,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             when(mockSummary.getVerificationResult()).thenReturn(mockResult);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -831,7 +832,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             String transactionId = "tx123";
             List<String> requestIds = List.of("req123");
 
-            AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto("clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", true, true);
+            AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto("clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce", "responseUri", true, true, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -861,7 +862,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
                     "clientId", DcqlTestFixtures.minimalDcqlDto(),null, "nonce",
-                    "responseUri", false, true);
+                    "responseUri", false, true, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -902,7 +903,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             List<String> requestIds = List.of("req123");
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", true, true);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", true, true, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -920,7 +921,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             List<String> requestIds = List.of("req123");
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", true, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", true, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -943,7 +944,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     null, null, null, false);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -980,7 +981,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             String transactionId = "tx123";
             List<String> requestIds = List.of("req123");
 
-            AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto("clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", true, true);
+            AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto("clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", true, true, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -1003,7 +1004,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             String transactionId = "tx123";
             List<String> requestIds = List.of("req123");
 
-            AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto("clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", true, true);
+            AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto("clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", true, true, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -1027,7 +1028,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             String transactionId = "tx123";
             List<String> requestIds = List.of("req123");
 
-            AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto("clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", true, true);
+            AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto("clientId", DcqlTestFixtures.minimalDcqlDto(), null,"nonce", "responseUri", true, true, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     "state123", transactionId, authDetails, System.currentTimeMillis() + 100000);
 
@@ -1100,7 +1101,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     "responseUri",
                     false,
                     false
-            );
+            , Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     requestId,
                     "transactionId",
@@ -1148,7 +1149,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     "responseUri",
                     false,
                     true
-            );
+            , Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     requestId,
                     "transactionId",
@@ -1215,7 +1216,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     "responseUri",
                     false,
                     true
-            );
+            , Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     requestId,
                     "transactionId",
@@ -1267,7 +1268,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     "responseUri",
                     false,
                     true
-            );
+            , Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     requestId,
                     "transactionId",
@@ -1318,7 +1319,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     "responseUri",
                     false,
                     true
-            );
+            , Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     requestId,
                     "transactionId",
@@ -1369,7 +1370,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     "responseUri",
                     false,
                     true
-            );
+            , Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     requestId,
                     "transactionId",
@@ -1489,7 +1490,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     "responseUri",
                     false,
                     true
-            );
+            , Constants.RESPONSE_MODE_DIRECT_POST, null);
 
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     requestId,
@@ -1542,7 +1543,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     "responseUri",
                     false,
                     true
-            );
+            , Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     requestId,
                     "transactionId",
@@ -1591,7 +1592,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     "responseUri",
                     false,
                     true
-            );
+            , Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     requestId,
                     "transactionId",
@@ -1855,7 +1856,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                             new CredentialMetaDto(List.of("cred1"), null),
                             holderBinding, false, null, null)),
                     null);
-            return new AuthorizationRequestResponseDto("clientId", dcql, null, "nonce", "responseUri", false, false);
+            return new AuthorizationRequestResponseDto("clientId", dcql, null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
         }
 
         @Test
@@ -1914,7 +1915,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             io.inji.verify.dto.presentation.VPDefinitionResponseDto pd =
                     new io.inji.verify.dto.presentation.VPDefinitionResponseDto("pd1", List.of(), null, null, null, null);
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", null, pd, "nonce", "responseUri", acceptWithoutProof, false);
+                    "clientId", null, pd, "nonce", "responseUri", acceptWithoutProof, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             return new AuthorizationRequestCreateResponse("state1", transactionId, authDetails,
                     System.currentTimeMillis() + 100000);
         }
@@ -1922,7 +1923,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         // DCQL-based authRequest (defaulting CHB=true for unknown queryIds)
         private AuthorizationRequestCreateResponse dcqlAuthResponse(String transactionId) {
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             return new AuthorizationRequestCreateResponse("state1", transactionId, authDetails,
                     System.currentTimeMillis() + 100000);
         }
@@ -1936,7 +1937,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                             false, false, null, null)),
                     null);
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    "clientId", dcql, null, "nonce", "responseUri", false, false);
+                    "clientId", dcql, null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             return new AuthorizationRequestCreateResponse("state1", transactionId, authDetails,
                     System.currentTimeMillis() + 100000);
         }
@@ -2224,7 +2225,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             io.inji.verify.dto.presentation.VPDefinitionResponseDto pd =
                     new io.inji.verify.dto.presentation.VPDefinitionResponseDto("pd-id", List.of(), null, null, null, null);
             AuthorizationRequestResponseDto details = new AuthorizationRequestResponseDto(
-                    "clientId", null, pd, "nonce", "uri", false, false);
+                    "clientId", null, pd, "nonce", "uri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse auth = mock(AuthorizationRequestCreateResponse.class);
             when(auth.getAuthorizationDetails()).thenReturn(details);
 
@@ -2236,7 +2237,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         @Test
         void testIsAuthRequestWithPresentationExchange_WithDcqlQuery() {
             AuthorizationRequestResponseDto details = new AuthorizationRequestResponseDto(
-                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "uri", false, false);
+                    "clientId", DcqlTestFixtures.minimalDcqlDto(), null, "nonce", "uri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse auth = mock(AuthorizationRequestCreateResponse.class);
             when(auth.getAuthorizationDetails()).thenReturn(details);
 
@@ -2248,7 +2249,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         @Test
         void testIsAcceptVPWithoutHolderProof_True() {
             AuthorizationRequestResponseDto details = new AuthorizationRequestResponseDto(
-                    "clientId", null, null, "nonce", "uri", true, false);
+                    "clientId", null, null, "nonce", "uri", true, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse auth = mock(AuthorizationRequestCreateResponse.class);
             when(auth.getAuthorizationDetails()).thenReturn(details);
 
@@ -2260,7 +2261,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         @Test
         void testIsAcceptVPWithoutHolderProof_False() {
             AuthorizationRequestResponseDto details = new AuthorizationRequestResponseDto(
-                    "clientId", null, null, "nonce", "uri", false, false);
+                    "clientId", null, null, "nonce", "uri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse auth = mock(AuthorizationRequestCreateResponse.class);
             when(auth.getAuthorizationDetails()).thenReturn(details);
 
@@ -2374,10 +2375,11 @@ public class VerifiablePresentationSubmissionServiceImplTest {
     }
 
     @Nested
-    class ProcessSdJwtClientIdAndNonce {
+    class ProcessSdJwtAudienceAndNonce {
 
         private static final String EXPECTED_NONCE = "test-nonce-value";
         private static final String EXPECTED_CLIENT_ID = "https://verifier.example.com";
+        private static final String ORIGIN_AUD = "origin:https://verify.example.com";
 
         private static String b64(String json) {
             return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes());
@@ -2406,16 +2408,6 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         private static final String SD_JWT_NO_KB =
                 CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~";
 
-        /** SD-JWT with KB-JWT missing the iat claim. */
-        private static final String SD_JWT_IAT_MISSING =
-                CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~"
-                + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"" + EXPECTED_CLIENT_ID + "\"}") + "." + KB_SIG;
-
-        /** SD-JWT with KB-JWT iat 2 minutes in the future (beyond 60s clock skew). */
-        private static final String SD_JWT_IAT_IN_FUTURE =
-                CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~"
-                + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"" + EXPECTED_CLIENT_ID + "\",\"iat\":" + (NOW_SEC + 120) + "}") + "." + KB_SIG;
-
         /** Builds an auth request with require_cryptographic_holder_binding=true for "cred1". */
         private AuthorizationRequestResponseDto buildAuthRequest() {
             DCQLQueryDto dcql = new DCQLQueryDto(
@@ -2424,7 +2416,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                             new CredentialMetaDto(List.of("cred1"), null),
                             true, false, null, null)),
                     null);
-            return new AuthorizationRequestResponseDto(EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false);
+            return new AuthorizationRequestResponseDto(EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
         }
 
         private Map<String, List<String>> tokens(String sdJwt) {
@@ -2434,42 +2426,40 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         }
 
         @Test
-        void shouldReturnNull_whenKbJwtHasValidNonceAndAud() {
-            ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), tokens(SD_JWT_VALID_KB));
-            assertNull(result);
+        void clientId_passes_whenKbJwtAudMatches() {
+            assertNull(verifiablePresentationSubmissionService
+                    .processSdJwtClientId(buildAuthRequest(), tokens(SD_JWT_VALID_KB)));
         }
 
         @Test
-        void shouldReturnNull_whenSdJwtTokensMapIsEmpty() {
-            ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), new HashMap<>());
-            assertNull(result);
+        void clientId_passes_whenSdJwtTokensMapIsEmpty() {
+            assertNull(verifiablePresentationSubmissionService
+                    .processSdJwtClientId(buildAuthRequest(), new HashMap<>()));
         }
 
         @Test
-        void shouldReturnClientIdValidationFailed_whenKbJwtAudMismatch() {
+        void clientId_fails_whenKbJwtAudMismatch() {
             ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), tokens(SD_JWT_WRONG_AUD));
+                    .processSdJwtClientId(buildAuthRequest(), tokens(SD_JWT_WRONG_AUD));
             assertEquals(ErrorCode.CLIENT_ID_VALIDATION_FAILED, result);
         }
 
         @Test
-        void shouldReturnClientIdValidationFailed_whenKbJwtIsAbsent() {
+        void clientId_fails_whenKbJwtIsAbsent() {
             ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), tokens(SD_JWT_NO_KB));
+                    .processSdJwtClientId(buildAuthRequest(), tokens(SD_JWT_NO_KB));
             assertEquals(ErrorCode.CLIENT_ID_VALIDATION_FAILED, result);
         }
 
         @Test
-        void shouldReturnNonceValidationFailed_whenKbJwtNonceMismatch() {
+        void nonce_fails_whenKbJwtNonceMismatch() {
             ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(buildAuthRequest(), tokens(SD_JWT_WRONG_NONCE));
+                    .validateSdJwtNonce(buildAuthRequest(), tokens(SD_JWT_WRONG_NONCE));
             assertEquals(ErrorCode.NONCE_VALIDATION_FAILED, result);
         }
 
         @Test
-        void shouldReturnNull_whenHolderBindingNotRequired() {
+        void clientId_skips_whenHolderBindingNotRequired() {
             DCQLQueryDto dcql = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(
                             "cred1", "dc+sd-jwt",
@@ -2477,12 +2467,119 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                             false, false, null, null)),
                     null);
             AuthorizationRequestResponseDto authRequest = new AuthorizationRequestResponseDto(
-                    EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false);
+                    EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
 
-            // Even a token with wrong aud/nonce passes when binding is not required
+            assertNull(verifiablePresentationSubmissionService
+                    .processSdJwtClientId(authRequest, tokens(SD_JWT_WRONG_AUD)));
+            assertNull(verifiablePresentationSubmissionService
+                    .validateSdJwtNonce(authRequest, tokens(SD_JWT_WRONG_NONCE)));
+        }
+
+        @Test
+        void origin_passes_whenKbJwtAudMatchesOrigin() {
+            String sdJwt = CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~"
+                    + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"" + ORIGIN_AUD + "\",\"iat\":" + NOW_SEC + "}") + "." + KB_SIG;
+            String sdJwtLegacySlash = CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~"
+                    + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"origin:https://verify.example.com/\",\"iat\":" + NOW_SEC + "}") + "." + KB_SIG;
+
+            assertNull(verifiablePresentationSubmissionService
+                    .processSdJwtOrigin(buildAuthRequest(), tokens(sdJwt), ORIGIN_AUD));
+            assertNull(verifiablePresentationSubmissionService
+                    .processSdJwtOrigin(buildAuthRequest(), tokens(sdJwtLegacySlash), ORIGIN_AUD));
+        }
+
+        @Test
+        void origin_fails_whenKbJwtAudIsClientId() {
             ErrorCode result = verifiablePresentationSubmissionService
-                    .processSdJwtClientIdAndNonce(authRequest, tokens(SD_JWT_WRONG_AUD));
-            assertNull(result);
+                    .processSdJwtOrigin(buildAuthRequest(), tokens(SD_JWT_VALID_KB), ORIGIN_AUD);
+            assertEquals(ErrorCode.ORIGIN_AUDIENCE_VALIDATION_FAILED, result);
+        }
+
+        @Test
+        void origin_passes_whenDidClientIdAndKbJwtAudIsOrigin() {
+            String didClientId = Constants.CLIENT_ID_PREFIX_DECENTRALIZED_IDENTIFIER + ":did:web:verify.example.com";
+            DCQLQueryDto dcql = new DCQLQueryDto(
+                    List.of(new CredentialQueryDto(
+                            "cred1", "dc+sd-jwt",
+                            new CredentialMetaDto(List.of("cred1"), null),
+                            true, false, null, null)),
+                    null);
+            AuthorizationRequestResponseDto authRequest = new AuthorizationRequestResponseDto(
+                    didClientId, dcql, null, EXPECTED_NONCE, "responseUri", false, false,
+                    Constants.RESPONSE_MODE_DC_API, List.of("https://verify.example.com"));
+            String sdJwt = CRED_HEADER + "." + CRED_PAYLOAD + "." + CRED_SIG + "~"
+                    + KB_HEADER + "." + b64("{\"nonce\":\"" + EXPECTED_NONCE + "\",\"aud\":\"" + ORIGIN_AUD + "\",\"iat\":" + NOW_SEC + "}") + "." + KB_SIG;
+
+            assertNull(verifiablePresentationSubmissionService
+                    .processSdJwtOrigin(authRequest, tokens(sdJwt), ORIGIN_AUD));
+        }
+    }
+
+    @Nested
+    class ProcessLdpVpAudienceAndNonce {
+
+        private static final String EXPECTED_NONCE = "test-nonce-value";
+        private static final String EXPECTED_CLIENT_ID = "https://verifier.example.com";
+        private static final String ORIGIN_AUD = "origin:https://verify.example.com";
+
+        private AuthorizationRequestResponseDto buildAuthRequest() {
+            DCQLQueryDto dcql = new DCQLQueryDto(
+                    List.of(new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null)),
+                    null);
+            return new AuthorizationRequestResponseDto(
+                    EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false,
+                    Constants.RESPONSE_MODE_DIRECT_POST, null);
+        }
+
+        private Map<String, List<JSONObject>> tokens(String domain, String challenge) {
+            JSONObject vp = new JSONObject();
+            vp.put("type", List.of("VerifiablePresentation"));
+            JSONObject proof = new JSONObject();
+            proof.put("domain", domain);
+            proof.put("challenge", challenge);
+            vp.put("proof", proof);
+            return Map.of("cred1", List.of(vp));
+        }
+
+        @Test
+        void clientId_passes() {
+            assertNull(verifiablePresentationSubmissionService.processLdpVpClientId(
+                    buildAuthRequest(), tokens(EXPECTED_CLIENT_ID, EXPECTED_NONCE)));
+        }
+
+        @Test
+        void origin_passes_whenProofDomainMatchesOrigin() {
+            assertNull(verifiablePresentationSubmissionService.processLdpVpOrigin(
+                    tokens(ORIGIN_AUD, EXPECTED_NONCE), ORIGIN_AUD));
+            assertNull(verifiablePresentationSubmissionService.processLdpVpOrigin(
+                    tokens("origin:https://verify.example.com/", EXPECTED_NONCE), ORIGIN_AUD));
+        }
+
+        @Test
+        void origin_fails_whenProofDomainIsAttackerOrigin() {
+            ErrorCode result = verifiablePresentationSubmissionService.processLdpVpOrigin(
+                    tokens("https://attacker.example.com", EXPECTED_NONCE), ORIGIN_AUD);
+            assertEquals(ErrorCode.ORIGIN_AUDIENCE_VALIDATION_FAILED, result);
+        }
+
+        @Test
+        void origin_fails_whenProofDomainIsClientId() {
+            ErrorCode result = verifiablePresentationSubmissionService.processLdpVpOrigin(
+                    tokens(EXPECTED_CLIENT_ID, EXPECTED_NONCE), ORIGIN_AUD);
+            assertEquals(ErrorCode.ORIGIN_AUDIENCE_VALIDATION_FAILED, result);
+        }
+
+        @Test
+        void nonce_fails_whenChallengeMismatch() {
+            ErrorCode result = verifiablePresentationSubmissionService.validateLdpNonce(
+                    buildAuthRequest(), tokens(EXPECTED_CLIENT_ID, "wrong-nonce"));
+            assertEquals(ErrorCode.NONCE_VALIDATION_FAILED, result);
+        }
+
+        @Test
+        void origin_passes_whenDidClientIdAndProofDomainIsOrigin() {
+            assertNull(verifiablePresentationSubmissionService.processLdpVpOrigin(
+                    tokens(ORIGIN_AUD, EXPECTED_NONCE), ORIGIN_AUD));
         }
     }
 
@@ -2535,7 +2632,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                             new CredentialMetaDto(List.of("cred1"), null),
                             true, false, null, null)),
                     null);
-            return new AuthorizationRequestResponseDto(EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false);
+            return new AuthorizationRequestResponseDto(EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
         }
 
         private Map<String, List<String>> tokens(String sdJwt) {
@@ -2595,7 +2692,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                             false, false, null, null)),
                     null);
             AuthorizationRequestResponseDto authRequest = new AuthorizationRequestResponseDto(
-                    EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false);
+                    EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
 
             // iat is not checked when holder binding is not required
             ErrorCode result = verifiablePresentationSubmissionService
@@ -2616,11 +2713,11 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         private static final String NONCE = "test-nonce-value";
 
         // validateSubmissionRequest, validateState, validateVpTokenStructure, validateVpTokenAgainstDcql
-        // and validateClientIdAndNonce are private (called only from submitVerifiablePresentation), so
+        // and validateAudienceAndNonce are private (called only from submitVerifiablePresentation), so
         // they're exercised here through that single public entry point rather than called directly.
-        // The client_id/nonce mismatch business rules themselves keep their own dedicated coverage in
-        // processLdpVpClientIdAndNonce/processSdJwtClientIdAndNonce/processSdJwtKbJwtIat's test classes
-        // below — validateClientIdAndNonce is just a thin orchestrator over those.
+        // Audience/nonce business rules keep dedicated coverage in ProcessSdJwtAudienceAndNonce /
+        // ProcessLdpVpAudienceAndNonce / ProcessSdJwtKbJwtIat. Only DCQL and audience/nonce rejections
+        // are persisted; earlier checks throw without burning the one-shot submission slot.
 
         private void stubActiveState() {
             when(verifiablePresentationRequestService.getCurrentRequestStatus(STATE))
@@ -2631,12 +2728,28 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             when(authorizationRequestCreateResponseRepository.findById(STATE)).thenReturn(Optional.of(authResponse));
         }
 
+        private void assertValidationFailurePersisted(String expectedError) {
+            ArgumentCaptor<VPSubmission> captor = ArgumentCaptor.forClass(VPSubmission.class);
+            verify(vpSubmissionRepository).save(captor.capture());
+            VPSubmission saved = captor.getValue();
+            assertEquals(expectedError, saved.getError());
+            assertNotNull(saved.getErrorDescription());
+            assertNull(saved.getResponseCode());
+            verify(verifiablePresentationRequestService).invokeVpRequestStatusListener(STATE);
+        }
+
+        private void assertSubmissionNotPersisted() {
+            verify(vpSubmissionRepository, never()).save(any());
+            verify(verifiablePresentationRequestService, never()).invokeVpRequestStatusListener(any());
+        }
+
         private AuthorizationRequestCreateResponse authRequestWithDcql(String credentialId) {
             DCQLQueryDto dcqlQuery = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(credentialId, "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null)),
                     null);
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    CLIENT_ID, dcqlQuery, null, NONCE, "https://resp.example/post", false, false);
+                    CLIENT_ID, dcqlQuery, null, NONCE, "https://resp.example/post", false, false,
+                    Constants.RESPONSE_MODE_DIRECT_POST, null);
             return new AuthorizationRequestCreateResponse(STATE, "tx", authDetails, Instant.now().toEpochMilli() + 10000);
         }
 
@@ -2649,7 +2762,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         void submitVerifiablePresentation_neitherVpTokenNorError_throws() {
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            null, STATE, null, null));
+                            null, STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.EITHER_VP_TOKEN_OR_ERROR_REQUIRED, ex.getErrorCode());
         }
 
@@ -2657,7 +2770,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         void submitVerifiablePresentation_bothVpTokenAndError_throws() {
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "vp", STATE, "error", null));
+                            "vp", STATE, "error", null, Optional.empty()));
             assertEquals(ErrorCode.BOTH_VP_TOKEN_AND_ERROR_NOT_ALLOWED, ex.getErrorCode());
         }
 
@@ -2665,7 +2778,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         void submitVerifiablePresentation_errorDescriptionWithVpToken_throws() {
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "vp", STATE, null, "desc"));
+                            "vp", STATE, null, "desc", Optional.empty()));
             assertEquals(ErrorCode.ERROR_DESCRIPTION_VP_TOKEN_CONFLICT, ex.getErrorCode());
         }
 
@@ -2673,7 +2786,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         void submitVerifiablePresentation_errorDescriptionWithoutError_throws() {
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            null, STATE, null, "desc"));
+                            null, STATE, null, "desc", Optional.empty()));
             assertEquals(ErrorCode.ERROR_DESCRIPTION_ERROR_REQUIRED, ex.getErrorCode());
         }
 
@@ -2683,7 +2796,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         void submitVerifiablePresentation_blankState_throws() {
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "{\"cred1\":[{\"type\":\"VP\"}]}", "", null, null));
+                            "{\"cred1\":[{\"type\":\"VP\"}]}", "", null, null, Optional.empty()));
             assertEquals(ErrorCode.INVALID_STATE_MISSING, ex.getErrorCode());
         }
 
@@ -2692,7 +2805,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             when(verifiablePresentationRequestService.getCurrentRequestStatus(STATE)).thenReturn(null);
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "{\"cred1\":[{\"type\":\"VP\"}]}", STATE, null, null));
+                            "{\"cred1\":[{\"type\":\"VP\"}]}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.NO_MATCHING_VP_REQUEST, ex.getErrorCode());
         }
 
@@ -2702,7 +2815,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     .thenReturn(new io.inji.verify.dto.authorizationrequest.VPRequestStatusDto(io.inji.verify.enums.VPRequestStatus.EXPIRED));
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "{\"cred1\":[{\"type\":\"VP\"}]}", STATE, null, null));
+                            "{\"cred1\":[{\"type\":\"VP\"}]}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_REQUEST_EXPIRED, ex.getErrorCode());
         }
 
@@ -2712,7 +2825,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     .thenReturn(new io.inji.verify.dto.authorizationrequest.VPRequestStatusDto(io.inji.verify.enums.VPRequestStatus.VP_SUBMITTED));
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "{\"cred1\":[{\"type\":\"VP\"}]}", STATE, null, null));
+                            "{\"cred1\":[{\"type\":\"VP\"}]}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_ALREADY_SUBMITTED, ex.getErrorCode());
         }
 
@@ -2723,8 +2836,9 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             stubActiveState();
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "null", STATE, null, null));
+                            "null", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_REQUIRED, ex.getErrorCode());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2732,8 +2846,9 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             stubActiveState();
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "[{\"type\":\"VP\"}]", STATE, null, null));
+                            "[{\"type\":\"VP\"}]", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_NOT_VALID_JSON_OBJECT, ex.getErrorCode());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2741,8 +2856,9 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             stubActiveState();
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "{}", STATE, null, null));
+                            "{}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_MUST_HAVE_KEY_VALUE_PAIR, ex.getErrorCode());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2750,8 +2866,9 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             stubActiveState();
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "{\"cred1\":{\"type\":\"VP\"}}", STATE, null, null));
+                            "{\"cred1\":{\"type\":\"VP\"}}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_VALUES_MUST_BE_ARRAYS, ex.getErrorCode());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2759,8 +2876,9 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             stubActiveState();
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "{\"cred1\":[]}", STATE, null, null));
+                            "{\"cred1\":[]}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_ARRAYS_MUST_HAVE_ELEMENTS, ex.getErrorCode());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2768,8 +2886,9 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             stubActiveState();
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "{\"cred1\":[{}]}", STATE, null, null));
+                            "{\"cred1\":[{}]}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_ARRAY_ELEMENTS_INVALID, ex.getErrorCode());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2777,8 +2896,9 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             stubActiveState();
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "{\"cred1\":[{\"type\":\"VP\"}, \"sd-jwt-string\"]}", STATE, null, null));
+                            "{\"cred1\":[{\"type\":\"VP\"}, \"sd-jwt-string\"]}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_ALL_ELEMENTS_MUST_BE_OBJECTS, ex.getErrorCode());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2786,8 +2906,9 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             stubActiveState();
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "{\"cred1\":[\"header.payload.sig~kb\", {\"type\":\"VP\"}]}", STATE, null, null));
+                            "{\"cred1\":[\"header.payload.sig~kb\", {\"type\":\"VP\"}]}", STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_ALL_ELEMENTS_MUST_BE_SD_JWT, ex.getErrorCode());
+            assertSubmissionNotPersisted();
         }
 
         @Test
@@ -2796,8 +2917,9 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             String duplicateKeys = "{\"cred1\":[{\"type\":\"VP\"}],\"cred1\":[{\"type\":\"VP\"}]}";
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            duplicateKeys, STATE, null, null));
+                            duplicateKeys, STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.DUPLICATE_QUERY_IDS_NOT_ALLOWED, ex.getErrorCode());
+            assertSubmissionNotPersisted();
         }
 
         // ---- validateVpTokenAgainstDcql (delegates to the real DcqlValidator) ----
@@ -2810,8 +2932,125 @@ public class VerifiablePresentationSubmissionServiceImplTest {
 
             VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
                     () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            vpTokenWithUnknownId, STATE, null, null));
+                            vpTokenWithUnknownId, STATE, null, null, Optional.empty()));
             assertEquals(ErrorCode.VP_TOKEN_UNKNOWN_CREDENTIAL_ID, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.VP_TOKEN_UNKNOWN_CREDENTIAL_ID.name());
+        }
+
+        private AuthorizationRequestCreateResponse dcApiAuthRequestWithLdp(String credentialId) {
+            DCQLQueryDto dcqlQuery = new DCQLQueryDto(
+                    List.of(new CredentialQueryDto(credentialId, "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null)),
+                    null);
+            AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
+                    CLIENT_ID, dcqlQuery, null, NONCE, null, false, false,
+                    Constants.RESPONSE_MODE_DC_API, List.of("https://verify.example.com"));
+            return new AuthorizationRequestCreateResponse(STATE, "tx-dc", authDetails, Instant.now().toEpochMilli() + 10000);
+        }
+
+        @Test
+        void submitVerifiablePresentation_dcApiSession_errorOnly_missingOrigin_rejected() {
+            stubActiveState();
+            stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));
+
+            VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                    () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                            null, STATE, "access_denied", "user cancelled", Optional.empty()));
+            assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, ex.getErrorCode());
+            assertSubmissionNotPersisted();
+        }
+
+        @Test
+        void submitVerifiablePresentation_dcApi_walletError_succeedsWithoutRedirect() {
+            stubActiveState();
+            stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));
+
+            Map<String, Object> response = verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                    null, STATE, "access_denied", "user cancelled", Optional.of("https://verify.example.com"));
+
+            assertTrue(response.isEmpty());
+            ArgumentCaptor<VPSubmission> captor = ArgumentCaptor.forClass(VPSubmission.class);
+            verify(vpSubmissionRepository).save(captor.capture());
+            assertEquals("access_denied", captor.getValue().getError());
+            assertNull(captor.getValue().getResponseCode());
+        }
+
+        @Test
+        void submitVerifiablePresentation_dcApi_originAudienceMismatch_rejected() {
+            stubActiveState();
+            stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));
+            String vpToken = "{\"cred1\":[{\"type\":[\"VerifiablePresentation\"],"
+                    + "\"proof\":{\"domain\":\"" + CLIENT_ID + "\",\"challenge\":\"" + NONCE + "\"}}]}";
+
+            VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                    () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                            vpToken, STATE, null, null, Optional.of("https://verify.example.com")));
+            assertEquals(ErrorCode.ORIGIN_AUDIENCE_VALIDATION_FAILED, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.ORIGIN_AUDIENCE_VALIDATION_FAILED.name());
+        }
+
+        @Test
+        void submitVerifiablePresentation_dcApi_nonceMismatch_rejected() {
+            stubActiveState();
+            stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));
+            String vpToken = "{\"cred1\":[{\"type\":[\"VerifiablePresentation\"],"
+                    + "\"proof\":{\"domain\":\"origin:https://verify.example.com\",\"challenge\":\"wrong-nonce\"}}]}";
+
+            VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                    () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                            vpToken, STATE, null, null, Optional.of("https://verify.example.com")));
+            assertEquals(ErrorCode.NONCE_VALIDATION_FAILED, ex.getErrorCode());
+            assertValidationFailurePersisted(ErrorCode.NONCE_VALIDATION_FAILED.name());
+        }
+
+        @Test
+        void submitVerifiablePresentation_dcApi_missingOrigin_rejected() {
+            stubActiveState();
+            stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));
+
+            VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                    () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                            "{\"cred1\":[{\"type\":[\"VerifiablePresentation\"]}]}",
+                            STATE, null, null, Optional.empty()));
+            assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, ex.getErrorCode());
+            assertSubmissionNotPersisted();
+        }
+
+        @Test
+        void submitVerifiablePresentation_dcApi_originNotAllowed_rejected() {
+            stubActiveState();
+            stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));
+
+            VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                    () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                            "{\"cred1\":[{\"type\":[\"VerifiablePresentation\"]}]}",
+                            STATE, null, null, Optional.of("https://evil.example.com")));
+            assertEquals(ErrorCode.SUBMISSION_ORIGIN_NOT_ALLOWED, ex.getErrorCode());
+            assertSubmissionNotPersisted();
+        }
+
+        @Test
+        void submitVerifiablePresentation_dcApi_walletError_missingOrigin_rejected() {
+            stubActiveState();
+            stubAuthRequest(dcApiAuthRequestWithLdp("cred1"));
+
+            VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                    () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                            null, STATE, "access_denied", "user cancelled", Optional.empty()));
+            assertEquals(ErrorCode.VERIFIER_ORIGIN_REQUIRED, ex.getErrorCode());
+            assertSubmissionNotPersisted();
+        }
+
+        @Test
+        void submitVerifiablePresentation_dcApi_duplicateSubmission_rejected() {
+            when(verifiablePresentationRequestService.getCurrentRequestStatus(STATE))
+                    .thenReturn(new io.inji.verify.dto.authorizationrequest.VPRequestStatusDto(
+                            io.inji.verify.enums.VPRequestStatus.VP_SUBMITTED));
+
+            VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                    () -> verifiablePresentationSubmissionService.submitVerifiablePresentation(
+                            null, STATE, "access_denied", null, Optional.of("https://verify.example.com")));
+            assertEquals(ErrorCode.VP_ALREADY_SUBMITTED, ex.getErrorCode());
+            assertSubmissionNotPersisted();
         }
 
         // ---- resolveRedirectUri ----
@@ -2836,7 +3075,8 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         @Test
         void submitVerifiablePresentation_errorOnlySubmission_endToEnd_succeeds() {
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    CLIENT_ID, null, null, NONCE, "https://resp.example/post", false, false);
+                    CLIENT_ID, null, null, NONCE, "https://resp.example/post", false, false,
+                    Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse =
                     new AuthorizationRequestCreateResponse(STATE, "tx", authDetails, Instant.now().toEpochMilli() + 10000);
             when(authorizationRequestCreateResponseRepository.findById(STATE)).thenReturn(Optional.of(authResponse));
@@ -2844,7 +3084,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     .thenReturn(new io.inji.verify.dto.authorizationrequest.VPRequestStatusDto(io.inji.verify.enums.VPRequestStatus.ACTIVE));
 
             Map<String, Object> response = verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                    null, STATE, "access_denied", "user cancelled");
+                    null, STATE, "access_denied", "user cancelled", Optional.empty());
 
             assertNotNull(response);
             assertTrue(response.isEmpty());
@@ -2857,7 +3097,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
 
             assertThrows(VPRequestValidationException.class, () ->
                     verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            "{\"cred1\":[{\"type\":\"VP\"}]}", STATE, null, null));
+                            "{\"cred1\":[{\"type\":\"VP\"}]}", STATE, null, null, Optional.empty()));
 
             verify(authorizationRequestCreateResponseRepository, never()).findById(any());
         }
@@ -2866,7 +3106,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
         void submitVerifiablePresentation_shortCircuitsOnRequestValidationFailure() {
             assertThrows(VPRequestValidationException.class, () ->
                     verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                            null, null, null, null));
+                            null, null, null, null, Optional.empty()));
 
             verify(verifiablePresentationRequestService, never()).getCurrentRequestStatus(any());
         }
