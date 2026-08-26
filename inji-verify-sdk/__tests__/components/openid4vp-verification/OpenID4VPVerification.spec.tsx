@@ -13,7 +13,7 @@ import {
   waitFor,
   fireEvent,
   act,
-  cleanup,
+  cleanup
 } from "@testing-library/react";
 import OpenID4VPVerification from "../../../src/components/openid4vp-verification/OpenID4VPVerification";
 
