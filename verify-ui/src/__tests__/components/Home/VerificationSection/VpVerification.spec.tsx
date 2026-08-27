@@ -67,6 +67,8 @@ jest.mock("@injistack/react-inji-verify-sdk", () => {
                 {
                     "data-testid": "openid-verification-sdk",
                     "data-client-id": props.clientId,
+                    "data-enable-dc-api": String(!!props.enableDcApi),
+                    "data-web-wallet-base-url": props.webWalletBaseUrl ?? "",
                     onClick: () => {
                         props.onVPProcessed?.([
                             {
@@ -185,6 +187,34 @@ describe("VpVerification Component", () => {
         mockState({ flowType: "sameDevice" });
         render(<VpVerification />);
         expect(screen.getByTestId("openid-verification-sdk")).toBeInTheDocument();
+    });
+
+    test("disables enableDcApi when a web wallet base URL is selected", () => {
+        Object.assign((window as any)._env_, { ENABLE_DC_API: "true" });
+        mockState({
+            flowType: "sameDevice",
+            selectedWalletBaseUrl: "https://wallet.example.org",
+        });
+        render(<VpVerification />);
+        const sdk = screen.getByTestId("openid-verification-sdk");
+        expect(sdk).toHaveAttribute("data-enable-dc-api", "false");
+        expect(sdk).toHaveAttribute(
+            "data-web-wallet-base-url",
+            "https://wallet.example.org"
+        );
+    });
+
+    test("enables enableDcApi on same-device when no web wallet is selected", () => {
+        Object.assign((window as any)._env_, { ENABLE_DC_API: "true" });
+        mockState({
+            flowType: "sameDevice",
+            selectedWalletBaseUrl: undefined,
+        });
+        render(<VpVerification />);
+        expect(screen.getByTestId("openid-verification-sdk")).toHaveAttribute(
+            "data-enable-dc-api",
+            "true"
+        );
     });
 
     test("passes CLIENT_ID_X509 when selected credential uses x509_san_dns", () => {
