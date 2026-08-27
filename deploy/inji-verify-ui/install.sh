@@ -85,6 +85,8 @@ function installing_inji-verify-ui() {
   --set inji_verify_service.host="inji-verify-service.$NS" \
   --set extraEnvVars[0].name=VP_SUBMISSION_SUPPORTED \
   --set-string extraEnvVars[0].value="${VP_SUBMISSION_SUPPORTED}" \
+  --set extraEnvVars[1].name=ENABLE_DC_API \
+  --set-string extraEnvVars[1].value="true" \
   --set-string walletBaseUrl="$WALLET_BASE_URL" \
   --version $CHART_VERSION
 

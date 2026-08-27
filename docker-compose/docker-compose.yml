@@ -3,7 +3,11 @@ version: '3.8'
 services:
   verify-service:
     container_name: verify-service
-    image: injistack/inji-verify-service:0.18.2
+    image: injistackdev/inji-verify-service:develop
+#    build:
+#      context: ../verify-service
+#      dockerfile: Dockerfile
+#    image: inji-verify-service:local
     user: root
     ports:
       - "8080:8080"
@@ -28,7 +32,11 @@ services:
 
   verify-ui:
     container_name: verify-ui
-    image: injistack/inji-verify-ui:0.18.2
+    image: injistackdev/inji-verify-ui:develop
+#    build:
+#      context: ../verify-ui
+#      dockerfile: Dockerfile
+#    image: inji-verify-ui:local
     ports:
       - "3000:8000"
     environment:
@@ -40,8 +48,10 @@ services:
       - VERIFIABLE_CLAIMS_CONFIG_URL=/assets/config.json
       - VP_SUBMISSION_SUPPORTED=false
       - CLIENT_ID=inji-verify-ui
-      - CLIENT_ID_DID=did:web:VERIFY_SERVICE_PROXY_FOR_LOCALHOST:v1:verify
+      - CLIENT_ID_DID=decentralized_identifier:did:web:VERIFY_SERVICE_PROXY_FOR_LOCALHOST:v1:verify
+      - CLIENT_ID_X509=${CLIENT_ID_X509:-x509_san_dns:test.example.com}
       - DISPLAY_TIMEOUT=120000
+      - ENABLE_DC_API=true
     volumes:
       - ./config/config.json:/usr/share/nginx/html/assets/config.json
     depends_on:
