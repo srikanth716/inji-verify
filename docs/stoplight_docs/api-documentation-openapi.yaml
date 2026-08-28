@@ -92,9 +92,27 @@ paths:
 
         | Flow Type | Value | Behavior |
         |---|---|---|
-        | Cross Device Flow | `false` | `/v2/vp-submission` returns HTTP 200 only |
-        | Same Device – Web Wallet | `true` | `/v2/vp-submission` returns `redirect_uri` with `response_code` |
-        | Same Device – Mobile Wallet | `false` | `/v2/vp-submission` returns HTTP 200 only |
+        | Cross Device Flow | `false` | `/v2/vp-submission/direct-post` returns HTTP 200 only |
+        | Same Device – Web Wallet | `true` | `/v2/vp-submission/direct-post` returns `redirect_uri` with `response_code` |
+        | Same Device – Mobile Wallet | `false` | `/v2/vp-submission/direct-post` returns HTTP 200 only |
+        | Digital Credentials API (`responseMode=dc_api`) | must be `false` | Not supported with DC API — rejected with `DC_API_RESPONSE_CODE_NOT_SUPPORTED` |
+
+        ---
+
+        ## responseMode
+
+        Optional. Defaults to `direct_post`.
+
+        | Value | Submission | Notes |
+        |---|---|---|
+        | `direct_post` (default) | Wallet POSTs form-urlencoded to `/v2/vp-submission/direct-post` | Cross-device QR / deep-link / web-wallet redirect |
+        | `dc_api` | Browser SDK POSTs JSON to `/vp-submission/dc-api` after `navigator.credentials.get` | Same-device Digital Credentials API only |
+
+        **`responseMode=dc_api` requirements:**
+        - `clientId` must use a signed-request scheme: `decentralized_identifier:` or `x509_san_dns:`
+        - `responseCodeValidationRequired` must be `false`
+        - Request must include an `Origin` or `Referer` header so the server can persist `expected_origins`
+        - Response includes `requestUri` (JWT for the wallet mediator) and `responseUri` (SDK submit URL)
 
       operationId: createVPRequestV2
       tags:
@@ -130,6 +148,21 @@ paths:
                         meta:
                           vct_values:
                             - 'https://example.com/AgeCredential'
+                        require_cryptographic_holder_binding: true
+              dc_api:
+                summary: Digital Credentials API (responseMode=dc_api)
+                value:
+                  clientId: 'decentralized_identifier:did:web:verify.example.com'
+                  responseMode: dc_api
+                  responseCodeValidationRequired: false
+                  dcqlQuery:
+                    credentials:
+                      - id: age_credential_query
+                        format: ldp_vc
+                        meta:
+                          type_values:
+                            - - VerifiableCredential
+                              - AgeCredential
                         require_cryptographic_holder_binding: true
       responses:
         '201':
@@ -192,6 +225,14 @@ paths:
                     requestId: 'urn:uuid:6d538e1b-2615-4927-bfd2-094e9f73f2a1'
                     requestUri: 'https://injiverify.collab.mosip.net/v1/verify/v2/vp-request/6d538e1b-2615-4927-bfd2-094e9f73f2a1'
                     expiresAt: 1752838929
+                by_reference_dc_api:
+                  summary: DC API by reference (includes responseUri for SDK submit)
+                  value:
+                    transactionId: 'urn:uuid:f82f281e-8d96-419b-b413-5a0459739a7b'
+                    requestId: 'urn:uuid:6d538e1b-2615-4927-bfd2-094e9f73f2a1'
+                    requestUri: 'https://injiverify.collab.mosip.net/v1/verify/v2/vp-request/6d538e1b-2615-4927-bfd2-094e9f73f2a1'
+                    responseUri: 'https://injiverify.collab.mosip.net/v1/verify/vp-submission/dc-api'
+                    expiresAt: 1752838929
         '400':
           description: |-
             The request failed due to validation errors.
@@ -213,6 +254,10 @@ paths:
             | `invalid_request` | client_id is required |
             | `dcql_query_required` | dcql_query is required |
             | `invalid_request` | Nonce must contain only ASCII URL-safe characters (A-Z, a-z, 0-9, -, ., _, ~) and be at least 16 characters. |
+            | `invalid_request` | responseMode must be direct_post or dc_api. |
+            | `invalid_request` | DC API response_mode requires a decentralized_identifier or x509_san_dns client_id. |
+            | `invalid_request` | responseCodeValidationRequired is not supported with response_mode=dc_api. |
+            | `invalid_request` | Unable to determine verifier origin from Origin or Referer headers. |
 
             **DCQL structure validation errors:**
 
@@ -352,11 +397,24 @@ paths:
       summary: Get VP Request JWT (v2 — OpenID4VP 1.0)
       description: |-
         ## Description
-        Retrieves a Verifiable Presentation (VP) request as a signed JWT. Used in **authorization by reference** flows where the wallet fetches the full request from the `requestUri` returned by `/v2/vp-request`.
+        Retrieves a Verifiable Presentation (VP) request as a signed JWT. Used in **authorization by reference** flows where the wallet (or Digital Credentials API mediator) fetches the full request from the `requestUri` returned by `/v2/vp-request` or `/v2/vp-session-request`.
 
         This replaces the legacy `/vp-request/{requestId}` endpoint and is **not backward compatible**.
 
         Supports DCQL-based authorization requests per OpenID4VP v1.0.
+
+        ---
+
+        ## JWT claim set notes
+
+        | Claim | `direct_post` | `dc_api` |
+        |---|---|---|
+        | `response_mode` | `direct_post` | `dc_api` |
+        | `state` | Present | Omitted |
+        | `response_uri` | Present | Omitted |
+        | `expected_origins` | Omitted | Present (slash-free canonical origins, e.g. `https://verify.example.com`) |
+        | `dcql_query` | Present | Present |
+        | `nonce` / `client_id` | Present | Present |
       operationId: getVPRequestJwtV2
       tags:
         - VP Request
@@ -472,7 +530,8 @@ paths:
 
         - **State**: `state` must correspond to a recent, valid, non-expired, non-duplicate Authorization Request
         - **Nonce**: nonce from KB-JWT (SD-JWT) or VP proof (ldp_vc) must match the stored nonce
-        - **Client ID / aud**: `aud` in KB-JWT must match the verifier's `client_id`
+        - **Client ID / aud** (`direct_post`): KB-JWT `aud` / LDP `proof.domain` must match the verifier's `client_id`
+        - Sessions created with `response_mode=dc_api` must not be completed on this endpoint (origin audience resolution fails closed)
 
         ---
 
@@ -635,6 +694,92 @@ paths:
               example:
                 errorCode: REDIRECT_URI_NOT_FOUND
                 errorMessage: Redirect URI configuration is missing
+  /vp-submission/dc-api:
+    post:
+      summary: Submit Authorization Response via Digital Credentials API (DC API)
+      description: |-
+        ## Description
+        Used by the verifier SDK (browser) to submit a **Verifiable Presentation** returned from
+        `navigator.credentials.get({ digital: … })`, per OpenID4VP `response_mode=dc_api`.
+
+        Correlates via JSON `requestId` (same role as `state` on `direct-post`). **No cookie is
+        required on this endpoint** — the `transaction_id` cookie is only required on
+        `/vp-session-results`.
+
+        Shares the same validation pipeline as `POST /v2/vp-submission/direct-post` (structure,
+        DCQL, nonce, holder binding). Does **not** return `redirect_uri` / `response_code`.
+
+        ---
+
+        ## Audience / Origin
+
+        For sessions created with `response_mode=dc_api`:
+        - Submission `Origin` (preferred) or `Referer` must be in the request's `expected_origins`
+        - KB-JWT `aud` / LDP `proof.domain` must match the origin-bound audience:
+          `origin:https://verify.example.com` (slash-free; trailing-slash form also accepted)
+
+        ---
+
+        ## Result retrieval
+
+        After a successful submit (HTTP 200 empty body), the SDK calls `/vp-session-results`
+        with the existing session cookie — same as `direct_post`.
+
+      operationId: submitVpDcApi
+      tags:
+        - VP Submission
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DcApiVpSubmissionRequest'
+            examples:
+              with_vp_token:
+                summary: Success payload
+                value:
+                  requestId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  vp_token:
+                    verifiable-id:
+                      - type:
+                          - VerifiablePresentation
+              with_wallet_error:
+                summary: Wallet protocol error
+                value:
+                  requestId: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+                  error: invalid_request
+                  error_description: optional
+      responses:
+        '200':
+          description: VP submission accepted (empty body).
+        '400':
+          description: |-
+            The submission failed. Body uses `errorCode` / `errorMessage`.
+
+            Common DC API-specific cases:
+
+            | errorCode | Meaning |
+            |---|---|
+            | `invalid_request` | Missing `requestId` |
+            | `invalid_request` | Unable to determine verifier origin from Origin or Referer |
+            | `invalid_request` | Submission Origin is not in expected_origins |
+            | `invalid_request` | Audience / nonce / DCQL / structure validation failed |
+            | `invalid_request` | VP already submitted for this requestId |
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_request_id:
+                  summary: Missing requestId
+                  value:
+                    errorCode: invalid_request
+                    errorMessage: requestId is required and cannot be empty.
+                origin_not_allowed:
+                  summary: Origin not in expected_origins
+                  value:
+                    errorCode: invalid_request
+                    errorMessage: Submission Origin is not in the authorization request expected_origins.
   /vc-submission:
     post:
       summary: Submit a Verifiable Credential (VC)
@@ -1184,17 +1329,33 @@ components:
         clientId:
           type: string
           description: |-
-            Identifier of the verifier. Two schemes are supported:
+            Identifier of the verifier. Supported schemes:
 
-            - **Pre-registered**: simple string (e.g., `client123`). Authorization Request is returned by value. `client_metadata` MUST NOT be included.
-            - **Decentralized Identifier**: must use the `decentralized_identifier:` prefix per OpenID4VP v1.0 Section 5.9.3 (e.g., `decentralized_identifier:did:example:verifier123`). Authorization Request is returned by reference. The legacy `did:` prefix is rejected with `INVALID_CLIENT_IDENTIFIER`.
+            - **Pre-registered**: simple string (e.g., `client123`). Authorization Request is returned by value. `client_metadata` MUST NOT be included. Not valid with `responseMode=dc_api`.
+            - **Decentralized Identifier**: `decentralized_identifier:` prefix (e.g., `decentralized_identifier:did:web:verify.example.com`). Authorization Request is returned by reference.
+            - **Certificate SAN DNS**: `x509_san_dns:` prefix (e.g., `x509_san_dns:verify.example.com`). Authorization Request is returned by reference with `x5c` JWT header.
+
+            DC API (`responseMode=dc_api`) requires `decentralized_identifier:` or `x509_san_dns:`.
           example: client123
         dcqlQuery:
           $ref: '#/components/schemas/DcqlQuery'
           description: DCQL query specifying the credentials to request, per OpenID4VP v1.0. Required. `presentationDefinition` and `presentationDefinitionId` are not supported.
+        responseMode:
+          type: string
+          description: |-
+            OpenID4VP `response_mode`. Omit or use `direct_post` for wallet HTTP submission.
+            Use `dc_api` for W3C Digital Credentials API (same-device browser mediation).
+          enum:
+            - direct_post
+            - dc_api
+          default: direct_post
+          example: direct_post
         responseCodeValidationRequired:
           type: boolean
-          description: 'If `true`, `/v2/vp-submission` returns a `redirect_uri` with `response_code`. Use `true` for same-device web wallet flows. Default: `false`.'
+          description: |-
+            If `true`, `/v2/vp-submission/direct-post` returns a `redirect_uri` with `response_code`.
+            Use `true` for same-device web wallet flows. Default: `false`.
+            Must be `false` when `responseMode=dc_api`.
           default: false
           example: false
         transactionId:
@@ -1398,6 +1559,13 @@ components:
           format: uri
           description: URI from which the wallet fetches the signed Authorization Request JWT.
           example: 'https://injiverify.collab.mosip.net/v1/verify/v2/vp-request/6d538e1b-2615-4927-bfd2-094e9f73f2a1'
+        responseUri:
+          type: string
+          format: uri
+          description: |-
+            Present when `responseMode=dc_api`. URI the SDK uses to submit the VP
+            (`POST /vp-submission/dc-api`). Omitted for `direct_post`.
+          example: 'https://injiverify.collab.mosip.net/v1/verify/vp-submission/dc-api'
         expiresAt:
           type: integer
           format: int64
@@ -1411,7 +1579,7 @@ components:
         responseUri:
           type: string
           format: uri
-          description: URL for the wallet to submit the VP token.
+          description: URL for the wallet (or SDK) to submit the VP token.
           example: 'https://injiverify.collab.mosip.net/v1/verify/v2/vp-submission/direct-post'
         responseType:
           type: string
@@ -1419,8 +1587,20 @@ components:
           example: vp_token
         responseMode:
           type: string
-          description: Response mode; always `direct_post`.
+          description: '`direct_post` (wallet HTTP submit) or `dc_api` (Digital Credentials API).'
+          enum:
+            - direct_post
+            - dc_api
           example: direct_post
+        expectedOrigins:
+          type: array
+          description: |-
+            Present only for `response_mode=dc_api`. Slash-free canonical origins
+            (e.g. `https://verify.example.com`) the submission Origin must match.
+          items:
+            type: string
+          example:
+            - 'https://verify.example.com'
         clientId:
           type: string
           description: Client ID of the verifier.
@@ -1570,6 +1750,29 @@ components:
           nullable: true
           description: Optional description of the wallet-reported error.
           example: User cancelled the presentation.
+    DcApiVpSubmissionRequest:
+      type: object
+      required:
+        - requestId
+      description: JSON body for `POST /vp-submission/dc-api`. Provide either `vp_token` or `error`.
+      properties:
+        requestId:
+          type: string
+          description: Same role as `state` on direct-post; correlates to the VP authorization request.
+          example: 3fa85f64-5717-4562-b3fc-2c963f66afa6
+        vp_token:
+          type: object
+          additionalProperties:
+            type: array
+            items: {}
+          description: DCQL-keyed presentations (mutually exclusive with `error`).
+        error:
+          type: string
+          description: Wallet protocol error code (mutually exclusive with `vp_token`).
+          example: invalid_request
+        error_description:
+          type: string
+          description: Optional wallet error description.
     # -------------------------------------------------------------------------
     # VP Result schemas
     # -------------------------------------------------------------------------
