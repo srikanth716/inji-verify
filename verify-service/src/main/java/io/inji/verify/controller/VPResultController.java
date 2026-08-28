@@ -14,10 +14,11 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -39,6 +40,8 @@ public class VPResultController {
     boolean cookieIsSecure;
     @Value("${inji.verify.cookie-path}")
     String cookiePath;
+    @Value("${inji.verify.cookie-same-site}")
+    String cookieSameSite;
 
     public VPResultController(VerifiablePresentationSubmissionService verifiablePresentationSubmissionService) {
         this.verifiablePresentationSubmissionService = verifiablePresentationSubmissionService;
@@ -112,12 +115,14 @@ public class VPResultController {
             return ResponseEntity.status(HttpStatus.OK).body(result);
         } finally {
             log.info("Cleaning up VP session cookie");
-            Cookie responseCookie = new Cookie(COOKIE_NAME, "");
-            responseCookie.setHttpOnly(true);
-            responseCookie.setSecure(cookieIsSecure);
-            responseCookie.setMaxAge(0);
-            responseCookie.setPath(cookiePath);
-            response.addCookie(responseCookie);
+            ResponseCookie responseCookie = ResponseCookie.from(COOKIE_NAME, "")
+                    .httpOnly(true)
+                    .secure(cookieIsSecure)
+                    .path(cookiePath)
+                    .sameSite(cookieSameSite)
+                    .maxAge(0)
+                    .build();
+            response.addHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
         }
     }
 

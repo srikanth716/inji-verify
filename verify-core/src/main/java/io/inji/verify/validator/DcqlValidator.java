@@ -649,7 +649,7 @@ public class DcqlValidator {
             Map<String, Object> allClaims = Utils.extractSdJwtClaims(sdJwt, null);
             ObjectNode result = MAPPER.createObjectNode();
             for (Map.Entry<String, Object> entry : allClaims.entrySet()) {
-                result.set(entry.getKey(), claimValueToJsonNode(entry.getValue()));
+                putSdJwtClaim(result, entry.getKey(), claimValueToJsonNode(entry.getValue()));
             }
             return result;
         } catch (VPRequestValidationException e) {
@@ -660,6 +660,39 @@ public class DcqlValidator {
     }
 
     /**
+     * Places an SD-JWT claim into the claims tree for DCQL path resolution.
+     * <p>
+     * Some wallets (e.g. Multipaz / CMWallet for EU PID) selectively disclose nested
+     * JSON claims using a single dotted claim name such as {@code age_equal_or_over.18}
+     * rather than a nested object {@code {"age_equal_or_over":{"18":true}}}. DCQL paths
+     * for those claims are written as {@code ["age_equal_or_over","18"]}, so dotted names
+     * are expanded into nested objects while the flat key is kept for single-segment paths.
+     */
+    private static void putSdJwtClaim(ObjectNode root, String claimName, JsonNode value) {
+        if (claimName == null || claimName.isEmpty()) {
+            return;
+        }
+        root.set(claimName, value);
+        if (!claimName.contains(".")) {
+            return;
+        }
+        String[] parts = claimName.split("\\.");
+        ObjectNode current = root;
+        for (int i = 0; i < parts.length - 1; i++) {
+            String part = parts[i];
+            JsonNode child = current.get(part);
+            if (child != null && child.isObject()) {
+                current = (ObjectNode) child;
+            } else {
+                ObjectNode next = MAPPER.createObjectNode();
+                current.set(part, next);
+                current = next;
+            }
+        }
+        current.set(parts[parts.length - 1], value);
+    }
+
+    /**
      * Converts a disclosure claim value to a JsonNode, normalizing Double values that are
      * mathematically integers (e.g. 42.0 → IntNode(42)). This is necessary because some JSON
      * parsers (e.g. Gson) deserialize all JSON numbers as Double when the target type is Object.
@@ -667,6 +700,17 @@ public class DcqlValidator {
      * would fail the type-exact integer match in claimValueMatches.
      */
     private static JsonNode claimValueToJsonNode(Object value) {
+        // Preserve object-key identity for nested SD-JWT maps (e.g. age_equal_or_over with key 18).
+        if (value instanceof Map<?, ?> map) {
+            ObjectNode obj = MAPPER.createObjectNode();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() == null) {
+                    continue;
+                }
+                obj.set(String.valueOf(entry.getKey()), claimValueToJsonNode(entry.getValue()));
+            }
+            return obj;
+        }
         if (value instanceof Double) {
             double d = (Double) value;
             if (d % 1.0 == 0.0 && d >= Long.MIN_VALUE && d <= (double) Long.MAX_VALUE) {
@@ -771,6 +815,11 @@ public class DcqlValidator {
      *   string  — key lookup in object;  abort (throw) if current node is not an object, skip if key absent.
      *   null    — wildcard over array elements; abort if current node is not an array.
      *   integer — index into array;       abort if current node is not an array, skip if out of bounds.
+     * <p>
+     * Additionally, when a numeric step is applied to an <em>object</em> (common when JSON
+     * deserializes path element {@code "18"} vs {@code 18}, or when SD-JWT nested maps use
+     * integer-looking keys such as {@code age_equal_or_over.18}), the step is treated as the
+     * string object key {@code String.valueOf(n)}.
      * Returns all matched nodes, or an empty list if a key/index is absent at any step.
      */
     private static List<JsonNode> resolvePath(List<Object> path, JsonNode root) {
@@ -791,15 +840,22 @@ public class DcqlValidator {
                         ErrorCode.VP_TOKEN_CLAIM_NOT_FOUND.getErrorMessage() + " Path: " + path);
                     }
                     node.elements().forEachRemaining(next::add);
-                } else {
-                    // non-negative integer
-                    if (!node.isArray()) {
+                } else if (step instanceof Number) {
+                    int idx = ((Number) step).intValue();
+                    if (node.isArray()) {
+                        JsonNode value = node.get(idx);
+                        if (value != null) next.add(value);
+                    } else if (node.isObject()) {
+                        // Numeric-looking object keys (e.g. age_equal_or_over["18"])
+                        JsonNode value = node.get(String.valueOf(idx));
+                        if (value != null) next.add(value);
+                    } else {
                         throw new VPRequestValidationException(ErrorCode.VP_TOKEN_CLAIM_NOT_FOUND,
                         ErrorCode.VP_TOKEN_CLAIM_NOT_FOUND.getErrorMessage() + " Path: " + path);
                     }
-                    int idx = step instanceof Integer ? (Integer) step : ((Long) step).intValue();
-                    JsonNode value = node.get(idx);
-                    if (value != null) next.add(value);
+                } else {
+                    throw new VPRequestValidationException(ErrorCode.VP_TOKEN_CLAIM_NOT_FOUND,
+                        ErrorCode.VP_TOKEN_CLAIM_NOT_FOUND.getErrorMessage() + " Path: " + path);
                 }
             }
             current = next;

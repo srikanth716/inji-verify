@@ -385,7 +385,12 @@ public final class Utils {
             String payloadJson = decodeBase64Json(sdjwt.getCredentialJwt().split("\\.")[1]);
             Map<String, Object> payloadClaims = new JSONObject(payloadJson).toMap();
             List<Disclosure> disclosures = sdjwt.getDisclosures();
-            Map<String, Object> claims = new HashMap<>(new SDObjectDecoder().decode(payloadClaims, disclosures));
+            SDObjectDecoder decoder = new SDObjectDecoder();
+            Map<String, Object> claims = new HashMap<>(decoder.decode(payloadClaims, disclosures));
+            // Authlete's top-level decode does not always expand nested `_sd` digests that
+            // appear inside a selectively disclosed object (common for Multipaz EU PID
+            // age_equal_or_over / "18"). Walk the tree and decode remaining SD objects.
+            expandNestedSdClaims(claims, disclosures, decoder);
             excludeMetaClaims(metaClaims, claims);
             return claims;
         } catch (Exception e) {
@@ -393,6 +398,45 @@ public final class Utils {
         }
     }
 
+    /**
+     * Recursively applies remaining SD-JWT disclosures to nested maps/lists that still
+     * contain {@code _sd} (or array ellipsis) after the top-level {@link SDObjectDecoder#decode}.
+     */
+    private static void expandNestedSdClaims(Map<String, Object> claims,
+                                             List<Disclosure> disclosures,
+                                             SDObjectDecoder decoder) {
+        for (Map.Entry<String, Object> entry : claims.entrySet()) {
+            entry.setValue(expandSdValue(entry.getValue(), disclosures, decoder));
+        }
+    }
+
+    private static Object expandSdValue(Object value,
+                                        List<Disclosure> disclosures,
+                                        SDObjectDecoder decoder) {
+        if (value instanceof Map<?, ?> map) {
+            Map<String, Object> nested = new HashMap<>();
+            for (Map.Entry<?, ?> e : map.entrySet()) {
+                if (e.getKey() != null) {
+                    nested.put(String.valueOf(e.getKey()), e.getValue());
+                }
+            }
+            if (nested.containsKey("_sd")) {
+                nested = new HashMap<>(decoder.decode(nested, disclosures));
+            }
+            for (Map.Entry<String, Object> e : nested.entrySet()) {
+                e.setValue(expandSdValue(e.getValue(), disclosures, decoder));
+            }
+            return nested;
+        }
+        if (value instanceof List<?> list) {
+            List<Object> decoded = new ArrayList<>(decoder.decode(list, disclosures));
+            for (int i = 0; i < decoded.size(); i++) {
+                decoded.set(i, expandSdValue(decoded.get(i), disclosures, decoder));
+            }
+            return decoded;
+        }
+        return value;
+    }
 
     private static void excludeMetaClaims(List<String> metaClaims, Map<String, Object> claims) {
         for (String metaClaim : Optional.ofNullable(metaClaims).orElseGet(List::of)) {
