@@ -3,22 +3,6 @@
 <suite name="Inji-Verify API Test">
 	<!-- Passing Group as parmeter unsing "testType" Possible Groups are: smoke 
 		regression smokeAndRegression -->
-	<test name="InsertDBData">
-		<parameter name="ymlFile"
-			value="injiverify/InsertDBData/InsertDBData.yml" />
-		<classes>
-			<class
-				name="io.inji.testrig.apirig.injiverify.testscripts.DBIntegration" />
-		</classes>
-	</test>
-	<test name="InsertDBDataGetVpRequestStatus">
-		<parameter name="ymlFile"
-			value="injiverify/InsertDBData/InsertDBDataGetVpRequestStatus.yml" />
-		<classes>
-			<class
-				name="io.inji.testrig.apirig.injiverify.testscripts.GetWithParam" />
-		</classes>
-	</test>
 	<test name="VpRequestWithvaliddata">
 		<parameter name="ymlFile"
 			value="injiverify/VpRequestWithvaliddata/VpRequestWithvaliddata.yml" />
@@ -89,6 +73,26 @@
 				name="io.inji.testrig.apirig.injiverify.testscripts.GetWithParamAndHeader" />
 		</classes>
 	</test>
+	<test name="CreateDuplicateVpRequest">
+		<parameter name="ymlFile"
+			value="injiverify/CreateDuplicateVpRequest/CreateDuplicateVpRequest.yml" />
+		<parameter name="idKeyName"
+			value="transactionId,requestId,id,nonce" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injiverify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
+	<test name="VpSubmissionDuplicateVpRequest">
+		<parameter name="ymlFile"
+			value="injiverify/VpSubmissionDuplicateVpRequest/VpSubmissionDuplicateVpRequest.yml" />
+		<parameter name="idKeyName"
+			value="transactionId,redirect_uri,response_code" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injiverify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
 	<test name="VpSubmission">
 		<parameter name="ymlFile"
 			value="injiverify/VpSubmission/VpSubmission.yml" />
@@ -135,12 +139,60 @@
 				name="io.inji.testrig.apirig.injiverify.testscripts.SimplePost" />
 		</classes>
 	</test>
+	<test name="CreateForExpiryStatus">
+		<parameter name="ymlFile"
+			value="injiverify/CreateForExpiryStatus/CreateForExpiryStatus.yml" />
+		<parameter name="idKeyName"
+			value="transactionId,requestId,id,nonce" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injiverify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
 	<test name="GetVpRequestStatus">
 		<parameter name="ymlFile"
 			value="injiverify/GetVpRequestStatus/GetVpRequestStatus.yml" />
 		<classes>
 			<class
 				name="io.inji.testrig.apirig.injiverify.testscripts.GetWithParam" />
+		</classes>
+	</test>
+	<test name="GetVpRequestStatusExpiry">
+		<parameter name="ymlFile"
+			value="injiverify/GetVpRequestStatusExpiry/GetVpRequestStatusExpiry.yml" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injiverify.testscripts.GetWithParam" />
+		</classes>
+	</test>
+	<test name="VpSubmissionAfterStatusExpired">
+		<parameter name="ymlFile"
+			value="injiverify/VpSubmissionAfterStatusExpired/VpSubmissionAfterStatusExpired.yml" />
+		<parameter name="idKeyName"
+			value="transactionId,redirect_uri,response_code" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injiverify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
+		</classes>
+	</test>
+	<test name="CreateExpirySubmission">
+		<parameter name="ymlFile"
+			value="injiverify/CreateExpirySubmission/CreateExpirySubmission.yml" />
+		<parameter name="idKeyName"
+			value="transactionId,requestId,id,nonce" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injiverify.testscripts.SimplePostForAutoGenId" />
+		</classes>
+	</test>
+	<test name="VpSubmissionExpiry">
+		<parameter name="ymlFile"
+			value="injiverify/VpSubmissionExpiry/VpSubmissionExpiry.yml" />
+		<parameter name="idKeyName"
+			value="transactionId,redirect_uri,response_code" />
+		<classes>
+			<class
+				name="io.inji.testrig.apirig.injiverify.testscripts.SimplePostForAutoGenIdForUrlEncoded" />
 		</classes>
 	</test>
 	<test name="GetVpTokenForRequest">

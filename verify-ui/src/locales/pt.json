@@ -130,7 +130,8 @@
     "qrUploadSuccess": "Código QR carregado com sucesso!",
     "qrScanSuccess": "Código QR digitalizado com sucesso!",
     "sessionExpired": "A sessão expirou. reinicie a solicitação.",
-    "qrNotDetected": "Nenhum leitor MultiFormat conseguiu detectar o código QR.",
+    "qrNotDetected": "Nenhum código QR encontrado.",
+    "qrDecodeFailed": "Não foi possível detectar o código QR. Ele pode estar muito pequeno ou com baixa qualidade. Tente novamente com um código QR nítido",
     "qrNotSupported": "O formato do código QR não é compatível.",
     "unsupportedFileSize": "Tamanho do arquivo não suportado. O tamanho do arquivo deve estar entre 10 KB e 5 MB.",
     "verificationMethodComingSoon": "Em breve",
@@ -141,7 +142,8 @@
     "scanSessionExpired": "A sessão de verificação expirou devido à inatividade. Por favor, inicie uma nova verificação.",
     "partialCredentialShared": "Verificação concluída com credenciais parciais. Observe que algumas credenciais solicitadas estão faltando.",
     "validationFailure": "Não foi possível validar a resposta de verificação. Certifique-se de que a resposta está correta e tente novamente.",
-    "incorrectCredential": "As credenciais compartilhadas não correspondem às solicitadas. Forneça as credenciais corretas e tente novamente."
+    "incorrectCredential": "As credenciais compartilhadas não correspondem às solicitadas. Forneça as credenciais corretas e tente novamente.",
+    "requestFailedGeneric": "Não foi possível concluir o seu pedido. Contacte o suporte para obter assistência."
   },
   "OvpErrors": {
     "invalidScope": "Escopo inválido",
@@ -158,7 +160,9 @@
     "invalidVpToken": "O serviço está indisponível no momento. Por favor, tente novamente mais tarde.",
     "unsupportedFormat": "Formatos VP não suportados",
     "invalidResources": "O recurso solicitado é inválido.",
-    "invalidParams": "Parâmetros inválidos!!"
+    "invalidParams": "Parâmetros inválidos!!",
+    "accessDenied": "A carteira recusou o pedido ou não possui as credenciais solicitadas. Tente novamente.",
+    "invalidTransactionData": "Os dados da transação no pedido de verificação são inválidos ou não são suportados pela carteira."
   },
   "CopyRight": {
     "content": "Desenvolvido por Inji, um produto MOSIP"
