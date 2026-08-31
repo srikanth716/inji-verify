@@ -2,10 +2,15 @@ package api;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.ws.rs.core.MediaType;
 
@@ -30,7 +35,9 @@ public final class VerifiableClaimsConfigManager {
 
     private static volatile boolean initialized;
     private static volatile Map<String, String> credentialIdToName = Collections.emptyMap();
+    private static volatile List<String> claimDisplayNames = Collections.emptyList();
     private static volatile String essentialCredentialId;
+    private static volatile String essentialCredentialName;
 
     private VerifiableClaimsConfigManager() {
     }
@@ -50,8 +57,8 @@ public final class VerifiableClaimsConfigManager {
                 applyConfig(readJsonFromClasspath(FALLBACK_CONFIG_RESOURCE));
             }
             initialized = true;
-            LOGGER.info("Loaded " + credentialIdToName.size() + " verifiable claim(s) from config.json"
-                    + (essentialCredentialId != null ? "; essential=" + essentialCredentialId : ""));
+            LOGGER.info("Loaded " + claimDisplayNames.size() + " verifiable claim(s) from config.json"
+                    + (essentialCredentialName != null ? "; essential=" + essentialCredentialName : ""));
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize verifiable claims config", e);
         }
@@ -79,15 +86,26 @@ public final class VerifiableClaimsConfigManager {
     public static String getEssentialCredentialName() {
         ensureInitialized();
 
-        // Prefer config.json's own essential:true marker so tests track app config.
-        if (essentialCredentialId != null && !essentialCredentialId.trim().isEmpty()) {
-            String propertyId = InjiVerifyConfigManager.getproperty("uiAuto.credential.essential");
-            if (propertyId != null && !propertyId.trim().isEmpty()
-                    && !propertyId.trim().equals(essentialCredentialId.trim())) {
-                LOGGER.warn("uiAuto.credential.essential='" + propertyId.trim()
-                        + "' differs from config.json essential credential id='" + essentialCredentialId.trim()
-                        + "'. Using config.json value.");
+        // Prefer the claim marked essential:true. Do not resolve via DCQL id — combined
+        // claims can reuse that id (e.g. "MOSIP ID + Life Insurance") while the UI
+        // auto-selects the essential claim by name ("MOSIP ID").
+        if (essentialCredentialName != null && !essentialCredentialName.trim().isEmpty()) {
+            try {
+                String propertyId = InjiVerifyConfigManager.getproperty("uiAuto.credential.essential");
+                if (propertyId != null && !propertyId.trim().isEmpty()
+                        && essentialCredentialId != null
+                        && !propertyId.trim().equals(essentialCredentialId.trim())) {
+                    LOGGER.warn("uiAuto.credential.essential='" + propertyId.trim()
+                            + "' differs from config.json essential credential id='" + essentialCredentialId.trim()
+                            + "'. Using config.json essential claim '" + essentialCredentialName + "'.");
+                }
+            } catch (RuntimeException e) {
+                LOGGER.debug("Skipping essential property comparison: " + e.getMessage());
             }
+            return essentialCredentialName;
+        }
+
+        if (essentialCredentialId != null && !essentialCredentialId.trim().isEmpty()) {
             return getCredentialNameById(essentialCredentialId.trim());
         }
 
@@ -120,7 +138,7 @@ public final class VerifiableClaimsConfigManager {
         if (propertyId != null && !propertyId.trim().isEmpty()) {
             return getCredentialNameById(propertyId.trim());
         }
-        for (String displayName : credentialIdToName.values()) {
+        for (String displayName : claimDisplayNames) {
             if (displayName.equalsIgnoreCase(trimmed)) {
                 return displayName;
             }
@@ -132,13 +150,13 @@ public final class VerifiableClaimsConfigManager {
     public static java.util.List<String> getNonEssentialCredentialNames() {
         ensureInitialized();
         String essentialName = getEssentialCredentialName();
-        java.util.LinkedHashSet<String> names = new java.util.LinkedHashSet<>();
-        for (String displayName : credentialIdToName.values()) {
+        LinkedHashSet<String> names = new LinkedHashSet<>();
+        for (String displayName : claimDisplayNames) {
             if (!displayName.equals(essentialName)) {
                 names.add(displayName);
             }
         }
-        return java.util.Collections.unmodifiableList(new java.util.ArrayList<>(names));
+        return Collections.unmodifiableList(new ArrayList<>(names));
     }
 
     private static void ensureInitialized() {
@@ -150,7 +168,9 @@ public final class VerifiableClaimsConfigManager {
     private static void applyConfig(JsonNode config) {
         MapBuildResult result = buildCredentialIdToNameMap(config);
         credentialIdToName = result.idToName;
+        claimDisplayNames = result.claimNames;
         essentialCredentialId = result.essentialCredentialId;
+        essentialCredentialName = result.essentialCredentialName;
     }
 
     private static JsonNode loadConfigJson() throws IOException {
@@ -220,7 +240,10 @@ public final class VerifiableClaimsConfigManager {
         }
 
         Map<String, String> idToName = new HashMap<>();
+        Set<String> standaloneIds = new HashSet<>();
+        LinkedHashSet<String> claimNames = new LinkedHashSet<>();
         String essentialId = null;
+        String essentialName = null;
         Iterator<JsonNode> claims = verifiableClaims.elements();
         while (claims.hasNext()) {
             JsonNode claim = claims.next();
@@ -230,30 +253,58 @@ public final class VerifiableClaimsConfigManager {
             }
 
             JsonNode credentials = claim.path("dcqlQuery").path("credentials");
-            if (!credentials.isArray()) {
+            if (!credentials.isArray() || credentials.isEmpty()) {
                 continue;
             }
+            String trimmedName = displayName.trim();
+            claimNames.add(trimmedName);
             boolean claimIsEssential = claim.path("essential").asBoolean(false);
+            boolean claimIsStandalone = credentials.size() == 1;
+
+            if (claimIsEssential) {
+                if (essentialName != null && !essentialName.equals(trimmedName)) {
+                    LOGGER.warn("Multiple essential:true claims in config.json. Keeping '"
+                            + essentialName + "', ignoring '" + trimmedName + "'.");
+                } else {
+                    essentialName = trimmedName;
+                }
+            }
+
             for (JsonNode credential : credentials) {
                 String credentialId = credential.path("id").asText(null);
                 if (credentialId == null || credentialId.trim().isEmpty()) {
                     continue;
                 }
                 String trimmedId = credentialId.trim();
-                String trimmedName = displayName.trim();
-                String previousName = idToName.put(trimmedId, trimmedName);
-                if (previousName != null && !previousName.equals(trimmedName)) {
+                if (claimIsEssential && essentialId == null) {
+                    essentialId = trimmedId;
+                }
+
+                String previousName = idToName.get(trimmedId);
+                if (previousName == null) {
+                    idToName.put(trimmedId, trimmedName);
+                    if (claimIsStandalone) {
+                        standaloneIds.add(trimmedId);
+                    }
+                } else if (previousName.equals(trimmedName)) {
+                    if (claimIsStandalone) {
+                        standaloneIds.add(trimmedId);
+                    }
+                } else if (standaloneIds.contains(trimmedId) && !claimIsStandalone) {
+                    LOGGER.warn("Duplicate DCQL credential id '" + trimmedId
+                            + "' in config.json. Keeping standalone claim '"
+                            + previousName + "', ignoring combined claim '" + trimmedName + "'.");
+                } else if (!standaloneIds.contains(trimmedId) && claimIsStandalone) {
+                    LOGGER.warn("Duplicate DCQL credential id '" + trimmedId
+                            + "' in config.json. Preferring standalone claim '"
+                            + trimmedName + "' over '" + previousName + "'.");
+                    idToName.put(trimmedId, trimmedName);
+                    standaloneIds.add(trimmedId);
+                } else {
                     LOGGER.warn("Duplicate DCQL credential id '" + trimmedId
                             + "' in config.json verifiableClaims. Overwriting display name '"
                             + previousName + "' with '" + trimmedName + "'.");
-                }
-                if (claimIsEssential) {
-                    if (essentialId != null && !essentialId.equals(trimmedId)) {
-                        LOGGER.warn("Multiple essential:true claims in config.json. Keeping '"
-                                + essentialId + "', ignoring '" + trimmedId + "'.");
-                    } else {
-                        essentialId = trimmedId;
-                    }
+                    idToName.put(trimmedId, trimmedName);
                 }
             }
         }
@@ -261,22 +312,37 @@ public final class VerifiableClaimsConfigManager {
         if (idToName.isEmpty()) {
             throw new RuntimeException("No credential definitions found in config.json verifiableClaims");
         }
-        return new MapBuildResult(Collections.unmodifiableMap(idToName), essentialId);
+        return new MapBuildResult(Collections.unmodifiableMap(idToName),
+                Collections.unmodifiableList(new ArrayList<>(claimNames)),
+                essentialId, essentialName);
     }
 
     private static final class MapBuildResult {
         private final Map<String, String> idToName;
+        private final List<String> claimNames;
         private final String essentialCredentialId;
+        private final String essentialCredentialName;
 
-        private MapBuildResult(Map<String, String> idToName, String essentialCredentialId) {
+        private MapBuildResult(Map<String, String> idToName, List<String> claimNames,
+                String essentialCredentialId, String essentialCredentialName) {
             this.idToName = idToName;
+            this.claimNames = claimNames;
             this.essentialCredentialId = essentialCredentialId;
+            this.essentialCredentialName = essentialCredentialName;
         }
     }
 
     static void resetForTests() {
         initialized = false;
         credentialIdToName = Collections.emptyMap();
+        claimDisplayNames = Collections.emptyList();
         essentialCredentialId = null;
+        essentialCredentialName = null;
+    }
+
+    static void loadFromJsonForTests(String json) throws IOException {
+        resetForTests();
+        applyConfig(OBJECT_MAPPER.readTree(json));
+        initialized = true;
     }
 }
