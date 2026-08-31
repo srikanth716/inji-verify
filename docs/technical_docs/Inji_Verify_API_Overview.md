@@ -295,6 +295,7 @@ The `response_code` is short-lived, single-use, and cryptographically secure.
 Browser SDK submits the Verifiable Presentation for Digital Credentials API sessions (`response_mode=dc_api`). Accepts `application/json`. Called by the verifier SDK, not the wallet.
 
 **Request body**
+
 ```json
 {
   "requestId": "req_xyz",
@@ -305,6 +306,7 @@ Browser SDK submits the Verifiable Presentation for Digital Credentials API sess
 ```
 
 Or wallet protocol error:
+
 ```json
 {
   "requestId": "req_xyz",
@@ -314,7 +316,8 @@ Or wallet protocol error:
 ```
 
 **Response**
-```
+
+```text
 200 OK
 (empty body)
 ```

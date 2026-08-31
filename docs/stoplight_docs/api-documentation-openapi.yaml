@@ -95,7 +95,7 @@ paths:
         | Cross Device Flow | `false` | `/v2/vp-submission/direct-post` returns HTTP 200 only |
         | Same Device – Web Wallet | `true` | `/v2/vp-submission/direct-post` returns `redirect_uri` with `response_code` |
         | Same Device – Mobile Wallet | `false` | `/v2/vp-submission/direct-post` returns HTTP 200 only |
-        | Digital Credentials API (`responseMode=dc_api`) | must be `false` | Not supported with DC API — rejected with `DC_API_RESPONSE_CODE_NOT_SUPPORTED` |
+        | Digital Credentials API (`responseMode=dc_api`) | must be `false` | Rejected with `invalid_request` when enabled |
 
         ---
 
@@ -106,9 +106,10 @@ paths:
         | Value | Submission | Notes |
         |---|---|---|
         | `direct_post` (default) | Wallet POSTs form-urlencoded to `/v2/vp-submission/direct-post` | Cross-device QR / deep-link / web-wallet redirect |
-        | `dc_api` | Browser SDK POSTs JSON to `/vp-submission/dc-api` after `navigator.credentials.get` | Same-device Digital Credentials API only |
+        | `dc_api` | Browser SDK POSTs JSON to `/vp-submission/dc-api` after `navigator.credentials.get` | Same-device only. Use `POST /v2/vp-session-request` so result retrieval has the required session cookie. |
 
         **`responseMode=dc_api` requirements:**
+        - Use `POST /v2/vp-session-request` (not this cookie-free endpoint) for browser/SDK flows
         - `clientId` must use a signed-request scheme: `decentralized_identifier:` or `x509_san_dns:`
         - `responseCodeValidationRequired` must be `false`
         - Request must include an `Origin` or `Referer` header so the server can persist `expected_origins`
@@ -148,21 +149,6 @@ paths:
                         meta:
                           vct_values:
                             - 'https://example.com/AgeCredential'
-                        require_cryptographic_holder_binding: true
-              dc_api:
-                summary: Digital Credentials API (responseMode=dc_api)
-                value:
-                  clientId: 'decentralized_identifier:did:web:verify.example.com'
-                  responseMode: dc_api
-                  responseCodeValidationRequired: false
-                  dcqlQuery:
-                    credentials:
-                      - id: age_credential_query
-                        format: ldp_vc
-                        meta:
-                          type_values:
-                            - - VerifiableCredential
-                              - AgeCredential
                         require_cryptographic_holder_binding: true
       responses:
         '201':
@@ -224,14 +210,6 @@ paths:
                     transactionId: 'urn:uuid:f82f281e-8d96-419b-b413-5a0459739a7b'
                     requestId: 'urn:uuid:6d538e1b-2615-4927-bfd2-094e9f73f2a1'
                     requestUri: 'https://injiverify.collab.mosip.net/v1/verify/v2/vp-request/6d538e1b-2615-4927-bfd2-094e9f73f2a1'
-                    expiresAt: 1752838929
-                by_reference_dc_api:
-                  summary: DC API by reference (includes responseUri for SDK submit)
-                  value:
-                    transactionId: 'urn:uuid:f82f281e-8d96-419b-b413-5a0459739a7b'
-                    requestId: 'urn:uuid:6d538e1b-2615-4927-bfd2-094e9f73f2a1'
-                    requestUri: 'https://injiverify.collab.mosip.net/v1/verify/v2/vp-request/6d538e1b-2615-4927-bfd2-094e9f73f2a1'
-                    responseUri: 'https://injiverify.collab.mosip.net/v1/verify/vp-submission/dc-api'
                     expiresAt: 1752838929
         '400':
           description: |-
@@ -349,6 +327,13 @@ paths:
 
         > This cookie is **only set** by `/v2/vp-session-request`, not by `/v2/vp-request`.
 
+        ---
+
+        ## Digital Credentials API (`responseMode=dc_api`)
+
+        Browser/SDK DC API flows **must** use this endpoint so `/vp-session-results` receives the
+        `transaction_id` cookie. See the `dc_api` request example below.
+
       operationId: createVPSessionRequestV2
       tags:
         - VP Request
@@ -358,17 +343,35 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/VPRequestCreate'
-            example:
-              clientId: client123
-              dcqlQuery:
-                credentials:
-                  - id: age_credential_query
-                    format: ldp_vc
-                    meta:
-                      type_values:
-                        - - VerifiableCredential
-                          - AgeCredential
-                    require_cryptographic_holder_binding: true
+            examples:
+              pre_registered:
+                summary: Pre-registered clientId with DCQL query (by value)
+                value:
+                  clientId: client123
+                  dcqlQuery:
+                    credentials:
+                      - id: age_credential_query
+                        format: ldp_vc
+                        meta:
+                          type_values:
+                            - - VerifiableCredential
+                              - AgeCredential
+                        require_cryptographic_holder_binding: true
+              dc_api:
+                summary: Digital Credentials API (responseMode=dc_api)
+                value:
+                  clientId: 'decentralized_identifier:did:web:verify.example.com'
+                  responseMode: dc_api
+                  responseCodeValidationRequired: false
+                  dcqlQuery:
+                    credentials:
+                      - id: age_credential_query
+                        format: ldp_vc
+                        meta:
+                          type_values:
+                            - - VerifiableCredential
+                              - AgeCredential
+                        require_cryptographic_holder_binding: true
       responses:
         '201':
           description: |-
@@ -386,6 +389,15 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/VPRequestResponse'
                   - $ref: '#/components/schemas/VPRequestResponseByReference'
+              examples:
+                by_reference_dc_api:
+                  summary: DC API by reference (includes responseUri for SDK submit)
+                  value:
+                    transactionId: 'urn:uuid:f82f281e-8d96-419b-b413-5a0459739a7b'
+                    requestId: 'urn:uuid:6d538e1b-2615-4927-bfd2-094e9f73f2a1'
+                    requestUri: 'https://injiverify.collab.mosip.net/v1/verify/v2/vp-request/6d538e1b-2615-4927-bfd2-094e9f73f2a1'
+                    responseUri: 'https://injiverify.collab.mosip.net/v1/verify/vp-submission/dc-api'
+                    expiresAt: 1752838929
         '400':
           description: Same validation rules and error codes as `POST /v2/vp-request`. See that endpoint for the full error code table.
           content:
@@ -1754,6 +1766,15 @@ components:
       type: object
       required:
         - requestId
+      oneOf:
+        - required: [vp_token]
+          not:
+            anyOf:
+              - required: [error]
+              - required: [error_description]
+        - required: [error]
+          not:
+            required: [vp_token]
       description: JSON body for `POST /vp-submission/dc-api`. Provide either `vp_token` or `error`.
       properties:
         requestId:
