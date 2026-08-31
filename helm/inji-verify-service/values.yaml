@@ -275,7 +275,10 @@ extraEnvVars:
       secretKeyRef:
         name: db-common-secrets
         key: db-dbuser-password
-        
+
+## Install-time / overridable INJI_* settings for inji-verify-service.
+## Typically set by deploy/inji-verify-service/install.sh via --set extraEnv[...].
+##
 extraEnv:
   - name: INJI_KB_JWT_MAX_AGE_SECONDS
     value: "600"
