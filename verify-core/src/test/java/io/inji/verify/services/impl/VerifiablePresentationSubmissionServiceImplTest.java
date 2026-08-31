@@ -1196,7 +1196,9 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     "nonce",
                     "responseUri",
                     false,
-                    true
+                    true,
+                    Constants.RESPONSE_MODE_DIRECT_POST,
+                    null
             );
             AuthorizationRequestCreateResponse authResponse = new AuthorizationRequestCreateResponse(
                     requestId,
@@ -3142,7 +3144,8 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             ReflectionTestUtils.setField(verifiablePresentationSubmissionService, "redirectUri", "https://example.com/cb");
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    CLIENT_ID, null, null, NONCE, "https://resp.example/post", false, false);
+                    CLIENT_ID, null, null, NONCE, "https://resp.example/post", false, false,
+                    Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse =
                     new AuthorizationRequestCreateResponse(STATE, "tx", authDetails, Instant.now().toEpochMilli() + 10000);
             when(authorizationRequestCreateResponseRepository.findById(STATE)).thenReturn(Optional.of(authResponse));
@@ -3150,7 +3153,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     .thenReturn(new io.inji.verify.dto.authorizationrequest.VPRequestStatusDto(io.inji.verify.enums.VPRequestStatus.ACTIVE));
 
             Map<String, Object> response = verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                    null, STATE, "access_denied", "user cancelled");
+                    null, STATE, "access_denied", "user cancelled", Optional.empty());
 
             assertTrue(response.isEmpty());
             verify(verifiablePresentationRequestService).invokeVpRequestStatusListener(STATE);
@@ -3162,7 +3165,8 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             ReflectionTestUtils.setField(verifiablePresentationSubmissionService, "responseCodeExpiryTimeInMins", 5);
 
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
-                    CLIENT_ID, null, null, NONCE, "https://resp.example/post", false, true);
+                    CLIENT_ID, null, null, NONCE, "https://resp.example/post", false, true,
+                    Constants.RESPONSE_MODE_DIRECT_POST, null);
             AuthorizationRequestCreateResponse authResponse =
                     new AuthorizationRequestCreateResponse(STATE, "tx", authDetails, Instant.now().toEpochMilli() + 10000);
             when(authorizationRequestCreateResponseRepository.findById(STATE)).thenReturn(Optional.of(authResponse));
@@ -3170,7 +3174,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
                     .thenReturn(new io.inji.verify.dto.authorizationrequest.VPRequestStatusDto(io.inji.verify.enums.VPRequestStatus.ACTIVE));
 
             Map<String, Object> response = verifiablePresentationSubmissionService.submitVerifiablePresentation(
-                    null, STATE, "access_denied", "user cancelled");
+                    null, STATE, "access_denied", "user cancelled", Optional.empty());
 
             assertNotNull(response);
             assertTrue(response.containsKey("redirect_uri"));
