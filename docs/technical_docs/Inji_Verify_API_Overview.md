@@ -205,6 +205,18 @@ All three checks run at request-creation time (`POST /v2/vp-session-request` / `
 }
 ```
 
+For `responseMode=dc_api` (same signed-request `clientId` schemes), the by-reference body also includes `responseUri` for the SDK submit:
+
+```json
+{
+    "transactionId": "txn_abc",
+    "requestId": "req_xyz",
+    "expiresAt": 1782459750046,
+    "requestUri": "https://injiverify.dev.mosip.net/v1/verify/v2/vp-request/req_2616beb0-88b0-42d1-89d6-9aa5a2772716",
+    "responseUri": "https://injiverify.dev.mosip.net/v1/verify/vp-submission/dc-api"
+}
+```
+
 Sets `Set-Cookie: transaction_id=<base64>; HttpOnly; Secure; SameSite=None`.
 
 ### POST /v2/vp-request
