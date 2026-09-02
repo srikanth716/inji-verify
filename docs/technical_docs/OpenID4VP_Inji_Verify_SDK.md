@@ -189,7 +189,7 @@ import { QRCodeVerification } from "@injistack/react-inji-verify-sdk";
 
 ## OpenID4VPVerification
 
-Handles the full OpenID4VP v1.0 flow — creates the VP request, displays a QR code or redirects to a wallet (or uses Digital Credentials API), polls for status, and returns verification results. Supports three flow families across four presentation paths: **Generate QR Code**, **Open Web Wallet**, and **Open Wallet in Mobile** with or without DC API.
+Handles the full OpenID4VP v1.0 flow — creates the VP request, displays a QR code or redirects to a wallet (or uses Digital Credentials API), polls for status, and returns verification results. Supports three flow families across four presentation paths: **Generate QR Code**, **Open Web Wallet**, **Open Wallet with DC API**, and **Open Wallet in Mobile** (without DC API).
 
 For a detailed description of each flow see [OpenID4VP-1.0.0.md](./OpenID4VP-1.0.0.md). The configuration matrix is under [Supported flows](#supported-flows).
 
@@ -260,13 +260,14 @@ import { OpenID4VPVerification } from "@injistack/react-inji-verify-sdk";
 |---|---|---|---|---|
 | **Generate QR Code** | Cross-device: wallet on another phone scans the verifier screen | `isSameDeviceFlowEnabled={false}` | `direct_post` | QR (`openid4vp://authorize?…`); SDK long-polls status |
 | **Open Web Wallet** | Same-device browser redirect to a web wallet | `isSameDeviceFlowEnabled={true}` (default), `webWalletBaseUrl="https://…"`, `enableDcApi` unset/`false` | `direct_post` + `responseCodeValidationRequired=true` | Redirect to `{webWalletBaseUrl}/authorize?…`; return via `#response_code=` |
-| **Open Wallet in Mobile — with DC API** | Same-device mobile/desktop browser that supports Digital Credentials API | `isSameDeviceFlowEnabled={true}`, `enableDcApi={true}`, **no** `webWalletBaseUrl`; `clientId` must be `decentralized_identifier:` or `x509_san_dns:` | `dc_api` | Browser `navigator.credentials.get`; SDK submits to `/vp-submission/dc-api` |
-| **Open Wallet in Mobile — without DC API** | Same-device mobile deep link to a native wallet | `isSameDeviceFlowEnabled={true}`, `enableDcApi` unset/`false` (or DC API unsupported), **no** `webWalletBaseUrl`, mobile UA | `direct_post` | Redirect to `openid4vp://authorize?…` (or `protocol` override) |
+| **Open Wallet with DC API** | Same-device mobile or desktop browser that supports Digital Credentials API (`processDcAPIFlow()`) | `isSameDeviceFlowEnabled={true}`, `enableDcApi={true}`, **no** `webWalletBaseUrl`; `clientId` must be `decentralized_identifier:` or `x509_san_dns:` | `dc_api` | Browser `navigator.credentials.get`; SDK submits to `/vp-submission/dc-api` |
+| **Open Wallet in Mobile** (without DC API) | Same-device mobile deep link to a native wallet | `isSameDeviceFlowEnabled={true}`, `enableDcApi` unset/`false` (or DC API unsupported), **no** `webWalletBaseUrl`, mobile UA | `direct_post` | Redirect to `openid4vp://authorize?…` (or `protocol` override) |
 
 **Shared notes**
 - `enableDcApi` and `webWalletBaseUrl` are **mutually exclusive** (throws if both are set).
-- Desktop same-device without `webWalletBaseUrl` and without a working DC API path returns `MISSING_WEB_WALLET_BASE_URL`.
-- If `enableDcApi={true}` but the browser/`clientId` does not support DC API, the SDK **silently falls back** to the deep-link / native-wallet path (no `DC_API_NOT_SUPPORTED` error).
+- **Open Wallet with DC API** runs on any supported browser (desktop or mobile) when `isDcApiSupported(clientId)` is true — it is not mobile-only.
+- If DC API is not used or not supported, desktop same-device fallback requires `webWalletBaseUrl` (**Open Web Wallet**). Without it, the flow returns `MISSING_WEB_WALLET_BASE_URL`.
+- If `enableDcApi={true}` but the browser/`clientId` does not support DC API, the SDK **silently falls back** to the deep-link / native-wallet path (no `DC_API_NOT_SUPPORTED` error); on desktop that fallback still needs `webWalletBaseUrl`.
 - Verify UI maps `ENABLE_DC_API=true` to `enableDcApi`, and disables DC API when a web wallet is selected.
 
 #### How DC API relates to QR codes
@@ -291,13 +292,14 @@ isSameDeviceFlowEnabled = false
 
 isSameDeviceFlowEnabled = true (default)
   → enableDcApi = true AND !webWalletBaseUrl AND isDcApiSupported(clientId)
-      → Open Wallet — with DC API (response_mode=dc_api)
+      → Open Wallet with DC API (response_mode=dc_api; desktop or mobile)
   → enableDcApi = true but unsupported at runtime
-      → Fall back to deep-link / native-wallet path (no DC_API_NOT_SUPPORTED error)
+      → Fall back to deep-link / native-wallet path (no DC_API_NOT_SUPPORTED error);
+        on desktop without webWalletBaseUrl, report MISSING_WEB_WALLET_BASE_URL
   → webWalletBaseUrl provided
       → Open Web Wallet
   → Mobile device (detected via user agent)
-      → Open Wallet in Mobile — without DC API (openid4vp://…)
+      → Open Wallet in Mobile without DC API (openid4vp://…)
   → Desktop without webWalletBaseUrl / DC API
       → Error: MISSING_WEB_WALLET_BASE_URL
 ```
