@@ -417,6 +417,21 @@ paths:
 
         ---
 
+        ## JWT header (`kid` vs `x5c`)
+
+        The JWS header is chosen **per request** from the `client_id` prefix used when the VP request was created (same Ed25519 signing key either way):
+
+        | `client_id` prefix | Header | Contents | Wallet trust |
+        |---|---|---|---|
+        | `decentralized_identifier:` | `kid` (no `x5c`) | DID URL of the verifier verification method (e.g. `did:web:…#key-0`) | Resolve DID document (`GET /did.json`), match `kid` to `verificationMethod.id`, verify signature |
+        | `x509_san_dns:` | `x5c` (no `kid`) | Leaf-first X.509 certificate chain (base64-DER) | Validate cert chain + signature; DNS name in `client_id` must appear in the leaf cert SAN |
+
+        Common header fields for both: `alg=EdDSA`, `typ=oauth-authz-req+jwt`.
+
+        A deployment can serve both schemes side by side — header selection is not a global toggle.
+
+        ---
+
         ## JWT claim set notes
 
         | Claim | `direct_post` | `dc_api` |
