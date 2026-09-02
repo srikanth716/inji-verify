@@ -10,9 +10,10 @@ Full API reference: [Inji Verify API documentation](https://mosip.stoplight.io/d
 2. [VC Verification](#vc-verification)
 3. [VC Submission (Server-to-Server)](#vc-submission-server-to-server)
 4. [OpenID4VP — VP Request Creation](#openid4vp--vp-request-creation)
-5. [VP Result Retrieval](#vp-result-retrieval)
-6. [DID](#did)
-7. [Session Cookie](#session-cookie)
+5. [VP Submission](#vp-submission)
+6. [VP Result Retrieval](#vp-result-retrieval)
+7. [DID](#did)
+8. [Session Cookie](#session-cookie)
 
 ---
 
@@ -151,7 +152,16 @@ Create a VP request and establish a browser session. Used by the Inji Verify SDK
 
 `nonce` is optional — if omitted, the backend generates a cryptographically random one. When provided, must be URL-safe ASCII and at least 16 characters.
 
-**`responseCodeValidationRequired`** — set to `true` for same-device flows (mobile deep-link and web wallet). When enabled, the backend generates a single-use `responseCode` on VP submission and returns `redirect_uri` as `#response_code=<uuid>`. The wallet uses this to send the user back. Leave `false` (default) for cross-device QR so the wallet is not redirected on the phone.
+**`responseMode`** — optional. Defaults to `direct_post`.
+
+| Value | Use |
+|---|---|
+| `direct_post` (default) | Wallet submits to `/v2/vp-submission/direct-post` |
+| `dc_api` | Browser SDK submits to `/vp-submission/dc-api` after Digital Credentials API mediation |
+
+`dc_api` requires a signed-request `clientId` (`decentralized_identifier:` or `x509_san_dns:`), `responseCodeValidationRequired=false`, and an `Origin`/`Referer` header so the server can store `expected_origins`. The by-reference response includes both `requestUri` and `responseUri`.
+
+**`responseCodeValidationRequired`** — set to `true` for same-device flows (mobile deep-link and web wallet). When enabled, the backend generates a single-use `responseCode` on VP submission and returns `redirect_uri` as `#response_code=<uuid>`. The wallet uses this to send the user back; the SDK can also read it from the URL hash for `/vp-session-results`. Leave `false` (default) for cross-device QR and DC API flows. Must be `false` with `responseMode=dc_api`.
 
 **Response** — `201 Created`
 ```json
@@ -192,6 +202,18 @@ All three checks run at request-creation time (`POST /v2/vp-session-request` / `
     "requestId": "req_xyz",
     "expiresAt": 1782459750046,
     "requestUri": "https://injiverify.dev.mosip.net/v1/verify/v2/vp-request/req_2616beb0-88b0-42d1-89d6-9aa5a2772716"
+}
+```
+
+For `responseMode=dc_api` (same signed-request `clientId` schemes), the by-reference body also includes `responseUri` for the SDK submit:
+
+```json
+{
+    "transactionId": "txn_abc",
+    "requestId": "req_xyz",
+    "expiresAt": 1782459750046,
+    "requestUri": "https://injiverify.dev.mosip.net/v1/verify/v2/vp-request/req_2616beb0-88b0-42d1-89d6-9aa5a2772716",
+    "responseUri": "https://injiverify.dev.mosip.net/v1/verify/vp-submission/dc-api"
 }
 ```
 
@@ -250,6 +272,8 @@ These fetch-time failures are distinct from the `400`-level checks above — tho
 
 ---
 
+## VP Submission
+
 ### POST /v2/vp-submission/direct-post
 
 Wallet submits the Verifiable Presentation. Accepts `application/x-www-form-urlencoded`. Called by the wallet, not the verifier UI.
@@ -277,6 +301,46 @@ Wallet submits the Verifiable Presentation. Accepts `application/x-www-form-urle
 ```
 
 The `response_code` is short-lived, single-use, and cryptographically secure. If `inji.verify.redirect-uri` is not configured, same-device submission returns `500` (`REDIRECT_URI_NOT_FOUND`). Same-device mobile can still fetch results from the original tab via the session cookie without `response_code` if the wallet opened a different default browser.
+
+---
+
+### POST /vp-submission/dc-api
+
+Browser SDK submits the Verifiable Presentation for Digital Credentials API sessions (`response_mode=dc_api`). Accepts `application/json`. Called by the verifier SDK, not the wallet.
+
+**Request body**
+
+```json
+{
+  "requestId": "req_xyz",
+  "vp_token": {
+    "age_credential": [{ "type": ["VerifiablePresentation"], "…": "…" }]
+  }
+}
+```
+
+Or wallet protocol error:
+
+```json
+{
+  "requestId": "req_xyz",
+  "error": "invalid_request",
+  "error_description": "optional"
+}
+```
+
+**Response**
+
+```text
+200 OK
+(empty body)
+```
+
+**Notes**
+- Correlates via `requestId` (same role as `state` on direct-post). No cookie required on submit.
+- Submission `Origin`/`Referer` must match stored `expected_origins`.
+- Holder-binding audience is origin-bound: KB-JWT `aud` / LDP `proof.domain` = `origin:https://verify.example.com`.
+- After success, call `POST /vp-session-results` with the session cookie (same as other flows).
 
 ---
 

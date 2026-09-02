@@ -20,9 +20,10 @@ Full API reference: [Inji Verify API documentation](https://mosip.stoplight.io/d
 3. [Flows](#flows)
 4. [Authorization Request: Embedded vs. By Reference](#authorization-request-embedded-vs-by-reference)
 5. [VP Submission](#vp-submission)
-6. [Result Retrieval](#result-retrieval)
-7. [Session Cookie](#session-cookie)
-8. [API Reference](#api-reference)
+6. [Digital Credentials API (DC API)](#digital-credentials-api-dc-api)
+7. [Result Retrieval](#result-retrieval)
+8. [Session Cookie](#session-cookie)
+9. [API Reference](#api-reference)
 
 ---
 
@@ -33,8 +34,8 @@ Every OpenID4VP verification follows the same four steps regardless of which dev
 ![Overall flow](images/flow-overview.svg)
 
 1. **Create VP request** — the verifier calls `POST /v2/vp-session-request` with a DCQL query describing which credentials to request. The backend returns a `requestId`, authorization parameters, and sets an HttpOnly session cookie.
-2. **Deliver to wallet** — the authorization request is delivered to the wallet as a QR code (cross-device), a deep link (same-device mobile), or a browser redirect (same-device web wallet).
-3. **Wallet submits VP** — the wallet POSTs the `vp_token` to `POST /v2/vp-submission/direct-post`.
+2. **Deliver to wallet** — the authorization request is delivered to the wallet as a QR code (cross-device), a deep link (same-device mobile), a browser redirect (same-device web wallet), or via the W3C Digital Credentials API (same-device browser mediation).
+3. **Wallet / browser submits VP** — either the wallet POSTs the `vp_token` to `POST /v2/vp-submission/direct-post`, or the SDK POSTs JSON to `POST /vp-submission/dc-api` after `navigator.credentials.get`.
 4. **Fetch result** — the verifier UI calls `POST /vp-session-results` (with the session cookie) to retrieve the verification result.
 
 ---
@@ -68,7 +69,7 @@ This field controls whether the wallet is required to prove it holds the private
 | Format | `true` (default) | `false` |
 |---|---|---|
 | `ldp_vc` | Wallet must submit a **VerifiablePresentation** wrapping the VC, with a valid Linked Data Proof signed by the holder's key. | Wallet submits a bare **VerifiableCredential** — no VP wrapper or proof required. |
-| `dc+sd-jwt` / `vc+sd-jwt` | SD-JWT must include a `cnf` claim and a **KB-JWT**. The KB-JWT `aud` must match `clientId` and `nonce` must match the auth request nonce. | No KB-JWT required. The SD-JWT is accepted without key binding. |
+| `dc+sd-jwt` / `vc+sd-jwt` | SD-JWT must include a `cnf` claim and a **KB-JWT**. The KB-JWT `aud` must match the expected audience (`clientId` for `direct_post`, `origin:…` for `dc_api`) and `nonce` must match the auth request nonce. | No KB-JWT required. The SD-JWT is accepted without key binding. |
 
 Set `require_cryptographic_holder_binding: false` only when issuing or verifying credentials that do not support key binding (e.g. bearer credentials with no `cnf` claim).
 
@@ -156,7 +157,7 @@ Here the wallet can satisfy the request with either the `id_card` or the `passpo
 
 ## Flows
 
-Inji Verify supports three flows. The `OpenID4VPVerification` SDK component selects the right one automatically based on props — integrators do not need to implement flow logic manually. See [OpenID4VP_Inji_Verify_SDK.md](./OpenID4VP_Inji_Verify_SDK.md) for the full SDK prop reference.
+Inji Verify supports four flows. The `OpenID4VPVerification` SDK component selects the right one automatically based on props — integrators do not need to implement flow logic manually. See [OpenID4VP_Inji_Verify_SDK.md](./OpenID4VP_Inji_Verify_SDK.md) for the full SDK prop reference.
 
 ### 1. Cross-Device Flow
 
@@ -192,6 +193,28 @@ Set `webWalletBaseUrl` on the SDK component to enable this flow.
 - The backend generates a short-lived (5 min), single-use `response_code` returned in `redirect_uri` as a hash fragment.
 - On redirect back, the SDK reads `response_code` from `window.location.hash` and passes it to `/vp-session-results`.
 - The HttpOnly cookie is sent automatically by the browser to authenticate the session.
+
+---
+
+### 4. Same-Device Flow — Digital Credentials API (DC API)
+
+Used when the verifier UI runs in a capable browser (Chrome with Digital Credentials API support) and `enableDcApi` is set on the SDK. Instead of a QR / deep link / web-wallet redirect, the browser mediates the request with a wallet via `navigator.credentials.get`.
+
+**Requirements:**
+- `clientId` must use a signed-request scheme: `decentralized_identifier:` or `x509_san_dns:`
+- Session is created with `responseMode=dc_api` (and `responseCodeValidationRequired=false`)
+- Browser must support the Digital Credentials API protocol used by the SDK (`openid4vp-v1-signed`)
+
+**Flow:**
+1. SDK calls `POST /v2/vp-session-request` with `responseMode: "dc_api"` (Origin/Referer used to persist `expected_origins`)
+2. SDK fetches the signed request JWT from `requestUri` (`GET /v2/vp-request/{requestId}`)
+3. SDK calls `navigator.credentials.get({ digital: { requests: [{ protocol, data: { request: signedJwt } }] } })`
+4. SDK POSTs the returned credential data to `responseUri` (`POST /vp-submission/dc-api`) with JSON `{ requestId, vp_token | error }`
+5. SDK calls `POST /vp-session-results` (same cookie path as other flows)
+
+If DC API is enabled but unsupported at runtime (browser / client_id), the SDK falls back to the deep-link / native-wallet path without surfacing `DC_API_NOT_SUPPORTED`.
+
+Cross-device QR always uses `direct_post` — DC API is same-device only.
 
 ---
 
@@ -260,6 +283,15 @@ A deployment can serve both by-reference schemes side by side — which header a
 
 ## VP Submission
 
+There are two submission endpoints. Which one applies depends on `response_mode` of the authorization request.
+
+| Endpoint | Caller | Content-Type | Correlation | Redirect |
+|---|---|---|---|---|
+| `POST /v2/vp-submission/direct-post` | Wallet | `application/x-www-form-urlencoded` | `state` (= `requestId`) | Optional `redirect_uri` + `response_code` |
+| `POST /vp-submission/dc-api` | Verifier SDK (browser) | `application/json` | `requestId` | Never |
+
+### direct_post
+
 The wallet submits the Verifiable Presentation to `POST /v2/vp-submission/direct-post` as `application/x-www-form-urlencoded`:
 
 - `vp_token` — JSON object keyed by DCQL `query_id`, each value an array of presentations
@@ -267,29 +299,57 @@ The wallet submits the Verifiable Presentation to `POST /v2/vp-submission/direct
 
 On wallet error instead: `error`, `error_description`, `state`.
 
-The backend validates in this order:
+### dc_api
+
+The SDK submits to `POST /vp-submission/dc-api` as JSON:
+
+```json
+{
+  "requestId": "req_…",
+  "vp_token": { "age_credential": [ { "type": ["VerifiablePresentation"], "…": "…" } ] }
+}
+```
+
+Or a wallet protocol error:
+
+```json
+{
+  "requestId": "req_…",
+  "error": "invalid_request",
+  "error_description": "optional"
+}
+```
+
+Success returns **HTTP 200 with an empty body**. No cookie is required on submit; `/vp-session-results` still uses the session cookie.
+
+### Shared validation
+
+Both endpoints share the same validation pipeline. Order:
 
 **1. Request parameters**
-- Only `vp_token`, `state`, `error`, `error_description` are allowed — any unknown parameter is rejected
 - Either `vp_token` or `error` must be present (both absent → rejected)
 - `vp_token` and `error` are mutually exclusive
 - `error_description` cannot be combined with `vp_token`
 - `error_description` requires `error` to also be present
+- For `direct_post` only: unknown form parameters are rejected
 
-**2. State**
-- `state` must not be empty
+**2. State / requestId**
+- Must not be empty
 - Must match a known VP request
 - VP request must not be expired
 - VP request must not have already received a submission
 
-**3. `vp_token` structure**
+**3. Origin (dc_api only)**
+- Submission `Origin` (preferred) or `Referer` must be in the stored `expected_origins`
+
+**4. `vp_token` structure**
 - Must be a valid JSON object (not the string `"null"`)
 - Must contain at least one key-value pair
 - All values must be arrays with at least one element
 - All elements within each array must be the same type — either all JSON objects (`ldp_vc`) or all strings (SD-JWT)
 - No duplicate DCQL query IDs allowed as keys
 
-**4. DCQL validation**
+**5. DCQL validation**
 
 The submitted `vp_token` is validated against the DCQL query declared in the VP request:
 
@@ -302,11 +362,13 @@ The submitted `vp_token` is validated against the DCQL query declared in the VP 
 - Claim paths: all declared `claims` paths must resolve to a value. For `ldp_vc`, paths are resolved within `credentialSubject`; for SD-JWT, paths are resolved against all claims in the token (both payload claims and selectively disclosed claims). If `values` are declared on a claim, the resolved value must type-and-value match at least one
 - Claim sets: if `claim_sets` is present, at least one option (inner array of claim IDs) must be fully satisfied (OR-of-ANDs)
 
-**5. Holder binding**
+**6. Holder binding / audience**
 
 For `ldp_vc` (Verifiable Presentation):
 - VP Linked Data Proof signature is verified against the issuer's public key
-- `proof.domain` must match the auth request `clientId`
+- `proof.domain` must match the expected audience:
+  - `direct_post`: auth request `clientId`
+  - `dc_api`: `origin:<canonical-origin>` (e.g. `origin:https://verify.example.com`; trailing-slash form also accepted)
 - `proof.challenge` must match the auth request `nonce`
 - `holder` field must be present in the VP
 - VP `proof.verificationMethod` must resolve to the same public key as `holder` (proof of possession)
@@ -316,13 +378,31 @@ For SD-JWT (when `require_cryptographic_holder_binding=true`):
 - SD-JWT must have a `cnf` claim (containing `jwk` or a DID-based `kid`)
 - SD-JWT must include a KB-JWT (Key Binding JWT)
 - KB-JWT `typ` header must be `kb+jwt`
-- KB-JWT `aud` must match the auth request `clientId`
+- KB-JWT `aud` must match the expected audience (`clientId` for `direct_post`, `origin:…` for `dc_api`)
 - KB-JWT `nonce` must match the auth request `nonce`
 - KB-JWT `iat` must be a valid positive integer
 - KB-JWT `sd_hash` must match the hash of `{credentialJwt}~{disclosures}~` using the issuer JWT's `_sd_alg`
 - KB-JWT signature must verify against the holder's public key from the `cnf` claim
 
 When `require_cryptographic_holder_binding=false`, KB-JWT validation is skipped for SD-JWT.
+
+---
+
+## Digital Credentials API (DC API)
+
+OpenID4VP Appendix A + W3C Digital Credentials API support in Inji Verify:
+
+| Topic | Behavior |
+|---|---|
+| Session create | `POST /v2/vp-session-request` with `responseMode: "dc_api"` |
+| Client ID | Must be `decentralized_identifier:` or `x509_san_dns:` |
+| `responseCodeValidationRequired` | Must be `false` |
+| `expected_origins` | Derived from request `Origin`/`Referer` and stored on the auth request; included in the signed JWT |
+| Request JWT | Omits `state` / `response_uri`; includes `expected_origins` |
+| Submit | `POST /vp-submission/dc-api` (JSON); HTTP 200 empty body |
+| Results | Existing `POST /vp-session-results` |
+
+UI flag: `ENABLE_DC_API=true` (verify-ui env) maps to SDK `enableDcApi`.
 
 ---
 
