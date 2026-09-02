@@ -189,7 +189,7 @@ import { QRCodeVerification } from "@injistack/react-inji-verify-sdk";
 
 ## OpenID4VPVerification
 
-Handles the full OpenID4VP v1.0 flow — creates the VP request, displays a QR code or redirects to a wallet (or uses Digital Credentials API), polls for status, and returns verification results. Supports **Generate QR Code**, **Open Web Wallet**, and **Open Wallet in Mobile** (with or without DC API).
+Handles the full OpenID4VP v1.0 flow — creates the VP request, displays a QR code or redirects to a wallet (or uses Digital Credentials API), polls for status, and returns verification results. Supports three flow families across four presentation paths: **Generate QR Code**, **Open Web Wallet**, and **Open Wallet in Mobile** with or without DC API.
 
 For a detailed description of each flow see [OpenID4VP-1.0.0.md](./OpenID4VP-1.0.0.md). The configuration matrix is under [Supported flows](#supported-flows).
 
@@ -206,7 +206,7 @@ import { OpenID4VPVerification } from "@injistack/react-inji-verify-sdk";
 | Prop | Type | Description |
 |---|---|---|
 | `verifyServiceUrl` | `string` | Base URL of the Verify Backend (e.g. `https://verify.example.com/v1/verify`) |
-| `clientId` | `string` | Verifier client identifier. Use the pre-registered string for by-value flows or `decentralized_identifier:did:...` for DID-based by-reference flows |
+| `clientId` | `string` | Verifier client identifier. Use the pre-registered string for by-value flows or `decentralized_identifier:did:...` or `x509_san_dns:...` for signed-request by-reference flows |
 | `dcqlQuery` | `DcqlQuery` | DCQL query describing which credentials to request. Replaces `presentationDefinition`. Note: `trusted_authorities` is not supported — queries containing it will be rejected. |
 | `onQrCodeExpired` | `() => void` | Called when the QR code / authorization request expires before submission |
 | `onError` | `(error: AppError) => void` | Called on any error during the flow |
@@ -285,12 +285,12 @@ What *is* shared with DC API is the **by-reference request JWT** when `clientId`
 
 The component picks a path at trigger time:
 
-```
+```text
 isSameDeviceFlowEnabled = false
   → Generate QR Code (response_mode=direct_post)
 
 isSameDeviceFlowEnabled = true (default)
-  → enableDcApi = true AND isDcApiSupported(clientId)
+  → enableDcApi = true AND !webWalletBaseUrl AND isDcApiSupported(clientId)
       → Open Wallet — with DC API (response_mode=dc_api)
   → enableDcApi = true but unsupported at runtime
       → Fall back to deep-link / native-wallet path (no DC_API_NOT_SUPPORTED error)
