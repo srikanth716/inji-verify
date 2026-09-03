@@ -96,6 +96,85 @@ const decodeBase64Url = (encoded: string): string => {
     return new TextDecoder().decode(decodedBytes);
 };
 
+/**
+ * OpenID4VP 1.0 DCQL vp_token: object keyed by credential query id,
+ * each value an array of presentations/credentials.
+ * Legacy PE shape has a top-level `verifiableCredential` array instead.
+ */
+export const isDcqlVpToken = (vpToken: unknown): vpToken is Record<string, unknown[]> => {
+  if (!vpToken || typeof vpToken !== "object" || Array.isArray(vpToken)) {
+    return false;
+  }
+  if ("verifiableCredential" in (vpToken as object)) {
+    return false;
+  }
+  const entries = Object.entries(vpToken as Record<string, unknown>);
+  return (
+    entries.length > 0 &&
+    entries.every(([, value]) => Array.isArray(value))
+  );
+};
+
+/**
+ * Parse vp_token from a redirect hash fragment.
+ * Supports base64url (legacy) and URL-decoded / plain JSON (OpenID4VP 1.0).
+ */
+export const parseVpTokenFromFragment = (vpTokenParam: string): unknown => {
+  try {
+    let base64 = vpTokenParam.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = base64.length % 4;
+    if (pad) base64 += "=".repeat(4 - pad);
+    return JSON.parse(atob(base64));
+  } catch {
+    try {
+      return JSON.parse(decodeURIComponent(vpTokenParam));
+    } catch {
+      return JSON.parse(vpTokenParam);
+    }
+  }
+};
+
+/**
+ * Extract a single VC from either a legacy PE vp_token or an OpenID4VP 1.0 DCQL vp_token.
+ */
+export const extractVcFromVpToken = (vpToken: unknown): unknown => {
+  if (!vpToken || typeof vpToken !== "object") {
+    throw new Error("Invalid vp_token in redirect URL");
+  }
+
+  if ("verifiableCredential" in (vpToken as object)) {
+    const vcs = (vpToken as { verifiableCredential?: unknown[] })
+      .verifiableCredential;
+    if (!Array.isArray(vcs) || !vcs.length) {
+      throw new Error("Missing verifiableCredential in vp_token");
+    }
+    return vcs[0];
+  }
+
+  if (isDcqlVpToken(vpToken)) {
+    const presentations = Object.values(vpToken)[0];
+    if (!presentations?.length) {
+      throw new Error("Empty credential entry in vp_token");
+    }
+    const presentation = presentations[0];
+    if (
+      presentation &&
+      typeof presentation === "object" &&
+      "verifiableCredential" in presentation
+    ) {
+      const nested = (presentation as { verifiableCredential?: unknown[] })
+        .verifiableCredential;
+      if (Array.isArray(nested) && nested.length) {
+        return nested[0];
+      }
+    }
+    // DCQL ldp_vc: credential object is the presentation entry itself
+    return presentation;
+  }
+
+  throw new Error("Unsupported vp_token format in redirect URL");
+};
+
 export const normalizeVp = (vp: any): Record<string, unknown> => {
     if (typeof vp === "string") {
         if (isSdJwt(vp)) vp ;

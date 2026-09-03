@@ -3,6 +3,9 @@ import {
   isMobileDevice,
   isSignedRequestScheme,
   isChromeDcApiSecurityVersionMet,
+  isDcqlVpToken,
+  parseVpTokenFromFragment,
+  extractVcFromVpToken,
 } from "../../src/utils/utils";
 import { DC_API_PROTOCOL } from "../../src/utils/constants";
 
@@ -106,6 +109,62 @@ describe("isDcApiSupported", () => {
     });
     mockDcApi();
     expect(isDcApiSupported(DID_CLIENT_ID)).toBe(false);
+  });
+});
+
+describe("vp token redirect helpers", () => {
+  it("detects DCQL vp_token shape", () => {
+    expect(isDcqlVpToken({ "cred-id": [{}] })).toBe(true);
+    expect(isDcqlVpToken({ verifiableCredential: [{}] })).toBe(false);
+    expect(isDcqlVpToken(null)).toBe(false);
+  });
+
+  it("parses URL-encoded vp_token fragments", () => {
+    const encoded = encodeURIComponent(
+      JSON.stringify({ "cred-id": [{ type: ["VerifiableCredential"] }] })
+    );
+    expect(parseVpTokenFromFragment(encoded)).toEqual({
+      "cred-id": [{ type: ["VerifiableCredential"] }],
+    });
+  });
+
+  it("parses base64url vp_token fragments", () => {
+    const json = JSON.stringify({
+      verifiableCredential: [{ type: ["VerifiableCredential"] }],
+    });
+    const base64url = btoa(json)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    expect(parseVpTokenFromFragment(base64url)).toEqual({
+      verifiableCredential: [{ type: ["VerifiableCredential"] }],
+    });
+  });
+
+  it("extracts a VC from DCQL vp_token", () => {
+    const vc = {
+      type: ["VerifiableCredential"],
+      credentialSubject: { id: "1" },
+    };
+    expect(
+      extractVcFromVpToken({
+        "6426c84e-88af-4a6a-bd47-007ba549e3c9": [vc],
+      })
+    ).toEqual(vc);
+  });
+
+  it("extracts a VC nested in a presentation from DCQL vp_token", () => {
+    const vc = { type: ["VerifiableCredential"] };
+    expect(
+      extractVcFromVpToken({
+        query_id: [{ type: ["VerifiablePresentation"], verifiableCredential: [vc] }],
+      })
+    ).toEqual(vc);
+  });
+
+  it("extracts a VC from legacy PE vp_token", () => {
+    const vc = { type: ["VerifiableCredential"] };
+    expect(extractVcFromVpToken({ verifiableCredential: [vc] })).toEqual(vc);
   });
 });
 
