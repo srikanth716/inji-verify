@@ -14,7 +14,7 @@ const base64UrlEncode = (bytes: Uint8Array): string =>
     .replace(/\//g, "_")
     .replace(/=/g, "");
 
-const generateNonce = (): string => {
+export const generateNonce = (): string => {
   if (!window.crypto?.getRandomValues) {
     throw new Error(
       "Web Crypto API is required. This SDK supports only browsers with crypto.getRandomValues()."

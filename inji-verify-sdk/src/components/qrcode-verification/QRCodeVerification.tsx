@@ -23,7 +23,8 @@ import {
     vpSessionRequest,
     vcSubmission,
     vcVerificationV2,
-    vpSessionResults
+    vpSessionResults,
+    generateNonce,
 } from "../../utils/api";
 import type { DcqlQuery } from "../openid4vp-verification/OpenID4VPVerification.types";
 import {
@@ -42,6 +43,9 @@ import {
   parseVpTokenFromFragment,
   extractVcFromVpToken,
   isDcqlVpToken,
+  persistDatashareNonce,
+  consumeDatashareNonce,
+  verifyVpTokenBinding,
 } from "../../utils/utils";
 import { QrData } from "../../types/OVPSchemeQrData";
 import { isCWT } from "../../utils/cborUtils";
@@ -442,7 +446,16 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
 
   const extractVerifiableCredential = async (data: any) => {
     try {
-      if (data?.vpToken) return extractVcFromVpToken(data.vpToken);
+      if (data?.vpToken) {
+        const nonce = consumeDatashareNonce();
+        if (!nonce) {
+          throw new Error(
+            "Missing or already consumed nonce. Unable to validate VP binding."
+          );
+        }
+        verifyVpTokenBinding(data.vpToken, clientId, nonce);
+        return extractVcFromVpToken(data.vpToken);
+      }
       //check if QRCode contains OVP_QR in the header, it means this is a
       // data share VC
       if (typeof data === "string" && data.startsWith(OvpQrHeader)) {
@@ -452,8 +465,12 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
           throw new Error("Failed to extract redirect URL from QR data");
 
         if (!isVPSubmissionSupported) {
+            const nonce = generateNonce();
+            persistDatashareNonce(nonce);
             const encodedOrigin = encodeURIComponent(window.location.origin);
-            window.location.href = `${redirectUrl}&client_id=${clientId}&redirect_uri=${encodedOrigin}%2F#`;
+            const encodedClientId = encodeURIComponent(clientId);
+            const encodedNonce = encodeURIComponent(nonce);
+            window.location.href = `${redirectUrl}&client_id=${encodedClientId}&redirect_uri=${encodedOrigin}%2F&nonce=${encodedNonce}#`;
             return;
         }
 
@@ -783,6 +800,8 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
       }
 
       // OpenID4VP 1.0: vp_token is DCQL-keyed JSON (URL-encoded or base64url).
+      // Binding (nonce + clientId) is enforced in extractVerifiableCredential
+      // before extractVcFromVpToken / vcVerification / vcSubmission.
       const vpTokenParam = hashParams.get("vp_token");
       if (!vpTokenParam) return;
 

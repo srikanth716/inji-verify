@@ -23,6 +23,8 @@ export const ZIP_HEADER = "PK";
 export const ScanSessionExpiryTime = 60000; // in milliseconds
 export const OvpQrHeader = "INJI_OVP://";
 export const BASE64_PADDING = "=="
+/** sessionStorage key for the one-time nonce used in the datashare redirect flow */
+export const DATASHARE_NONCE_STORAGE_KEY = "inji_verify_datashare_nonce";
 
 // Helper for accepted file types string
 export const acceptedFileTypes = SupportedFileTypes.map(
