@@ -184,7 +184,11 @@ const normalizeTypeList = (type: unknown): string[] => {
 
 const audienceMatches = (expected: string, actual: unknown): boolean => {
   if (typeof actual !== "string" || !actual) return false;
-  const normalize = (value: string) => value.replace(/\/+$/, "");
+  const normalize = (value: string) => {
+    let end = value.length;
+    while (end > 0 && value.charAt(end - 1) === "/") end--;
+    return value.slice(0, end);
+  };
   return normalize(expected) === normalize(actual);
 };
 
