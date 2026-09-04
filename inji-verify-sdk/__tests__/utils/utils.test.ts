@@ -6,6 +6,7 @@ import {
   isDcqlVpToken,
   parseVpTokenFromFragment,
   extractVcFromVpToken,
+  getRawHashParam,
 } from "../../src/utils/utils";
 import { DC_API_PROTOCOL } from "../../src/utils/constants";
 
@@ -153,6 +154,25 @@ describe("vp token redirect helpers", () => {
       ],
     };
     expect(parseVpTokenFromFragment(JSON.stringify(payload))).toEqual(payload);
+  });
+
+  it("preserves literal percent escapes when reading vp_token from the hash", () => {
+    const payload = {
+      "cred-id": [
+        {
+          type: ["VerifiableCredential"],
+          credentialSubject: { code: "%7Bnot-encoded%7D" },
+        },
+      ],
+    };
+    const hash = `#vp_token=${JSON.stringify(payload)}`;
+    const raw = getRawHashParam(hash, "vp_token");
+    expect(raw).toBe(JSON.stringify(payload));
+    expect(parseVpTokenFromFragment(raw as string)).toEqual(payload);
+    // URLSearchParams would decode the literal %7B / %7D sequences.
+    expect(new URLSearchParams(hash.slice(1)).get("vp_token")).not.toBe(
+      JSON.stringify(payload)
+    );
   });
 
   it("extracts a VC from DCQL vp_token", () => {

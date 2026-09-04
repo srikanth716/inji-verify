@@ -42,6 +42,7 @@ import {
   parseVpTokenFromFragment,
   extractVcFromVpToken,
   isDcqlVpToken,
+  getRawHashParam,
 } from "../../utils/utils";
 import { QrData } from "../../types/OVPSchemeQrData";
 import { isCWT } from "../../utils/cborUtils";
@@ -783,7 +784,8 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
       }
 
       // OpenID4VP 1.0: vp_token is DCQL-keyed URL-encoded / plain JSON.
-      const vpTokenParam = hashParams.get("vp_token");
+      // Read raw hash value so URLSearchParams does not decode literal % escapes.
+      const vpTokenParam = getRawHashParam(window.location.hash, "vp_token");
       if (!vpTokenParam) return;
 
       const vpToken = parseVpTokenFromFragment(vpTokenParam);
@@ -801,6 +803,7 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
         }
       })();
     } catch (error) {
+      clearUrl(["vp_token"]);
       console.error(
         "Error occurred while reading params in redirect url, Error: ",
         error

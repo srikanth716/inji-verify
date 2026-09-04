@@ -116,6 +116,22 @@ export const isDcqlVpToken = (vpToken: unknown): vpToken is Record<string, unkno
 };
 
 /**
+ * Read a hash query param without URLSearchParams decoding, so literal
+ * percent sequences in plain JSON vp_token values are preserved.
+ */
+export const getRawHashParam = (
+  hash: string,
+  key: string
+): string | undefined => {
+  const prefix = `${key}=`;
+  return hash
+    .replace(/^#/, "")
+    .split("&")
+    .find((param) => param.startsWith(prefix))
+    ?.slice(prefix.length);
+};
+
+/**
  * Parse vp_token from a redirect hash fragment (URL-encoded or plain JSON).
  */
 export const parseVpTokenFromFragment = (vpTokenParam: string): unknown => {
