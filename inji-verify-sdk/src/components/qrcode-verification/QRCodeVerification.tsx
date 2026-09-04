@@ -787,10 +787,19 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
       if (!vpTokenParam) return;
 
       const vpToken = parseVpTokenFromFragment(vpTokenParam);
-      if (isDcqlVpToken(vpToken)) {
-        processScanResult({ vpToken });
-        clearUrl(["vp_token"]);
-      }
+      void (async () => {
+        try {
+          if (!isDcqlVpToken(vpToken)) {
+            throw new Error("Unsupported vp_token format in redirect URL");
+          }
+          await processScanResult({ vpToken });
+        } catch (error) {
+          onError(error instanceof Error ? error : new Error("An unexpected error occurred while processing the request"));
+          resetState();
+        } finally {
+          clearUrl(["vp_token"]);
+        }
+      })();
     } catch (error) {
       console.error(
         "Error occurred while reading params in redirect url, Error: ",

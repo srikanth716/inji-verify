@@ -122,9 +122,9 @@ export const isDcqlVpToken = (vpToken: unknown): vpToken is Record<string, unkno
  */
 export const parseVpTokenFromFragment = (vpTokenParam: string): unknown => {
   try {
-    return JSON.parse(decodeURIComponent(vpTokenParam));
-  } catch {
     return JSON.parse(vpTokenParam);
+  } catch {
+    return JSON.parse(decodeURIComponent(vpTokenParam));
   }
 };
 
@@ -141,6 +141,9 @@ export const extractVcFromVpToken = (vpToken: unknown): unknown => {
     throw new Error("Empty credential entry in vp_token");
   }
   const presentation = presentations[0];
+  if (presentation == null || presentation === "") {
+    throw new Error("Empty credential entry in vp_token");
+  }
   if (
     presentation &&
     typeof presentation === "object" &&

@@ -141,6 +141,18 @@ describe("vp token redirect helpers", () => {
     expect(parseVpTokenFromFragment(JSON.stringify(payload))).toEqual(payload);
   });
 
+  it("preserves literal percent escapes in plain JSON vp_token fragments", () => {
+    const payload = {
+      "cred-id": [
+        {
+          type: ["VerifiableCredential"],
+          credentialSubject: { note: "discount 50% off", code: "%7Bnot-encoded%7D" },
+        },
+      ],
+    };
+    expect(parseVpTokenFromFragment(JSON.stringify(payload))).toEqual(payload);
+  });
+
   it("extracts a VC from DCQL vp_token", () => {
     const vc = {
       type: ["VerifiableCredential"],
@@ -160,6 +172,12 @@ describe("vp token redirect helpers", () => {
         query_id: [{ type: ["VerifiablePresentation"], verifiableCredential: [vc] }],
       })
     ).toEqual(vc);
+  });
+
+  it("rejects null presentation entries in DCQL vp_token", () => {
+    expect(() => extractVcFromVpToken({ id: [null] })).toThrow(
+      "Empty credential entry in vp_token"
+    );
   });
 
   it("rejects non-DCQL vp_token", () => {
