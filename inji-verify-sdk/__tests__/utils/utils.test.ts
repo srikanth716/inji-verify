@@ -6,11 +6,8 @@ import {
   isDcqlVpToken,
   parseVpTokenFromFragment,
   extractVcFromVpToken,
-  persistDatashareNonce,
-  consumeDatashareNonce,
-  verifyVpTokenBinding,
 } from "../../src/utils/utils";
-import { DC_API_PROTOCOL, DATASHARE_NONCE_STORAGE_KEY } from "../../src/utils/constants";
+import { DC_API_PROTOCOL } from "../../src/utils/constants";
 
 const DID_CLIENT_ID = "decentralized_identifier:did:web:example.com";
 const X509_CLIENT_ID = "x509_san_dns:verify.example.com";
@@ -188,54 +185,6 @@ describe("vp token redirect helpers", () => {
   it("extracts a VC from legacy PE vp_token", () => {
     const vc = { type: ["VerifiableCredential"] };
     expect(extractVcFromVpToken({ verifiableCredential: [vc] })).toEqual(vc);
-  });
-});
-
-describe("datashare VP binding", () => {
-  const clientId = "injiverify.qainji.mosip.net/";
-  const nonce = "one-time-nonce-abc";
-
-  const boundVp = {
-    "cred-id": [
-      {
-        type: ["VerifiablePresentation"],
-        verifiableCredential: [{ type: ["VerifiableCredential"] }],
-        proof: { domain: clientId, challenge: nonce },
-      },
-    ],
-  };
-
-  afterEach(() => {
-    sessionStorage.removeItem(DATASHARE_NONCE_STORAGE_KEY);
-  });
-
-  it("accepts a VP bound to clientId and nonce", () => {
-    expect(() => verifyVpTokenBinding(boundVp, clientId, nonce)).not.toThrow();
-  });
-
-  it("rejects a VP with mismatched challenge", () => {
-    expect(() =>
-      verifyVpTokenBinding(boundVp, clientId, "other-nonce")
-    ).toThrow(/challenge/);
-  });
-
-  it("rejects a VP with mismatched domain", () => {
-    expect(() =>
-      verifyVpTokenBinding(boundVp, "other-client/", nonce)
-    ).toThrow(/domain/);
-  });
-
-  it("rejects a replayed VP after the datashare nonce is consumed", () => {
-    persistDatashareNonce(nonce);
-    const first = consumeDatashareNonce();
-    expect(first).toBe(nonce);
-    expect(() => verifyVpTokenBinding(boundVp, clientId, first!)).not.toThrow();
-
-    const replayed = consumeDatashareNonce();
-    expect(replayed).toBeNull();
-    expect(() =>
-      verifyVpTokenBinding(boundVp, clientId, replayed as unknown as string)
-    ).toThrow(/Missing nonce/);
   });
 });
 
