@@ -115,9 +115,11 @@ describe("isDcApiSupported", () => {
 describe("vp token redirect helpers", () => {
   it("detects DCQL vp_token shape", () => {
     expect(isDcqlVpToken({ "cred-id": [{}] })).toBe(true);
-    expect(isDcqlVpToken({ verifiableCredential: [{}] })).toBe(false);
+    // Shape alone cannot distinguish PE when query id is "verifiableCredential".
+    expect(isDcqlVpToken({ verifiableCredential: [{}] })).toBe(true);
     expect(isDcqlVpToken(null)).toBe(false);
     expect(isDcqlVpToken([])).toBe(false);
+    expect(isDcqlVpToken({ foo: "bar" })).toBe(false);
   });
 
   it("parses URL-encoded vp_token fragments", () => {
@@ -180,10 +182,10 @@ describe("vp token redirect helpers", () => {
     );
   });
 
-  it("rejects non-DCQL vp_token", () => {
-    expect(() =>
-      extractVcFromVpToken({ verifiableCredential: [{ type: ["VerifiableCredential"] }] })
-    ).toThrow("Unsupported vp_token format in redirect URL");
+  it("rejects non-array-valued vp_token objects", () => {
+    expect(() => extractVcFromVpToken({ foo: "bar" })).toThrow(
+      "Unsupported vp_token format in redirect URL"
+    );
   });
 });
 

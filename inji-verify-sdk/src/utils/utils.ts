@@ -101,13 +101,11 @@ const decodeBase64Url = (encoded: string): string => {
 /**
  * OpenID4VP 1.0 DCQL vp_token: object keyed by credential query id,
  * each value an array of presentations/credentials.
+ * Token shape alone cannot reject a key collision with legacy PE
+ * (`verifiableCredential`); persist requested query IDs for stricter checks.
  */
 export const isDcqlVpToken = (vpToken: unknown): vpToken is Record<string, unknown[]> => {
   if (!vpToken || typeof vpToken !== "object" || Array.isArray(vpToken)) {
-    return false;
-  }
-  // Reject legacy PE shape (top-level verifiableCredential).
-  if ("verifiableCredential" in (vpToken as object)) {
     return false;
   }
   const entries = Object.entries(vpToken as Record<string, unknown>);
