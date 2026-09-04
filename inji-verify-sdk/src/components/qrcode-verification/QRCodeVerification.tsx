@@ -782,19 +782,14 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
         return;
       }
 
-      // OpenID4VP 1.0: vp_token is DCQL-keyed JSON (URL-encoded or base64url).
-      // presentation_submission is not required for DCQL redirects.
+      // OpenID4VP 1.0: vp_token is DCQL-keyed URL-encoded / plain JSON.
       const vpTokenParam = hashParams.get("vp_token");
       if (!vpTokenParam) return;
 
       const vpToken = parseVpTokenFromFragment(vpTokenParam);
-      const presentationSubmission = hashParams.get("presentation_submission")
-        ? decodeURIComponent(hashParams.get("presentation_submission") as string)
-        : undefined;
-
-      if (presentationSubmission || isDcqlVpToken(vpToken)) {
-        processScanResult({ vpToken, presentationSubmission });
-        clearUrl(["vp_token", "presentation_submission"]);
+      if (isDcqlVpToken(vpToken)) {
+        processScanResult({ vpToken });
+        clearUrl(["vp_token"]);
       }
     } catch (error) {
       console.error(

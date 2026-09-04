@@ -117,6 +117,7 @@ describe("vp token redirect helpers", () => {
     expect(isDcqlVpToken({ "cred-id": [{}] })).toBe(true);
     expect(isDcqlVpToken({ verifiableCredential: [{}] })).toBe(false);
     expect(isDcqlVpToken(null)).toBe(false);
+    expect(isDcqlVpToken([])).toBe(false);
   });
 
   it("parses URL-encoded vp_token fragments", () => {
@@ -128,20 +129,7 @@ describe("vp token redirect helpers", () => {
     });
   });
 
-  it("parses base64url vp_token fragments", () => {
-    const json = JSON.stringify({
-      verifiableCredential: [{ type: ["VerifiableCredential"] }],
-    });
-    const base64url = btoa(json)
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
-    expect(parseVpTokenFromFragment(base64url)).toEqual({
-      verifiableCredential: [{ type: ["VerifiableCredential"] }],
-    });
-  });
-
-  it("parses base64url vp_token fragments with non-ASCII claims", () => {
+  it("parses plain JSON vp_token fragments", () => {
     const payload = {
       "cred-id": [
         {
@@ -150,15 +138,7 @@ describe("vp token redirect helpers", () => {
         },
       ],
     };
-    const json = JSON.stringify(payload);
-    // Encode UTF-8 bytes to base64url without relying on TextEncoder in Jest.
-    const utf8 = unescape(encodeURIComponent(json));
-    const base64url = btoa(utf8)
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
-
-    expect(parseVpTokenFromFragment(base64url)).toEqual(payload);
+    expect(parseVpTokenFromFragment(JSON.stringify(payload))).toEqual(payload);
   });
 
   it("extracts a VC from DCQL vp_token", () => {
@@ -182,9 +162,10 @@ describe("vp token redirect helpers", () => {
     ).toEqual(vc);
   });
 
-  it("extracts a VC from legacy PE vp_token", () => {
-    const vc = { type: ["VerifiableCredential"] };
-    expect(extractVcFromVpToken({ verifiableCredential: [vc] })).toEqual(vc);
+  it("rejects non-DCQL vp_token", () => {
+    expect(() =>
+      extractVcFromVpToken({ verifiableCredential: [{ type: ["VerifiableCredential"] }] })
+    ).toThrow("Unsupported vp_token format in redirect URL");
   });
 });
 
