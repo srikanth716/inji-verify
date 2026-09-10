@@ -1,3 +1,5 @@
+import {OverallVPStatus, VerificationStatus} from "../openid4vp-verification/OpenID4VPVerification.types";
+
 type ExclusiveCallbacks =
   /**
    * Callback triggered when the verification presentation (VP) is received.
@@ -16,7 +18,8 @@ type ExclusiveCallbacks =
 export type QRCodeVerificationProps = ExclusiveCallbacks & {
   /**
    * React element that triggers the verification process (e.g., a button).
-   * If not provided, the component may automatically start the process.
+   * When set, the default file upload control is not shown; upload runs via this trigger.
+   * If omitted, the visible file input is shown (when upload is enabled).
    */
   triggerElement?: React.ReactNode;
 
@@ -62,32 +65,124 @@ export type QRCodeVerificationProps = ExclusiveCallbacks & {
    */
   isEnableScan?: boolean;
 
+  /**
+   * Callback invoked when the scanner is closed.
+   * Can be used to redirect to home or perform cleanup.
+   */
   onClose?: () => void;
 
+  /**
+   * Enable scan functionality.
+   * Defaults to true.
+   */
   scannerActive?: boolean;
 
+  /**
+   * A unique identifier for the client application.
+   * Used in the OVP redirect flow.
+   */
   clientId: string;
+
+  /**
+   * Enable Data share VP Supported functionality.
+   * Defaults to false.
+   */
+  isVPSubmissionSupported?: boolean;
+
+    /**
+     Indicates whether to accept VP submissions without holder proof.
+     When true, allows unsigned VPs (VPs without proof).
+     */
+    acceptVPWithoutHolderProof?: boolean;
+
+    /**
+     * Configuration object used to control VC verification behaviour.
+     *
+     * Allows enabling/disabling specific verification checks such as:
+     * - Schema & signature validation
+     * - Expiry validation
+     * - Status checks (e.g., revocation)
+     */
+    vcVerificationV2Request?: VCVerificationV2Request;
+
+    /*This attribute will decide the format of the response from SDK*/
+
+    summariseResults?: boolean;
 };
 
-interface VerificationResult {
-  /**
-   * Verified credential data (structure depends on implementation).
-   */
-  vc: unknown;
-
-  /**
-   * The status of the verification (e.g., "valid", "invalid", "expired").
-   */
-  vcStatus: VcStatus;
-}
-
-export type VerificationResults = VerificationResult[];
-
-export type VcStatus = "SUCCESS" | "INVALID" | "EXPIRED";
+export type VcStatus = "SUCCESS" | "INVALID" | "EXPIRED" | "REVOKED";
 
 export type scanResult = { data: any; error: Error | null };
+export interface ValidationCheck {
+    purpose?: string;
+    valid: boolean;
+    error?: {
+        errorCode?: string;
+        errorMessage?: string;
+    } | null;
+}
+
+export interface VCVerificationV2Request {
+    skipStatusChecks?: boolean;
+    statusCheckFilters?: string[];
+    includeClaims?: boolean;
+}
+
+export interface VCVerificationV2Response {
+    allChecksSuccessful: boolean;
+    schemaAndSignatureCheck: ValidationCheck;
+    expiryCheck: ValidationCheck;
+    statusCheck: ValidationCheck[];
+    claims?: Record<string, any>;
+}
+
+export interface VCSummarisedVerificationResponse {
+    verificationStatus: "SUCCESS" | "INVALID" | "EXPIRED" | "REVOKED";
+}
+
+export type VerificationResults = {
+    vc: any;
+    verificationResponse:
+        | VCVerificationV2Response
+        | VCSummarisedVerificationResponse
+        | VpSummarisedVerificationResponse;
+}[];
+
+export interface VpSummarisedVerificationResponse {
+    vcResults: {
+        vc: Record<string, unknown>;
+        vcStatus: VerificationStatus;
+    }[];
+    vpResultStatus: OverallVPStatus;
+}
 
 export interface vcSubmissionBody {
   vc: any;
   transactionId?: string;
 }
+
+export interface CredentialResult {
+    verifiableCredential: string | object;
+    allChecksSuccessful: boolean;
+    holderProofCheck?: {
+        valid: boolean;
+        error: any;
+    } | null;
+    schemaAndSignatureCheck?: {
+        valid: boolean;
+        error: any;
+    };
+    expiryCheck?: {
+        valid: boolean;
+    };
+    statusChecks?: {
+        purpose: string;
+        valid: boolean;
+        error: any;
+    }[];
+    claims?: Record<string, any>;
+}
+
+
+
+

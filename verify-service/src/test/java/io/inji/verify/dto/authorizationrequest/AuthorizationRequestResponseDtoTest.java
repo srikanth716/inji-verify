@@ -19,7 +19,9 @@ public class AuthorizationRequestResponseDtoTest {
         String nonce = "testNonce";
         String responseUri = "testUri";
 
-        AuthorizationRequestResponseDto responseDto = new AuthorizationRequestResponseDto(clientId, null, new VPDefinitionResponseDto(presentationDefinition.getId(),presentationDefinition.getInputDescriptors(),presentationDefinition.getName(),presentationDefinition.getPurpose(),presentationDefinition.getFormat(),presentationDefinition.getSubmissionRequirements()),nonce,responseUri);
+        AuthorizationRequestResponseDto responseDto =
+                new AuthorizationRequestResponseDto(clientId, null,
+                        new VPDefinitionResponseDto(presentationDefinition.getId(),presentationDefinition.getInputDescriptors(),presentationDefinition.getName(),presentationDefinition.getPurpose(),presentationDefinition.getFormat(),presentationDefinition.getSubmissionRequirements()),nonce,responseUri, true, false);
 
         assertEquals(Constants.RESPONSE_TYPE, responseDto.getResponseType());
         assertEquals(clientId, responseDto.getClientId());
@@ -27,5 +29,6 @@ public class AuthorizationRequestResponseDtoTest {
         assertEquals(responseUri, responseDto.getResponseUri());
         assertEquals(nonce, responseDto.getNonce());
         assertTrue(Instant.now().toEpochMilli() >= responseDto.getIssuedAt()); // Ensure issuedAt is in the past
+        assertTrue(responseDto.isAcceptVPWithoutHolderProof());
     }
 }

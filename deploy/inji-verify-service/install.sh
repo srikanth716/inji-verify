@@ -7,7 +7,7 @@ if [ $# -ge 1 ] ; then
 fi
 
 NS=injiverify
-CHART_VERSION=0.15.1
+CHART_VERSION=0.18.2
 
 echo Create $NS namespace
 kubectl create ns $NS
@@ -16,7 +16,7 @@ function installing_inji-verify-service() {
 
   echo Istio label
   kubectl label ns $NS istio-injection=enabled --overwrite
-  helm repo add mosip https://mosip.github.io/mosip-helm
+  helm repo add inji https://inji.github.io/helm
   helm repo update
 
   echo Copy configmaps
@@ -42,7 +42,6 @@ function installing_inji-verify-service() {
   # Check if INJIVERIFY_HOST is present under configmap/inji-stack-config of configserver
   if echo "$DEFAULT_INJIVERIFY_HOST" | grep -q "INJIVERIFY_HOST"; then
     echo "INJIVERIFY_HOST is already present in configmap/inji-stack-config of configserver"
-    MOSIP_INJIVERIFY_HOST=$DEFAULT_INJIVERIFY_HOST
   else
     read -p "Please provide injiverifyhost (eg: injiverify.sandbox.xyz.net): " INJIVERIFY_HOST
 
@@ -61,14 +60,20 @@ function installing_inji-verify-service() {
   INJIVERIFY_HOST=$(kubectl get cm inji-stack-config -o jsonpath={.data.injiverify-host})
 
   echo Installing inji-verify-service
-  helm -n $NS install inji-verify-service mosip/inji-verify-service \
-    --version $CHART_VERSION $ENABLE_INSECURE \
+  helm -n $NS install inji-verify-service inji/inji-verify-service \
+    --version $CHART_VERSION  \
     --set extraEnv[0].name=INJI_VP_SUBMISSION_BASE_URL \
     --set extraEnv[0].value="https://${INJIVERIFY_HOST}/v1/verify" \
     --set extraEnv[1].name=INJI_DID_VERIFY_URI \
     --set extraEnv[1].value="did:web:${INJIVERIFY_HOST//:/\\:}:v1:verify" \
     --set extraEnv[2].name=INJI_DID_VERIFY_PUBLIC_KEY_URI \
-    --set extraEnv[2].value="did:web:${INJIVERIFY_HOST//:/\\:}:v1:verify#key-0"
+    --set extraEnv[2].value="did:web:${INJIVERIFY_HOST//:/\\:}:v1:verify#key-0" \
+    --set extraEnv[3].name=INJI_VERIFY_REDIRECT_URI \
+    --set extraEnv[3].value="https://${INJIVERIFY_HOST}" \
+    --set extraEnv[4].name=INJI_VERIFY_CLAIMS_WITH_META_DATA \
+    --set-string extraEnv[4].value="_sd\,_sd_alg\,iss\,cnf\,sub\,aud\,exp\,nbf\,iat\,cti" \
+    --set extraEnv[5].name=INJI_VERIFY_RESPONSE_CODE_EXPIRY_TIME_IN_MINS \
+    --set-string extraEnv[5].value="5"
 
   kubectl -n $NS  get deploy -o name |  xargs -n1 -t  kubectl -n $NS rollout status
 

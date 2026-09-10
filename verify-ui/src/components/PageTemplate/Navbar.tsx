@@ -1,17 +1,24 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState, useRef} from 'react';
+import { Link } from "react-router-dom";
 import { MdArrowForwardIos } from "react-icons/md";
 import { MdExpandLess } from "react-icons/md";
-import {Pages} from "../../utils/config";
+import {AlertMessages, Pages} from "../../utils/config";
 import { LanguageSelector } from '../commons/LanguageSelector';
 import { useTranslation } from 'react-i18next';
-import { useAppSelector } from '../../redux/hooks';
+import { useAppDispatch, useAppSelector } from '../../redux/hooks';
 import { RootState } from '../../redux/store';
 import { isRTL } from '../../utils/i18n';
 import { Logo, MenuIcon, NewTabIcon } from '../../utils/theme-utils';
+import { raiseAlert } from '../../redux/features/alerts/alerts.slice';
 
 const SubMenu = () => {
     const {t} = useTranslation("Navbar");
-
+    const dispatch = useAppDispatch();
+    const showAlert = ()=> {
+        dispatch(
+            raiseAlert({ ...AlertMessages().verificationMethodComingSoon, open: true })
+        );
+        }
     return (
         <div id="help-submenu"
              className="absolute top-[36px] left-[-12px] mt-2 w-[100vw] lg:w-[250px] lg:top-[24px] lg:left-[-190px] bg-white rounded-md py-1 ring-1 ring-black ring-opacity-5 lg:py-5 lg:shadow-lg z-60">
@@ -25,7 +32,7 @@ const SubMenu = () => {
                target="_blank"
                rel="noreferrer"
                className="inline-flex items-center w-full px-[26px] py-2 text-sm lg:px-4"> {t("documentation")} <NewTabIcon className="mx-1.5" /></a>
-            <button id="faq" disabled className="inline-flex items-center w-full px-[26px] py-2 text-sm lg:px-4"> {t("faqs")} </button>
+            <button id="faq" onClick={showAlert} className="inline-flex items-center w-full px-[26px] py-2 text-sm lg:px-4"> {t("faqs")} </button>
         </div>
     );
 }
@@ -53,8 +60,14 @@ const MobileDropDownMenu = ({ showMenu, setShowMenu }: { showMenu: boolean; setS
             showMenu && (
                 <div id="menu"
                      className="absolute right-0 top-[68px] w-[100vw] bg-white rounded-md shadow-lg p-3 ring-1 ring-black ring-opacity-5 font-bold text-[14px] z-[1000]">
-                    <a id="home-button" href={Pages.Home} className="block px-1 py-2 text-sm text-gray-700 hover:bg-gray-100">{t("home")}</a>
-                    <a id="verify-credentials-button" href={Pages.Home} className={`block px-1 py-2 font-bold text-sm bg-${window._env_.DEFAULT_THEME}-gradient bg-clip-text text-transparent`}>{t('verifyCredentials')}</a>
+                    <Link id="home-button" to={Pages.Home} className="block px-1 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setShowMenu(false)}>
+                        {t("home")}
+                    </Link>
+                    <Link id="verify-credentials-button" to={Pages.VerifyCredentials }
+                          className={`block px-1 py-2 font-bold text-sm bg-${window._env_.DEFAULT_THEME}-gradient bg-clip-text text-transparent`}
+                          onClick={() => setShowMenu(false)}>
+                        {t('verifyCredentials')}
+                    </Link>
                     <div className="relative">
                         <button id="submenu-button"
                                 className="inline-flex items-center w-full text-left px-1 py-3 text-sm text-gray-700 hover:bg-gray-100"
@@ -71,31 +84,51 @@ const MobileDropDownMenu = ({ showMenu, setShowMenu }: { showMenu: boolean; setS
 
 const DesktopMenu = () => {
     const [showHelp, setShowHelp] = useState(false);
+    const helpRef = useRef<HTMLLIElement>(null);
     const {t} = useTranslation('Navbar');
     const language = useAppSelector((state:RootState)=>state.common.language)
     const rtl = isRTL(language)
+    useEffect(() => {
+        const handleOutsideClick = (event: MouseEvent | TouchEvent) => {
+            if (
+                showHelp &&
+                helpRef.current &&
+                !helpRef.current.contains(event.target as Node)
+            ) {
+                setShowHelp(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleOutsideClick);
+        document.addEventListener("touchstart", handleOutsideClick);
+
+        return () => {
+            document.removeEventListener("mousedown", handleOutsideClick);
+            document.removeEventListener("touchstart", handleOutsideClick);
+        };
+    }, [showHelp]);
     return (
         <div className="hidden lg:block w-full lg:w-auto" id="navbar-default">
             <ul className={`hidden mt-4 lg:flex ${rtl ? "lg:space-x-reverse lg:space-x-10" : "lg:space-x-10"} lg:mt-0 lg:text-sm lg:font-medium`}>
                 <li>
-                    <a id="home-button"
-                       href={Pages.Home}
-                       className="block py-2 rounded text-black"
-                       aria-current="page">
+                    <Link id="home-button"
+                          to={Pages.Home}
+                          className="block py-2 rounded text-black"
+                          aria-current="page">
                         {t("home")}
-                    </a>
+                    </Link>
                 </li>
                 <li>
-                    <a id="verify-credentials-button"
-                       href={Pages.VerifyCredentials}
-                       className={`block py-2 font-bold rounded bg-${window._env_.DEFAULT_THEME}-gradient bg-clip-text text-transparent`}>
+                    <Link id="verify-credentials-button"
+                          to={Pages.VerifyCredentials}
+                          className={`block py-2 font-bold rounded bg-${window._env_.DEFAULT_THEME}-gradient bg-clip-text text-transparent`}>
                         {t("verifyCredentials")}
-                    </a>
+                    </Link>
                 </li>
-                <li className="relative">
+                <li className="relative" ref={helpRef}>
                     <button id="help-button"
-                       onClick={() => setShowHelp(show=>!show)}
-                       className="inline-flex items-center cursor-pointer py-2 rounded text-black">
+                            onClick={() => setShowHelp(show=>!show)}
+                            className="inline-flex items-center cursor-pointer py-2 rounded text-black">
                         {t("help")} <MdExpandLess className={`mx-1.5 ${showHelp ? "" : "rotate-180"}`}/>
                     </button>
                     {showHelp && (<SubMenu/>)}
@@ -120,9 +153,9 @@ function Navbar(props: any) {
                     >
                         <MenuIcon id="menu-icon" style={{width: "25px", height: "19px"}}/>
                     </button>
-                    <a href={Pages.Home} className="flex items-center">
+                    <Link to={Pages.Home} className="flex items-center">
                         <Logo className="w-[150px] sm:w-[184px] h-[32px] cursor-pointer"/>
-                    </a>
+                    </Link>
                 </div>
                 <DesktopMenu/>
                 <MobileDropDownMenu showMenu={showMenu} setShowMenu={setShowMenu}/>

@@ -7,23 +7,7 @@ import DisplayVcDetailView from "./DisplayVcDetailView";
 import { useTranslation } from "react-i18next";
 import { decodeSdJwtToken } from "../../../../utils/decodeSdJwt";
 import {getCredentialType} from "../../../../utils/commonUtils";
-
-const backgroundColorMapping: any = {
-  SUCCESS: "bg-[#ECFFF6]",
-  EXPIRED: "bg-[#FFF5E3]",
-  INVALID: "bg-[#FFDEDD]",
-};
-const textColorMapping: any = {
-  SUCCESS: "text-[#1F9F60]",
-  EXPIRED: "text-[#D98C00]",
-  INVALID: "text-[#CB4241]",
-};
-
-const borderColorMapping: any = {
-  SUCCESS: "border-[#ABEFC6]",
-  EXPIRED: "border-[#E2CA9F]",
-  INVALID: "border-[#D68E8D]",
-};
+import { backgroundColorMapping, borderColorMapping, textColorMapping } from "../../../../utils/config";
 
 function DisplayVcCardView(ViewVc: VpSubmissionResultInt) {
   const { vc, vcStatus, view } = ViewVc;
@@ -51,7 +35,7 @@ function DisplayVcCardView(ViewVc: VpSubmissionResultInt) {
     <div>
       <button
         type="button"
-        className={`flex items-center justify-between bg-white w-[339px] lg:w-[410px] py-[5px] px-[15px] shadow-lg ${
+        className={`flex items-center justify-between bg-white w-[339px] lg:w-[410px] min-h-[82px] py-[5px] px-[15px] shadow-lg ${
           showDetailView ? "m-auto rounded-t-[12px] h-[82px]" : "rounded-[12px]"
         }`}
         onClick={view ? () => {} : () => setShowDetailView(!showDetailView)}

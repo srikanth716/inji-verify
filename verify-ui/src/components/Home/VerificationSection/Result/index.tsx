@@ -12,8 +12,9 @@ import {
 } from "../../../../redux/features/verification/verification.slice";
 import { decodeSdJwtToken } from "../../../../utils/decodeSdJwt";
 import { AnyVc, LdpVc, SdJwtVc } from "../../../../types/data-types";
-import { resetVpRequest } from "../../../../redux/features/verify/vpVerificationState";
 import { DisplayTimeout } from "../../../../utils/config";
+import { extractMappedClaim, isCWT, uint8ArrayToHex } from "../../../../utils/cborUtils";
+import { raiseAlert } from "../../../../redux/features/alerts/alerts.slice";
 
 const Result = () => {
   const { vc, vcStatus } = useVerificationFlowSelector((state) => state.verificationResult ?? { vc: null, vcStatus: null });
@@ -35,13 +36,34 @@ const Result = () => {
       }, 50);
     }
   };
-  
+
   useEffect(() => {
     const fetchDecodedClaims = async () => {
-      if (typeof vc === "string") {
-        const claims = await decodeSdJwtToken(vc);
-        setClaims(claims as SdJwtVc);
-        setCredentialType(claims.regularClaims.vct);
+      if (isCWT(vc)) {
+        try {
+          const cwtHex =
+            vc instanceof Uint8Array
+              ? uint8ArrayToHex(vc)
+              : vc instanceof ArrayBuffer
+                ? uint8ArrayToHex(new Uint8Array(vc))
+                : (vc as string);
+          const claims = extractMappedClaim(cwtHex, 169);
+          setClaims(claims as LdpVc);
+
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          dispatch(raiseAlert({ message, type: "error" }));
+
+        }
+      } else if (typeof vc === "string") {
+        try {
+          const claims = await decodeSdJwtToken(vc);
+          setClaims(claims as SdJwtVc);
+          setCredentialType(claims.regularClaims.vct);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          dispatch(raiseAlert({ message, type: "error" }));
+        }
       } else {
         setClaims(vc as LdpVc);
         const typeEntry = vc.type[1];
@@ -53,7 +75,7 @@ const Result = () => {
       }
     };
     fetchDecodedClaims();
-  }, [vc]);
+  }, [dispatch, vc]);
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -65,7 +87,7 @@ const Result = () => {
   useEffect(() => {
     clearTimer();
     timerRef.current = setTimeout(() => {
-      dispatch(resetVpRequest());
+       dispatch(goToHomeScreen({}));
     }, DisplayTimeout);
 
     return () => clearTimer();

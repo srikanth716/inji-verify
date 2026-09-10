@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  QRCodeVerificationProps,
-  scanResult,
-} from "../../components/qrcode-verification/QRCodeVerification.types";
+    CredentialResult,
+    QRCodeVerificationProps,
+    scanResult,
+    VCVerificationV2Response, VerificationResults
+} from "./QRCodeVerification.types";
 import { doFileChecks, scanFilesForQr } from "../../utils/uploadQRCodeUtils";
 import {
   acceptedFileTypes,
@@ -17,15 +19,22 @@ import {
   THROTTLE_FRAMES_PER_SEC,
   ZOOM_STEP,
 } from "../../utils/constants";
-import { vcSubmission, vcVerification } from "../../utils/api";
+import {vpSessionRequest,
+    vcSubmission,
+    vcVerificationV2,
+    vpSessionResults
+} from "../../utils/api";
 import {
-  decodeQrData,
-  extractRedirectUrlFromQrData,
+    decodeQrData,
+    extractRedirectUrlFromQrData,
 } from "../../utils/dataProcessor";
 import { readBarcodes } from "zxing-wasm/full";
 import { MinusOutlined, PlusOutlined } from "@ant-design/icons";
 import { Slider } from "@mui/material";
 import "./QRCodeVerification.css";
+import {clearUrl, summariseVPResult, summariseVCResult, normalizeVp} from "../../utils/utils";
+import { QrData } from "../../types/OVPSchemeQrData";
+import { isCWT } from "../../utils/cborUtils";
 
 const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
   scannerActive = true,
@@ -42,12 +51,17 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
   uploadButtonStyle,
   isEnableZoom = true,
   clientId,
+  vcVerificationV2Request,
+  isVPSubmissionSupported = false,
+  summariseResults = true
 }) => {
   const [isScanning, setScanning] = useState(false);
   const [isUploading, setUploading] = useState(false);
   const [isLoading, setLoading] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(INITIAL_ZOOM_LEVEL);
   const [isMobile, setIsMobile] = useState(false);
+  const [activeFlow, setActiveFlow] = useState<"scan" | "inline" | null>(null);
+  const hasTrigger = Boolean(triggerElement);
   const canvasRef = useRef<HTMLCanvasElement>(document.createElement("canvas"));
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamingRef = useRef(false);
@@ -55,8 +69,10 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
   const scanSessionCompletedRef = useRef(false);
   const frameProcessingRef = useRef(false);
   const startingRef = useRef(false);
-
   const shouldEnableZoom = isEnableZoom && isMobile;
+  const hasFetchedVPResultRef = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileDialogOpenRef = useRef(false);
 
   const clearTimer = () => {
     if (timerRef.current) {
@@ -75,6 +91,7 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
       "Only one of onVCReceived or onVCProcessed can be provided."
     );
   if (!onError) throw new Error("onError callback is required.");
+  if (!clientId) throw new Error("clientId is required.");
 
   const readQrCodeFromCanvas = useRef(async (canvas: HTMLCanvasElement) => {
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
@@ -178,7 +195,7 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
     clearTimer();
     timerRef.current = setTimeout(() => {
       stopVideoStream();
-      onError?.(new Error("scanSessionExpired"));
+      onError?.(new Error("Session expired. Please Scan again."));
     }, ScanSessionExpiryTime);
   };
 
@@ -301,10 +318,14 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
+      fileDialogOpenRef.current = false;
+      const file = e.target?.files?.[0];
+      if (!file || !doFileChecks(file)) {
+        e.target.value = "";
+        return;
+      }
       clearTimer();
       stopVideoStream();
-      const file = e.target?.files?.[0];
-      if (!file || !doFileChecks(file)) return (e.target.value = "");
       setUploading(true);
       const result: scanResult = await scanFilesForQr(file);
       if (result.error) throw result.error;
@@ -316,6 +337,32 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
       handleError(error);
     }
   };
+
+  const handleFileInputClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    // Prevent opening if dialog is already open
+    if (fileDialogOpenRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    fileDialogOpenRef.current = true;
+  };
+
+  // Detect when file dialog closes
+  useEffect(() => {
+    const handleFocus = () => {
+      if (fileDialogOpenRef.current) {
+        setTimeout(() => {
+          if (!isUploading) {
+            fileDialogOpenRef.current = false;
+          }
+        }, 100);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [isUploading]);
 
   const processScanResult = async (data: any) => {
     setLoading(true);
@@ -333,59 +380,195 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
     }
   };
 
+  const createVPRequest = async (presentationDefinition: any) => {
+    try {
+      let presentationDefinitionId;
+      const data: QrData = await vpSessionRequest(
+        verifyServiceUrl,
+        clientId,
+        transactionId ?? undefined,
+        presentationDefinitionId,
+        presentationDefinition,
+        true, // acceptVPWithoutHolderProof is set to true for DataShare VCs
+        true // responseCodeValidationRequired is set to true for DataShare VCs
+      );
+
+      return data;
+    } catch (error) {
+      resetState();
+      throw error instanceof Error ? error : new Error(String(error));
+    }
+  };
+
+  const parsePresentationDefinition = (pdParams: string) => {
+    try {
+      const decoded = JSON.parse(pdParams);
+      const {inputDescriptors, ...rest} = decoded;
+
+      if (inputDescriptors) return {
+        ...rest,
+        input_descriptors: inputDescriptors
+      };
+      return decoded;
+    } catch (error) {
+      throw new Error("Failed to create VP request, due to invalid presentation definition");
+    }
+  };
+
+  const buildOnlineSharingUrl = (
+    baseRedirectUrl: string,
+    state: string,
+    responseUri: string,
+    nonce: string
+  ) => {
+
+    const url = new URL(baseRedirectUrl);
+    url.hash = "";
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("state", state);
+    url.searchParams.set("response_mode", "direct_post");
+    url.searchParams.set("response_uri", responseUri);
+    url.searchParams.set("nonce", nonce);
+
+    return `${url.toString()}#`;
+  };
+
   const extractVerifiableCredential = async (data: any) => {
     try {
       if (data?.vpToken) return data.vpToken.verifiableCredential[0];
+      //check if QRCode contains OVP_QR in the header, it means this is a
+      // data share VC
       if (typeof data === "string" && data.startsWith(OvpQrHeader)) {
+        //extract the redirect Url from QRCode
         const redirectUrl = extractRedirectUrlFromQrData(data);
         if (!redirectUrl)
           throw new Error("Failed to extract redirect URL from QR data");
 
-        const encodedOrigin = encodeURIComponent(window.location.origin);
-        const url = `${redirectUrl}&client_id=${clientId}&redirect_uri=${encodedOrigin}%2F#`;
-        window.location.href = url;
+        if (!isVPSubmissionSupported) {
+            const encodedOrigin = encodeURIComponent(window.location.origin);
+            window.location.href = `${redirectUrl}&client_id=${clientId}&redirect_uri=${encodedOrigin}%2F#`;
+            return;
+        }
+
+        const parsedUrl = new URL(redirectUrl);
+        const pdParams = parsedUrl.searchParams.get("presentation_definition");
+
+        if (!pdParams) throw new Error("Missing presentation_definition in redirect URL");
+
+        const presentationDefinition = parsePresentationDefinition(pdParams);
+        //call /v1/verify/vp-request endpoint to get the request_id and
+        // transaction_id to be sent to the redirectUrl
+        const response = await createVPRequest(presentationDefinition);
+
+        if (!response) throw new Error("Unable to access the shared VC, due to failure in creating VP request");
+
+        const { requestId: state , authorizationDetails } = response;
+
+        if (!authorizationDetails) throw new Error("Unable to access the shared VC, due to Missing authorization details in VP Request");
+
+        const { responseUri, nonce } = authorizationDetails;
+
+        if (!responseUri || !nonce) throw new Error("Unable to access the shared VC, due to missing responseUri or nonce in authorization details");
+        //call the redirectUrl
+        window.location.href = buildOnlineSharingUrl(parsedUrl.toString(), state, responseUri, nonce);
         return;
       }
 
       if (typeof data === "string") {
         const decoded = await decodeQrData(new TextEncoder().encode(data));
+        if (isCWT(decoded)) {
+          return decoded;
+        }
         return JSON.parse(decoded);
       }
-      throw new Error("Unsupported QR data format");
+      throw new Error("Unable to access the shared VC, due to unsupported QR data format");
     } catch (error) {
+      resetState();
       return error;
     }
   };
 
-  const triggerCallbacks = async (vc: any) => {
-    try {
-      if (onVCReceived) {
-        const txnId = await vcSubmission(vc, verifyServiceUrl, transactionId);
-        onVCReceived(txnId);
-      } else if (onVCProcessed) {
-        const status = await vcVerification(vc, verifyServiceUrl);
-        onVCProcessed([{ vc, vcStatus: status }]);
+  const resetState = () => {
+    hasFetchedVPResultRef.current = false;
+    scanSessionCompletedRef.current = true;
+    frameProcessingRef.current = false;
+    fileDialogOpenRef.current = false;
+    clearTimer();
+    stopVideoStream();
+    setScanning(false);
+    setUploading(false);
+    setLoading(false);
+    setActiveFlow(null);
+  };
+
+  const handleTriggerClick = () => {
+    if (isUploading || isScanning || isLoading) return;
+    // File-dialog guard only applies when upload is enabled; otherwise a stale
+    // ref blocks the camera forever after toggling props or closing a picker.
+    if (isEnableUpload && fileDialogOpenRef.current) return;
+
+    if (isEnableScan && isEnableUpload) {
+      scanSessionCompletedRef.current = false;
+      setActiveFlow("inline");
+      return;
+    }
+
+    if (isEnableScan) {
+      scanSessionCompletedRef.current = false;
+      setActiveFlow("scan");
+      return;
+    }
+
+    if (isEnableUpload) {
+      const fileInput = fileInputRef.current;
+      if (fileInput) {
+        fileInput.click();
       }
-    } catch (error) {
-      handleError(error);
-    } finally {
-      scanSessionCompletedRef.current = true;
-      frameProcessingRef.current = false;
-      clearTimer();
-      stopVideoStream();
-      setScanning(false);
-      setUploading(false);
-      setLoading(false);
     }
   };
 
-  const handleError = (error: unknown) => {
-    frameProcessingRef.current = false;
-    stopVideoStream();
-    onError(
-      error instanceof Error ? error : new Error("Unknown error occurred")
-    );
-  };
+    const triggerCallbacks = async (vc: any) => {
+        try {
+            if (onVCReceived) {
+                const txnId = await vcSubmission(vc, verifyServiceUrl, transactionId);
+                onVCReceived(txnId);
+                return;
+            }
+            if (onVCProcessed) {
+                const response: VCVerificationV2Response = await vcVerificationV2(
+                    vc,
+                    verifyServiceUrl,
+                    vcVerificationV2Request
+                );
+
+                const verificationResponse = summariseResults
+                    ? {
+                        verificationStatus: summariseVCResult(response)
+                    }
+                    : response;
+
+                onVCProcessed([
+                    {
+                        vc,
+                        verificationResponse
+                    }
+                ]);
+            }
+        } catch (error) {
+            handleError(error);
+        } finally {
+            resetState();
+        }
+    };
+
+    const handleError = (error: unknown) => {
+        frameProcessingRef.current = false;
+        stopVideoStream();
+        onError(
+            error instanceof Error ? error : new Error("An unexpected error occurred while processing VC")
+        );
+    };
+
   const handleZoomChange = (value: number) => {
     if (value >= 0 && value <= 10) setZoomLevel(value);
   };
@@ -402,22 +585,119 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
     return atob(base64);
   }
 
+    const fetchVPResult = async (responseCode: string | null) => {
+      if (hasFetchedVPResultRef.current) return;
+      hasFetchedVPResultRef.current = true;
+        try {
+            if (!responseCode) {
+                throw new Error("Invalid redirect_uri. The response code is missing.");
+            }
+
+            const response = await vpSessionResults(verifyServiceUrl, responseCode, vcVerificationV2Request);
+
+            const credentialResults = response?.credentialResults ?? [];
+
+            if (!credentialResults.length) {
+                throw new Error("An unexpected error occurred while processing the shared VC. No credentialResults found."
+                );
+            }
+            if (onVCProcessed) {
+                if (summariseResults) {
+                    const vcResults = credentialResults.map((cred: CredentialResult) => {
+                        const vc = normalizeVp(cred.verifiableCredential);
+                        const vcStatus = summariseVPResult(cred);
+
+                        return {
+                            vc,
+                            vcStatus,
+                        };
+                    });
+
+                    const vpResultStatus = credentialResults.length > 0 &&
+                        credentialResults.every((c: CredentialResult) => c.allChecksSuccessful)
+                            ? "SUCCESS"
+                            : "INVALID";
+
+                    const result: VerificationResults = [
+                        {
+                            vc: vcResults[0]?.vc || {},
+                            verificationResponse: {
+                                vcResults,
+                                vpResultStatus,
+                            },
+                        },
+                    ];
+
+                    onVCProcessed(result);
+
+                }
+            } else if (onVCReceived) {
+                const txnId = response.transactionId ?? transactionId;
+                onVCReceived(txnId);
+            }
+            resetState();
+        } catch (error) {
+            handleError(error);
+            resetState();
+        } finally {
+            clearUrl(["response_code"]);
+        }
+    };
+
+    const hash = window.location.hash;
+    const params = new URLSearchParams(hash.substring(1));
+    const responseCode = params.get("response_code");
+
   const startScanning =
     Boolean(scannerActive) &&
     isEnableScan &&
+    (hasTrigger ? activeFlow === "scan" || activeFlow === "inline" : true) &&
     !isUploading &&
     !isScanning &&
-    !scanSessionCompletedRef.current;
+    !scanSessionCompletedRef.current &&
+    !Boolean(responseCode);
 
-  useEffect(() => {
-    if (scannerActive) {
-      if (startScanning) startVideoStream();
-    } else {
+  const startVideoStreamRef = useRef(startVideoStream);
+  startVideoStreamRef.current = startVideoStream;
+  const stopVideoStreamRef = useRef(stopVideoStream);
+  stopVideoStreamRef.current = stopVideoStream;
+
+  useLayoutEffect(() => {
+    if (!scannerActive) {
       frameProcessingRef.current = false;
       clearTimer();
-      stopVideoStream();
+      stopVideoStreamRef.current();
+      return;
     }
-  }, [scannerActive, startScanning, startVideoStream, stopVideoStream]);
+    if (!startScanning) {
+      return;
+    }
+
+    let cancelled = false;
+    let rafId = 0;
+    let attempts = 0;
+    const maxAttempts = 60;
+
+    const tryStart = () => {
+      if (cancelled) return;
+      if (videoRef.current) {
+        startVideoStreamRef.current();
+        return;
+      }
+      attempts += 1;
+      if (attempts > maxAttempts) return;
+      rafId = requestAnimationFrame(tryStart);
+    };
+
+    tryStart();
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      clearTimer();
+      stopVideoStreamRef.current();
+    };
+  }, [scannerActive, startScanning, activeFlow, hasTrigger]);
 
   useEffect(() => {
     const resize = () => setIsMobile(window.innerWidth < 768);
@@ -427,32 +707,45 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
   }, []);
 
   useEffect(() => {
-    let vpToken, presentationSubmission, error;
+    let vpToken, presentationSubmission, error, errorDescripton;
     try {
+      const searchParams = new URLSearchParams(window.location.search); //"?error=abc123&error_description=xyz
       const hash = window.location.hash; // "#vp_token=abc123&state=xyz"
       const params = new URLSearchParams(hash.substring(1));
       const vpTokenParam = params.get("vp_token");
+      const responseCode = params.get("response_code");
       const decoded = vpTokenParam && base64UrlDecode(vpTokenParam);
       const parseVpToken = decoded && JSON.parse(decoded);
       vpToken = vpTokenParam ? parseVpToken : null;
       presentationSubmission = params.get("presentation_submission")
         ? decodeURIComponent(params.get("presentation_submission") as string)
         : undefined;
-      error = params.get("error");
-      if (vpToken && presentationSubmission) {
+      error = params.get("error") || searchParams.get("error");
+      errorDescripton = params.get("error_description") || searchParams.get("error_description") || `We’re unable to complete your request`;
+
+      if (error) {
+        onError(new Error(`${errorDescripton}, ${error}`));
+        resetState();
+        clearUrl(["error", "error_description"]);
+      }
+
+      if (!isVPSubmissionSupported && vpToken && presentationSubmission) {
         processScanResult({ vpToken, presentationSubmission });
-        window.history.replaceState(null, "", window.location.pathname);
-      } else if (!!error) {
-        onError(new Error(error));
+        clearUrl(["vp_token", "presentation_submission"]);
+      }
+      else if (isVPSubmissionSupported && responseCode && !error) {
+        setLoading(true);
+        fetchVPResult(responseCode);
       }
     } catch (error) {
       console.error(
         "Error occurred while reading params in redirect url, Error: ",
         error
       );
-      onError(error instanceof Error ? error : new Error("Unknown error"));
+      onError(error instanceof Error ? error : new Error("An unexpected error occurred while processing the request"));
+      resetState();
     }
-  }, [onError]);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -465,8 +758,27 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
 
   return (
     <div className="qrcode-container">
-      {triggerElement && !isUploading && !isScanning && !isLoading && (
-        <div className="cursor-pointer">{triggerElement}</div>
+      {hasTrigger && !isUploading && !isScanning && !isLoading && activeFlow === null && (
+        <div
+          className="cursor-pointer"
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            // Avoid accidental form submit when triggerElement is a <button>.
+            e.preventDefault();
+            e.stopPropagation();
+            handleTriggerClick();
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              e.stopPropagation();
+              handleTriggerClick();
+            }
+          }}
+        >
+          {triggerElement}
+        </div>
       )}
       {(isUploading || isScanning || isLoading) && (
         <div className="loader"></div>
@@ -482,6 +794,7 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
               <button
                 onClick={() => {
                   stopVideoStream();
+                  setActiveFlow(null);
                   onClose?.();
                 }}
                 className="qr-close-button"
@@ -536,24 +849,42 @@ const QRCodeVerification: React.FC<QRCodeVerificationProps> = ({
             )}
           </div>
         )}
-        {isEnableUpload && (
+        {isEnableUpload && (!hasTrigger || activeFlow === "inline") && (
           <div
             className={`upload-container ${
               shouldEnableZoom ? "fixed-enabled" : "default"
             }`}
           >
             <input
+              ref={fileInputRef}
               type="file"
               id={uploadButtonId || "upload-qr"}
+
               name={uploadButtonId || "upload-qr"}
               accept={acceptedFileTypes}
               className={`upload-button ${
                 uploadButtonStyle || "upload-button-default"
               }`}
               onChange={handleUpload}
+              onClick={handleFileInputClick}
               disabled={isUploading}
             />
           </div>
+        )}
+        {isEnableUpload && hasTrigger && activeFlow !== "inline" && (
+          <input
+            ref={fileInputRef}
+            type="file"
+            id={uploadButtonId || "upload-qr"}
+            name={uploadButtonId || "upload-qr"}
+            accept={acceptedFileTypes}
+            className="upload-input-hidden"
+            onChange={handleUpload}
+            onClick={handleFileInputClick}
+            disabled={isUploading}
+            tabIndex={-1}
+            aria-hidden="true"
+          />
         )}
       </div>
     </div>

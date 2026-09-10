@@ -5,35 +5,44 @@ import Loader from "../../commons/Loader";
 import VpSubmissionResult from "./Result/VpSubmissionResult";
 import { useAppDispatch } from "../../../redux/hooks";
 import {
-  getVpRequest,
   resetVpRequest,
   setSelectCredential,
+  showMissingCredentialOptions,
   verificationSubmissionComplete,
+  OVP_SESSION_SELECTED_CREDENTIALS_KEY,
 } from "../../../redux/features/verify/vpVerificationState";
-import { VCShareType, VpSubmissionResultInt } from "../../../types/data-types";
+import { VCShareType, VpSubmissionResultInt, VpSummarisedVerificationResponse } from "../../../types/data-types";
 import { closeAlert, raiseAlert } from "../../../redux/features/alerts/alerts.slice";
 import { AlertMessages } from "../../../utils/config";
-import { OpenID4VPVerification } from "@mosip/react-inji-verify-sdk";
+import { OpenID4VPVerification } from "@injistack/react-inji-verify-sdk";
 import { Button } from "./commons/Button";
 import { useTranslation } from "react-i18next";
-import {VerificationResults} from "@mosip/react-inji-verify-sdk/dist/components/openid4vp-verification/OpenID4VPVerification.types";
 import {decodeSdJwtToken} from "../../../utils/decodeSdJwt";
+import {vpVerificationRequest} from "../../../utils/commonUtils";
 
 const DisplayActiveStep = () => {
   const { t } = useTranslation("Verify");
   const isLoading = useVerifyFlowSelector((state) => state.isLoading);
   const sharingType = useVerifyFlowSelector((state) => state.sharingType);
   const isSingleVc = sharingType === VCShareType.SINGLE;
-  const selectedClaims = useVerifyFlowSelector((state) => state.selectedClaims);
+  const selectedCredentials = useVerifyFlowSelector((state) => state.selectedCredentials);
+  const originalSelectedCredentials = useVerifyFlowSelector((state) => state.originalSelectedCredentials);
   const verifiedVcs: VpSubmissionResultInt[] = useVerifyFlowSelector((state) => state.verificationSubmissionResult );
-  const unverifiedClaims = useVerifyFlowSelector((state) => state.unVerifiedClaims );
+  const unverifiedCredentials = useVerifyFlowSelector((state) => state.unVerifiedCredentials );
   const presentationDefinition = useVerifyFlowSelector((state) => state.presentationDefinition );
   const qrSize = window.innerWidth <= 1024 ? 240 : 320;
   const activeScreen = useVerifyFlowSelector((state) => state.activeScreen);
   const showResult = useVerifyFlowSelector((state) => state.isShowResult);
   const flowType = useVerifyFlowSelector((state) => state.flowType);
-  const incorrectCredentialShared = selectedClaims.length === 1 && unverifiedClaims.length === 1 && isSingleVc;
-
+  const openSelectWallet = useVerifyFlowSelector((state) => state.SelectWalletPanel);
+  const selectedWalletBaseUrl = useVerifyFlowSelector((state) => state.selectedWalletBaseUrl);
+  // Only show "wrong credential" error when on the result screen. When the user has
+  // clicked "Request Missing Credential", selectedCredentials becomes unVerifiedCredentials (1 item),
+  // which would otherwise trigger this; we must not show the error in that flow.
+  const incorrectCredentialShared =
+    selectedCredentials.length === 1 && unverifiedCredentials.length === 1 && isSingleVc && showResult;
+  const sdkInstanceKey = useVerifyFlowSelector((state) => state.sdkInstanceKey);
+  
   const dispatch = useAppDispatch();
 
   const handleRequestCredentials = () => {
@@ -41,25 +50,46 @@ const DisplayActiveStep = () => {
   };
 
   const handleMissingCredentials = () => {
-    dispatch(getVpRequest({ selectedClaims: unverifiedClaims }));
+    dispatch(showMissingCredentialOptions());
   };
 
   const handleRestartProcess = () => {
     dispatch(resetVpRequest());
   };
 
-  const handleOnVpProcessed = async (vpResults: VerificationResults) => {
-    const decodedVpResults = await Promise.all(
-        vpResults.map(async (vpResult) => {
-          if (typeof vpResult?.vc === 'string') {
-            const decodedSdJwt = await decodeSdJwtToken(vpResult.vc);
-            return { ...vpResult, vc: decodedSdJwt };
-          }
-          return vpResult;
-        })
-    );
-    dispatch(verificationSubmissionComplete({ verificationResult: decodedVpResults }));
-  };
+    const handleOnVpProcessed = async (vpResults: { verificationResponse: unknown }[]) => {
+        try {
+            const summarisedResponse = vpResults
+                .map((vpResult) => vpResult.verificationResponse)
+                .find(
+                    (response) =>
+                        typeof response === "object" &&
+                        response !== null &&
+                        "vcResults" in response &&
+                        Array.isArray((response as VpSummarisedVerificationResponse).vcResults)
+                ) as VpSummarisedVerificationResponse | undefined;
+
+            if (!summarisedResponse) {
+                throw new Error("Expected summarised VP response with vcResults");
+            }
+
+            const flattenedResults = await Promise.all(
+                summarisedResponse.vcResults.map(async (item) => {
+                    const vc =
+                        typeof item.vc === "string"
+                            ? await decodeSdJwtToken(item.vc)
+                            : item.vc;
+                    return { vc, vcStatus: item.vcStatus };
+                })
+            );
+            localStorage.removeItem(OVP_SESSION_SELECTED_CREDENTIALS_KEY);
+            dispatch(verificationSubmissionComplete({verificationResult: flattenedResults,
+                })
+            );
+        } catch (error: any) {
+            handleOnError(error);
+        }
+    };
 
   const handleOnQrExpired = () => {
     dispatch(raiseAlert({ ...AlertMessages().sessionExpired, open: true }));
@@ -76,11 +106,17 @@ const DisplayActiveStep = () => {
   };
 
   const getClientId = () => {
-    return (isSingleVc && selectedClaims[0]?.isAuthRequestEmbedded) ? window._env_.CLIENT_ID : window._env_.CLIENT_ID_DID;
+    return (isSingleVc && selectedCredentials[0]?.clientIdScheme === "pre_registered") ? window._env_.CLIENT_ID : window._env_.CLIENT_ID_DID;
   }
 
   useEffect(() => {
-    if (selectedClaims.length > 0 && activeScreen === 3) {
+
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.has("response_code")) return;
+
+    // Auto-trigger SDK only when we're on the ScanQrCode step and NOT in the
+    // wallet selection panel. This avoids firing when the user is choosing a wallet.
+    if (selectedCredentials.length > 0 && activeScreen === 3 && !openSelectWallet) {
       setTimeout(() => {
         const triggerElement = document.getElementById("OpenID4VPVerification_trigger");
         if (triggerElement) {
@@ -89,7 +125,21 @@ const DisplayActiveStep = () => {
         }
       }, 100); // Delay to ensure the DOM is updated
     }
-  }, [selectedClaims, activeScreen]);
+  }, [selectedCredentials, activeScreen, openSelectWallet]);
+
+  useEffect(() => {
+    if (originalSelectedCredentials.length === 0) {
+      localStorage.removeItem(OVP_SESSION_SELECTED_CREDENTIALS_KEY);
+      return;
+    }
+
+    if (activeScreen === 3 || unverifiedCredentials.length > 0) {
+      localStorage.setItem(
+        OVP_SESSION_SELECTED_CREDENTIALS_KEY,
+        JSON.stringify(originalSelectedCredentials)
+      );
+    }
+  }, [activeScreen, originalSelectedCredentials, unverifiedCredentials]);
 
   if (isLoading) {
     return <Loader className="absolute lg:top-[200px] right-[100px]" />;
@@ -108,7 +158,7 @@ const DisplayActiveStep = () => {
       <div className="w-[100vw] lg:w-[50vw] display-flex flex-col items-center justify-center">
         <VpSubmissionResult
           verifiedVcs={verifiedVcs}
-          unverifiedClaims={unverifiedClaims}
+          unverifiedCredentials={unverifiedCredentials}
           requestCredentials={handleRequestCredentials}
           requestMissingCredentials={handleMissingCredentials}
           restart={handleRestartProcess}
@@ -128,6 +178,7 @@ const DisplayActiveStep = () => {
                 className={`grid bg-${window._env_.DEFAULT_THEME}-lighter-gradient rounded-[12px] w-[300px] lg:w-[350px] aspect-square content-center justify-center`}
               >
                 <OpenID4VPVerification
+                  key={`${flowType}-${sdkInstanceKey}`}
                   triggerElement={ <QrIcon id="OpenID4VPVerification_trigger" className="w-[78px] lg:w-[100px]" aria-disabled={presentationDefinition.input_descriptors.length === 0 } /> }
                   verifyServiceUrl={window.location.origin + window._env_.VERIFY_SERVICE_API_URL}
                   presentationDefinition={presentationDefinition}
@@ -137,6 +188,7 @@ const DisplayActiveStep = () => {
                   qrCodeStyles={{ size: qrSize }}
                   clientId={getClientId()}
                   isSameDeviceFlowEnabled={false}
+                  vpVerificationRequest={vpVerificationRequest}
                 />
               </div>
               <Button	
@@ -164,6 +216,7 @@ const DisplayActiveStep = () => {
                 className={`grid bg-${window._env_.DEFAULT_THEME}-lighter-gradient rounded-[12px] w-[300px] lg:w-[350px] aspect-square content-center justify-center`}
               >
                 <OpenID4VPVerification
+                  key={`${flowType}-${sdkInstanceKey}`}
                   triggerElement={ <QrIcon id="OpenID4VPVerification_trigger" className="w-[78px] lg:w-[100px]" aria-disabled={presentationDefinition.input_descriptors.length === 0 } /> }
                   verifyServiceUrl={window.location.origin + window._env_.VERIFY_SERVICE_API_URL}
                   presentationDefinition={presentationDefinition}
@@ -171,6 +224,8 @@ const DisplayActiveStep = () => {
                   onQrCodeExpired={handleOnQrExpired}
                   onError={handleOnError}
                   clientId={getClientId()}
+                  webWalletBaseUrl={selectedWalletBaseUrl}
+                  vpVerificationRequest={vpVerificationRequest}
                 />
               </div>
             </div>
@@ -178,9 +233,15 @@ const DisplayActiveStep = () => {
         </div>
       </div>
     );
+  } else {
+    return <></>;
   }
 };
 
 export const VpVerification = () => {
-  return <div>{DisplayActiveStep()}</div>;
+  return (
+    <div>
+      <DisplayActiveStep />
+    </div>
+  );
 };

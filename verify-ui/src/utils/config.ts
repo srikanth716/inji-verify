@@ -1,4 +1,11 @@
-import {AlertInfo, claim, VerificationStepsContentType } from "../types/data-types";
+import {
+    AlertInfo,
+    claim,
+    VcStatus,
+    VerificationMethod,
+    VerificationStep, VerificationStepsContentType,
+    WebWallet,
+} from "../types/data-types";
 import i18next from 'i18next';
 
 export const Pages = {
@@ -81,12 +88,8 @@ export const getVerificationStepsContent = (): VerificationStepsContentType => {
               description: i18next.t("VerificationStepsContent:VERIFY.RequestMissingCredential.description"),
             },
             {
-                label: i18next.t('VerificationStepsContent:VERIFY.ScanQrCode.label'),
-                description: i18next.t('VerificationStepsContent:VERIFY.ScanQrCode.description'),
-            },
-            {
-                label: i18next.t('VerificationStepsContent:VERIFY.SelectWallet.label'),
-                description: i18next.t('VerificationStepsContent:VERIFY.SelectWallet.description'),
+                label: i18next.t('VerificationStepsContent:VERIFY.ShareVerifiableCredentials.label'),
+                description: i18next.t('VerificationStepsContent:VERIFY.ShareVerifiableCredentials.description'),
             },
             {
                 label: i18next.t('VerificationStepsContent:VERIFY.DisplayResult.label'),
@@ -126,20 +129,31 @@ export const UploadFileSizeLimits = {
 export const InternetConnectivityCheckEndpoint = window._env_.INTERNET_CONNECTIVITY_CHECK_ENDPOINT ?? "https://dns.google/";
 
 const InternetConnectivityTimeout = Number.parseInt(window._env_.INTERNET_CONNECTIVITY_CHECK_TIMEOUT);
-export const InternetConnectivityCheckTimeout = isNaN(InternetConnectivityTimeout)
+export const InternetConnectivityCheckTimeout = Number.isNaN(InternetConnectivityTimeout)
     ? 10000
     : InternetConnectivityTimeout;
 
 const timeout = Number.parseInt(window._env_.DISPLAY_TIMEOUT);
-export const DisplayTimeout = isNaN(timeout) ? 10000 : timeout;
+export const DisplayTimeout = Number.isNaN(timeout) ? 10000 : timeout;
 
 export const OvpQrHeader = window._env_.OVP_QR_HEADER;
 
 let VCRenderOrders: any = {};
 let verifiableClaims: claim[] = [];
+let webWallets: WebWallet[] = [];
 
 export const getVCRenderOrders = () => VCRenderOrders;
 export const getVerifiableClaims = () => verifiableClaims;
+export const getWebWallets = () => webWallets;
+
+
+export const resolveWalletBaseUrl = (url: string): string => {
+    let end = url.length;
+    while (end > 0 && url[end - 1] === "/") {
+        end--;
+    }
+    return url.slice(0, end);
+};
 
 export const initializeClaims = async () => {
   try {
@@ -150,6 +164,12 @@ export const initializeClaims = async () => {
     const data = await response.json();
     verifiableClaims = data.verifiableClaims as claim[];
     VCRenderOrders = data.VCRenderOrders as any;
+    webWallets = ((data.WebWallets as WebWallet[]) ?? [])
+      .filter((wallet) => !!wallet.walletBaseUrl)
+      .map((wallet) => ({
+        ...wallet,
+        walletBaseUrl: resolveWalletBaseUrl(wallet.walletBaseUrl),
+      }));
   } catch (error) {
     console.error("Error loading claims from ConfigMap:", error);
   }
@@ -157,21 +177,24 @@ export const initializeClaims = async () => {
 
 initializeClaims();
 
-export const backgroundColorMapping: any = {
+export const backgroundColorMapping: Record<VcStatus, string> ={
   SUCCESS: "bg-success",
   EXPIRED: "bg-expired",
   INVALID: "bg-invalid",
+  REVOKED: "bg-revoked",
 };
-export const textColorMapping: any = {
+export const textColorMapping: Record<VcStatus, string>  = {
   SUCCESS: "text-successText",
   EXPIRED: "text-expiredText",
   INVALID: "text-invalidText",
+  REVOKED: "text-revokedText",
 };
 
-export const borderColorMapping: any = {
+export const borderColorMapping: Record<VcStatus, string> = {
   SUCCESS: "border-successBorder",
   EXPIRED: "border-expiredBorder",
   INVALID: "border-invalidBorder",
+  REVOKED: "border-revokedBorder",
 };
 
 export const isMobileDevice = (): boolean => {
@@ -202,3 +225,21 @@ export const EXCLUDE_KEYS_SD_JWT_VC = [
   "issuer",
   "vct",
 ].map((key) => key.toLowerCase());
+
+export const getStepConfig = (method: VerificationMethod | string) => {
+    switch (method) {
+        case "SCAN":
+            return VerificationSteps.SCAN;
+        case "UPLOAD":
+            return VerificationSteps.UPLOAD;
+        case "VERIFY":
+            return VerificationSteps.VERIFY;
+        default:
+            return null;
+    }
+};
+export interface VerificationStepWithStatus extends VerificationStep {
+    stepNumber: number;
+    isCompleted: boolean;
+    isActive: boolean;
+}

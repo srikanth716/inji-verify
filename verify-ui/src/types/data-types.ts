@@ -6,7 +6,7 @@ export type QrScanResult = {
 
 export type QrReadStatus = "SUCCESS" | "NOT_READ" | "FAILED";
 
-export type VcStatus = "SUCCESS" | "INVALID" | "EXPIRED" | "TIMEOUT";
+export type VcStatus = "SUCCESS" | "INVALID" | "EXPIRED" | "REVOKED";
 
 export type VerificationStep = {
   label: string;
@@ -30,7 +30,7 @@ export type AlertInfo = {
   autoHideDuration?: number;
 };
 
-export type VerificationMethod = "SCAN" | "UPLOAD" | "VERIFY" | "TO_BE_SELECTED";
+export type VerificationMethod = "SCAN" | "UPLOAD" | "VERIFY";
 
 export type InternetConnectionStatus =
   | "ONLINE"
@@ -64,6 +64,7 @@ export type OvpFlowData = {
 export type VerificationResult = {
   vc?: AnyVc;
   vcStatus?: VcStatus;
+  verificationResponse?: unknown;
 };
 
 export type LanguageObject = {
@@ -83,6 +84,7 @@ export interface claim {
   logo: string;
   essential?: boolean;
   definition: PresentationDefinition;
+  clientIdScheme?: string;
 }
 
 interface InputDescriptor {
@@ -120,12 +122,16 @@ export type VerifyState = {
   verificationSubmissionResult: VpSubmissionResultInt[];
   SelectionPanel: boolean;
   isShowResult: boolean;
-  selectedClaims: claim[];
-  originalSelectedClaims: claim[];
-  unVerifiedClaims: claim[];
+  selectedCredentials: claim[];
+  originalSelectedCredentials: claim[];
+  unVerifiedCredentials: claim[];
   sharingType: VCShareType;
   isPartiallyShared: boolean;
   presentationDefinition: PresentationDefinition;
+  sdkInstanceKey: number;
+  SelectWalletPanel: boolean;
+  selectedWalletId?: string;
+  selectedWalletBaseUrl?: string;
 };
 
 export enum VCShareType {
@@ -139,6 +145,15 @@ export type QrCodeProps = {
   size: number;
   footer?: string;
   status: "SUCCESS" | "EXPIRED" | "INVALID";
+};
+
+export type RenderMethod = {
+  renderSuite: string;
+  template: {
+    id: string;
+    mediaType: string;
+  };
+  type: string;
 };
 
 export type LdpVc = {
@@ -156,6 +171,7 @@ export type LdpVc = {
     verificationMethod: string;
   };
   type: string[];
+  renderMethod?: RenderMethod[];
 };
 
 export type SdJwtVc = {
@@ -176,4 +192,64 @@ export type credentialSubject = {
   id: string;
   email: string;
   policyExpiresOn: string;
+};
+
+export type WebWallet = {
+  id: string;
+  name: string;
+  iconUrl: string;
+  walletBaseUrl: string;
+};
+export interface ValidationCheck {
+    purpose?: string;
+    valid: boolean;
+    error?: {
+        errorCode?: string;
+        errorMessage?: string;
+    } | null;
+}
+
+export interface VCVerificationV2Response {
+    allChecksSuccessful: boolean;
+    schemaAndSignatureCheck: ValidationCheck;
+    expiryCheck: ValidationCheck;
+    statusCheck: ValidationCheck[];
+    claims?: Record<string, any>;
+}
+
+export interface CredentialResult {
+    verifiableCredential: string | object;
+    allChecksSuccessful: boolean;
+    holderProofCheck?: {
+        valid: boolean;
+        error: any;
+    } | null;
+    schemaAndSignatureCheck?: {
+        valid: boolean;
+        error: any;
+    };
+    expiryCheck?: {
+        valid: boolean;
+    };
+    statusChecks?: {
+        purpose: string;
+        valid: boolean;
+        error: any;
+    }[];
+    claims?: Record<string, any>;
+}
+
+export type OverallVPStatus = "SUCCESS" | "INVALID";
+
+export interface VpSummarisedVerificationResponse {
+  vcResults: {
+      vc: string  | Record<string, unknown>;
+      vcStatus: VcStatus;
+  }[];
+  vpResultStatus: OverallVPStatus;
+}
+
+export type MatchingVc = {
+  vc: LdpVc | object;
+  vcStatus: VcStatus;
 };

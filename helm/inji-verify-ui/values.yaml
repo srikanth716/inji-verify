@@ -11,7 +11,7 @@
 ## Add labels to all the deployed resources
 ##
 commonLabels:
-  app.kubernetes.io/component: mosip
+  app.kubernetes.io/component: inji
 
 ## Add annotations to all the deployed resources
 ##
@@ -51,8 +51,8 @@ service:
 
 image:
   registry: docker.io
-  repository: mosipid/inji-verify-ui
-  tag: 0.15.1
+  repository: injistack/inji-verify-ui
+  tag: 0.18.2
 
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
@@ -136,8 +136,8 @@ additionalResources:
   javaOpts: "-Xms750M -Xmx750M"
 
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
-## Clamav container already runs as 'mosip' user, so we may not need to enable this
-container_user: 'mosip'
+## Clamav container already runs as 'inji' user, so we may not need to enable this
+container_user: 'inji'
 containerSecurityContext:
   enabled: true
   runAsUser: 0
@@ -304,7 +304,7 @@ volumePermissions:
   enabled: false
   image:
     registry: docker.io
-    repository: mosipint/os-shell
+    repository: mosipid/os-shell
     tag: "12-debian-12-r46"
     pullPolicy: Always
     ## Optionally specify an array of imagePullSecrets.
@@ -435,6 +435,17 @@ extraVolumes:
   - name: inji-verify-ui-config
     configMap:
       name: inji-verify-ui-config
+
+## Web wallets available for same-device credential sharing.
+## Each entry requires: id, name, iconUrl, walletBaseUrl.
+## walletBaseUrl MUST be overridden per environment; leaving it empty disables
+## the wallet entry at runtime.
+##
+webWallets:
+  - id: "inji-wallet"
+    name: "Inji Wallet"
+    iconUrl: "/assets/inji-web-wallet-icon.svg"
+    walletBaseUrl: ""  # Set to the deployment-specific web wallet URL, e.g. "https://injiweb.example.org"
 
 config:
   key1: "value1"

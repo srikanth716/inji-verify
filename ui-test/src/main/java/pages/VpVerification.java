@@ -7,15 +7,16 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
 import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import java.time.Duration;
 
 import base.BasePage;
 
 public class VpVerification extends BasePage {
 
-	private WebDriver driver;
-
 	public VpVerification(WebDriver driver) {
-		this.driver = driver;
+		super(driver);
 		PageFactory.initElements(driver, this);
 	}
 
@@ -73,10 +74,10 @@ public class VpVerification extends BasePage {
 	@FindBy(id = "select-credential-types-description")
 	WebElement vpVerificationQrCodeStep2Description;
 
-	@FindBy(id = "scan-qr-code-(use-a-different-device)")
+	@FindBy(id = "share-verifiable-credentials-from-wallet")
 	WebElement vpVerificationQrCodeStep3Label;
 
-	@FindBy(id = "scan-qr-code-(use-a-different-device)-description")
+	@FindBy(id = "share-verifiable-credentials-from-wallet-description")
 	WebElement vpVerificationQrCodeStep3Description;
 
 	@FindBy(id = "view-verification-results")
@@ -103,7 +104,7 @@ public class VpVerification extends BasePage {
 	@FindBy(xpath = "//span[@class='walletName' and text()='Inji Wallet']")
 	WebElement WalletButton;
 
-	@FindBy(xpath = "//button[@class='proceedButton' and text()='Proceed']")
+	@FindBy(id = "wallet-selector-proceed-button")
 	WebElement ProceedButton;
 
 	@FindBy(xpath = "//label[@for='Land Registry']")
@@ -123,6 +124,16 @@ public class VpVerification extends BasePage {
 
 	@FindBy(id = "verification-open-wallet-button")
 	WebElement openWalletButton;
+
+	@FindBy(xpath = "//span[text()='Inji Wallet']")
+	WebElement injiWallet;
+
+	@FindBy(id = "wallet-selector-proceed-button")
+	WebElement proccedButton;
+
+	@FindBy(xpath = "//span[text()='Yes, I trust this Verifier']/parent::div")
+	WebElement trustButton;
+
 
 	public String getVpVerificationQrCodeStep1Description() {
 		return getText(driver, VpVerificationQrCodeStep1Description);
@@ -149,7 +160,7 @@ public class VpVerification extends BasePage {
 	}
 
 	public String getVpVerificationQrCodeStep3Description() {
-		return getText(driver, vpVerificationQrCodeStep3Description);
+		return normalizeVisibleText(getText(driver, vpVerificationQrCodeStep3Description));
 	}
 
 	public String getVpVerificationQrCodeStep4Label() {
@@ -183,15 +194,9 @@ public class VpVerification extends BasePage {
 			((JavascriptExecutor) driver).executeScript("var copyright = document.getElementById('copyrights-content');"
 					+ "if(copyright) { copyright.style.display = 'none'; }");
 
-			// Wait a bit for the viewport changes to take effect
-			Thread.sleep(500);
-
 			// Scroll the button into view
 			((JavascriptExecutor) driver).executeScript(
-					"arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", verifiableCredentialsButton);
-
-			// Wait for scroll
-			Thread.sleep(500);
+					"arguments[0].scrollIntoView({behavior: 'instant', block: 'center'});", verifiableCredentialsButton);
 
 			// Click the button
 			((JavascriptExecutor) driver).executeScript("arguments[0].click();", verifiableCredentialsButton);
@@ -214,6 +219,10 @@ public class VpVerification extends BasePage {
 
 	public void clickOnRightArrow() {
 		clickOnElement(driver, rightArrow);
+	}
+
+	public boolean isGoBackButtonVisible() {
+		return isElementIsVisible(driver, vpGoBack);
 	}
 
 	public void clickOnGoBack() {
@@ -259,31 +268,31 @@ public class VpVerification extends BasePage {
 		clickOnElement(driver, SortButton);
 	}
 
-	public void ClickOnGenerateQrCodeButton() {
+	public void clickOnGenerateQrCodeButton() {
 		clickOnElement(driver, GenerateQrCodeButton);
 	}
 
-	public void ClickOnMosipIdChecklist() {
+	public void clickOnMosipIdChecklist() {
 		clickOnElement(driver, MosipIdChecklist);
 	}
 
-	public void ClickOnHealthInsuranceChecklist() {
+	public void clickOnHealthInsuranceChecklist() {
 		clickOnElement(driver, HealthInsuranceChecklist);
 	}
 
-	public void ClickOnSDJwtVCChecklist() {
+	public void clickOnSDJwtVCChecklist() {
 		clickOnElement(driver, SDJwtVCChecklist);
 	}
 
-	public void ClickOnWalletButton() {
+	public void clickOnWalletButton() {
 		clickOnElement(driver, WalletButton);
 	}
 
-	public void ClickOnProceedButton() {
+	public void clickOnProceedButton() {
 		clickOnElement(driver, ProceedButton);
 	}
 
-	public void ClickOnLandRegistryChecklist() {
+	public void clickOnLandRegistryChecklist() {
 		clickOnElement(driver, LandRegistryChecklist);
 	}
 
@@ -313,6 +322,71 @@ public class VpVerification extends BasePage {
 		clickOnElement(driver, openWalletButton);
 	}
 
+		public void selectWallet() {
+		clickOnElement(driver, injiWallet);
+	}
+
+	public void proccedButton() {
+		clickOnElement(driver, proccedButton);
+	}
+
+	public void trustButton() {
+		new WebDriverWait(driver, Duration.ofSeconds(getTimeout()));
+		clickOnElement(driver, trustButton);
+	}
+
+	public boolean isWalletOptionVisible(String walletName) {
+		String normalizedWalletName = normalizeVisibleText(walletName);
+		if (normalizedWalletName == null) {
+			normalizedWalletName = "";
+		}
+		normalizedWalletName = normalizedWalletName.toLowerCase().replace("-", " ");
+		return !driver.findElements(By.xpath(
+				"//span[contains(@class,'walletName') and contains(translate(translate(normalize-space(.),"
+						+ "'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'-',' '),'" + normalizedWalletName
+						+ "')]")).isEmpty();
+	}
+
+	public boolean isHealthInsuranceSelected() {
+		WebElement checkbox = new WebDriverWait(driver, Duration.ofSeconds(getTimeout())).until(
+				ExpectedConditions.presenceOfElementLocated(
+						By.xpath("//label[@for='Health Insurance']//input[@type='checkbox']")));
+		return checkbox.isSelected() || "true".equalsIgnoreCase(checkbox.getAttribute("checked"))
+				|| "true".equalsIgnoreCase(checkbox.getAttribute("aria-checked"));
+	}
+
+	public boolean isMosipIdSelected() {
+		WebElement checkbox = new WebDriverWait(driver, Duration.ofSeconds(getTimeout())).until(
+				ExpectedConditions.presenceOfElementLocated(
+						By.xpath("//label[@for='MOSIP ID']//input[@type='checkbox']")));
+		return checkbox.isSelected() || "true".equalsIgnoreCase(checkbox.getAttribute("checked"))
+				|| "true".equalsIgnoreCase(checkbox.getAttribute("aria-checked"));
+	}
+
+	public void waitForOpenWalletButton() {
+		new WebDriverWait(driver, Duration.ofSeconds(getTimeout()))
+				.until(ExpectedConditions.elementToBeClickable(openWalletButton));
+	}
+
+	public void waitForRequestCredentialsButton() {
+		new WebDriverWait(driver, Duration.ofSeconds(getTimeout()))
+				.until(ExpectedConditions.elementToBeClickable(verifiableCredentialsButton));
+	}
+
+	public void waitForWalletChooser() {
+		new WebDriverWait(driver, Duration.ofSeconds(getTimeout())).until(
+				ExpectedConditions.or(
+						ExpectedConditions.presenceOfElementLocated(By.xpath("//span[contains(@class,'walletName')]")),
+						ExpectedConditions.visibilityOf(ProceedButton)));
+	}
+
+	public void waitForVerifyResults() {
+		new WebDriverWait(driver, Duration.ofSeconds(getTimeout() * 2))
+				.until(ExpectedConditions.or(
+						ExpectedConditions.urlContains("injiverify"),
+						ExpectedConditions.presenceOfElementLocated(By.id("vc-result-display-message")),
+						ExpectedConditions.presenceOfElementLocated(By.id("success_message_icon"))));
+	}
 
 
 }

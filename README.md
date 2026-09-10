@@ -1,4 +1,4 @@
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?branch=master&project=mosip_inji-verify=alert_status)](https://sonarcloud.io/dashboard?branch=master&id=mosip_inji-verify)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?branch=master)](https://sonarcloud.io/dashboard?branch=master)
 # Inji Verify
 
 Injiverify is a web interface to verify the validity of the QR / credential using a browser from smartphone / tablet / computer. A user should be able to do primariliy 4 key actions - Scan, Validate, Fetch, Display.
@@ -30,7 +30,7 @@ Prerequisites:
 
 # Folder Structure:
 
-Once the repo is cloned, following folders can be found under the inji-verify repository folder:
+Once the repository is cloned, following folders can be found under the inji-verify repository folder:
 
 - **api-test:** contains the API automation tests
 - **db_scripts:** contains the database scripts for the Inji Verify application
@@ -38,7 +38,7 @@ Once the repo is cloned, following folders can be found under the inji-verify re
   - [Readme.md](./db_scripts/README.md)
 - **db_upgrade_script:** contains the database upgrade and rollback scripts
   - sql (contains SQL scripts for database upgrade and rollback)
-  - [Readme.md](./db_upgrade_script/README.md)
+  - [Readme.md](./db_upgrade_script/inji_verify/README.md)
 - **deploy:** folder contains deployment scripts required to deploy on K8S
 - **docker-compose** : folder containing setup for docker compose
   - config
@@ -64,11 +64,11 @@ Once the repo is cloned, following folders can be found under the inji-verify re
 
 # Developer Setup:
 
-Once the repo is cloned, move into the inji-verify repository folder and run the following command to check out to the release-0.15.x branch:
+Once the repo is cloned, move into the inji-verify repository folder and run the following command to check out to the release-0.18.x branch:
 
 ```shell
 cd inji-verify # move into the repository folder
-git checkout release-0.15.x
+git checkout release-0.18.x
 ```
 
 ### Development server:
@@ -119,37 +119,10 @@ docker rm inji-verify-service-dev
 This section helps to quickly get started with a demo of the Inji Verify application
 
 Once the repository is cloned, move into the inji-verify repository directory.
-Choose one of the branches that are currently available for the demo:
-
-release branches:
-- release-0.8.x
-- release-0.9.x
-- release-0.10.x
-- release-0.11.x
-- release-0.12.x
-- release-0.13.x
-- release-0.14.x
-- release-0.15.x
-
-tags : 
-- v0.15.0
-- v0.14.0
-- v0.13.0
-- v0.12.3
-- v0.11.1
-- v0.11.0
-- v0.10.0
-- v0.9.0
-- v0.8.1
-- v0.8.0
-
-active branches:
-- master
-- develop
 
 ```shell
 cd ./inji-verify # repository folder
-git checkout branchName/tagname # choose from any of the above branches
+git checkout branchName/tagname
 ```
 
 ## [Deployment in K8 cluster](deploy/README.md)

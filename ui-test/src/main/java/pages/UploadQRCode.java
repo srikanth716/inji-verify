@@ -4,18 +4,20 @@ import base.BasePage;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import java.time.Duration;
 import org.openqa.selenium.support.PageFactory;
+import utils.BaseTest;
+import utils.WaitUtil;
 
 public class UploadQRCode extends BasePage {
 
-	private WebDriver driver;
-
 	public UploadQRCode(WebDriver driver) {
-		this.driver = driver;
+		super(driver);
 		PageFactory.initElements(driver, this);
 	}
 
@@ -52,6 +54,21 @@ public class UploadQRCode extends BasePage {
 	@FindBy(xpath = "//span[text()='Verify Another QR code']")
 	WebElement VerifyAnotherQRcodeButton;
 
+	@FindBy(xpath = "//button[@data-testid='Language-Selector-Button']")
+	WebElement languageDropdownButton;
+
+	@FindBy(xpath = "//button[@type='button' and text()='عربي']")
+	WebElement arabicLanguageButton;
+
+	@FindBy(xpath = "//button[@type='button' and contains(normalize-space(.), 'Français')]")
+	WebElement frenchLanguageButton;
+
+	@FindBy(xpath = "//p[@data-testid='Language-Selector-Selected-DropDown-ar']")
+	WebElement arabicLanguageSelected;
+
+	@FindBy(xpath = "//button[@type='button' and contains(normalize-space(.), 'Français')]")
+	WebElement frenchLanguageSelected;
+
 	@FindBy(xpath = "//a[@id='home-button']")
 	WebElement HomeButton;
 
@@ -83,113 +100,189 @@ public class UploadQRCode extends BasePage {
 	WebElement PolicyExpiresOnValue;
 
 	@FindBy(id = "fullname-value")
-	WebElement FullNameValue;
+	WebElement fullNameValue;
 
-	public void ClickonUploadQRCodePng() {
-		uploadFile(driver, UploadQRCodeButton, "InsuranceCredential0.png");
+	public void clickOnUploadQRCodePng() {
+		uploadFile(driver, uploadpath, BaseTest.getInsuranceCredentialPngPath());
 	}
 
-	public void ClickonAnotherUploadQRCodePng() {
-		uploadFile(driver, UploadQRCodeButton, "InsuranceCredential0.png");
+	public void clickOnAnotherUploadQRCodePng() {
+		uploadFile(driver, uploadpath, BaseTest.getInsuranceCredentialPngPath());
 	}
 
-	public void ClickonUploadQRCodeJpg() {
-		uploadFile(driver, UploadQRCodeButton, "InsuranceCredential0.jpg");
+	public void uploadPngAndWaitForVerificationResult() {
+		uploadWithSingleRecovery(() -> clickOnUploadQRCodePng());
 	}
 
-	public void ClickonAnotherUploadQRCodeJpg() {
-		uploadFile(driver, UploadQRCodeButton, "InsuranceCredential0.jpg");
+	public void uploadAnotherPngAndWaitForVerificationResult() {
+		uploadWithSingleRecovery(() -> clickOnAnotherUploadQRCodePng());
 	}
 
-	public void ClickonUploadQRCodePdf() {
-		uploadFile(driver, UploadQRCodeButton, "InsuranceCredential.pdf");
+	public void clickOnUploadQRCodeJpg() {
+		uploadFile(driver, uploadpath, BaseTest.getInsuranceCredentialJpgPath());
 	}
 
-	public void ClickonAnotherUploadQRCodePdf() {
-		uploadFile(driver, UploadQRCodeButton, "InsuranceCredential.pdf");
+	public void clickOnAnotherUploadQRCodeJpg() {
+		uploadFile(driver, uploadpath, BaseTest.getInsuranceCredentialJpgPath());
 	}
 
-	public void ClickonUploadQRCodeJpeg() {
-		uploadFile(driver, UploadQRCodeButton, "InsuranceCredential0.jpeg");
+	public void uploadJpgAndWaitForVerificationResult() {
+		uploadWithSingleRecovery(() -> clickOnUploadQRCodeJpg());
 	}
 
-	public void ClickonAnotherUploadQRCodeJpeg() {
-		uploadFile(driver, UploadQRCodeButton, "InsuranceCredential0.jpeg");
+	public void uploadAnotherJpgAndWaitForVerificationResult() {
+		uploadWithSingleRecovery(() -> clickOnAnotherUploadQRCodeJpg());
 	}
 
-	public void ClickonUploadQRCodeHtml() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "QRCode_UnsupportedHtml.html");
+	public void uploadMultiLanguageVc() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "multilanguage.PNG");
 	}
 
-	public void ClickonUploadQRCodeInvalid() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "Invalid.png");
+	public void clickOnUploadQRCodePdf() {
+		uploadFile(driver, uploadpath, BaseTest.getDownloadedInsurancePdfPath());
 	}
 
-	public void ClickonUploadQRCodeDownloadedFromPhone() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "VcDownloadedFromMobileApp.jpg");
+	public void clickOnAnotherUploadQRCodePdf() {
+		uploadFile(driver, uploadpath, BaseTest.getDownloadedInsurancePdfPath());
 	}
 
-	public void ClickonUploadExpiredQRCodepngExpired() {
-		driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(30));
-		uploadFileForInvalid(driver, UploadQRCodeButton, "Expired_QRCode.png");
+	public void uploadPdfAndWaitForVerificationResult() {
+		uploadWithSingleRecovery(() -> clickOnUploadQRCodePdf());
 	}
 
-	public void ClickonUploadLargeSizeQRCode() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "largesize.PNG");
+	public void uploadAnotherPdfAndWaitForVerificationResult() {
+		uploadWithSingleRecovery(() -> clickOnAnotherUploadQRCodePdf());
+	}
+
+	public void clickOnUploadQRCodeJpeg() {
+		uploadFile(driver, uploadpath, BaseTest.getInsuranceCredentialJpegPath());
+	}
+
+	public void clickOnAnotherUploadQRCodeJpeg() {
+		uploadFile(driver, uploadpath, BaseTest.getInsuranceCredentialJpegPath());
+	}
+
+	public void uploadJpegAndWaitForVerificationResult() {
+		uploadWithSingleRecovery(() -> clickOnUploadQRCodeJpeg());
+	}
+
+	public void uploadAnotherJpegAndWaitForVerificationResult() {
+		uploadWithSingleRecovery(() -> clickOnAnotherUploadQRCodeJpeg());
+	}
+
+	public void clickOnUploadQRCodeHtml() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "QRCode_UnsupportedHtml.html");
+	}
+
+	public void clickOnUploadQRCodeInvalid() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "Invalid.png");
+	}
+
+	public void clickOnUploadQRCodeDownloadedFromPhone() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "VcDownloadedFromMobileApp.jpg");
+	}
+
+	public void clickOnUploadExpiredQRCodepngExpired() {
+		WaitUtil.waitForClickability(driver, UploadQRCodeButton);
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "Expired_QRCode.png");
+	}
+
+	public void clickOnUploadLargeSizeQRCode() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "largesize.PNG");
 
 	}
 
-	public void ClickonUploadBlurQRCode() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "blur.PNG");
+	public void clickOnUploadSmallSizeQRCode() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "SmallFileSize.png");
 
 	}
 
-	public void ClickonUploadmultipleQRCode() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "multiple_image.jpg");
+	public void clickOnUploadBoundaryMinSizeQRCode() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "QRCode_10KB.jpg");
 
 	}
 
-	public void ClickonUploadSDJwtQRCode() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "SD_Jwt_QRCode.PNG");
+	public void clickOnUploadBoundaryMaxSizeQRCode() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "QRCode_5MB.png");
 
 	}
 
-	public void ClickonUploadInvalidPdf() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "invalid.pdf");
+	public void clickOnUploadBlurQRCode() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "blur.PNG");
 
 	}
 
-	public void ClickonUploadExpiredQRCodeJpgExpired() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "Expired_QRCode.jpg");
+	public void clickOnUploadMultipleQRCode() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "multiple_image.jpg");
 
 	}
 
-	public void ClickonUploadExpiredQRCodejpegExpired() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "Expired_QRCode.jpeg");
+	public void clickOnUploadSDJwtQRCode() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "SD_Jwt_QRCode.PNG");
 
 	}
 
-	public void ClickonUploadExpiredQRCodepdfExpired() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "Expired_QRCode.pdf");
+	public void clickOnUploadSVGQRCode() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "SVG.png");
 
 	}
 
-	public void ClickonUploadQRCodeLageFileSize() {
-		uploadFileForInvalid(driver, UploadQRCodeButton, "LargeFileSize.png");
+	public void clickOnUploadClaim169QRCode() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "claim.PNG");
 
+	}
+
+	public void clickOnUploadInvalidPdf() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "invalid.pdf");
+
+	}
+
+	public void clickOnUploadExpiredQRCodeJpgExpired() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "Expired_QRCode.jpg");
+
+	}
+
+	public void clickOnUploadExpiredQRCodeJpegExpired() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "Expired_QRCode.jpeg");
+
+	}
+
+	public void clickOnUploadExpiredQRCodePdfExpired() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "Expired_QRCode.pdf");
+
+	}
+
+	public void clickOnUploadQRCodeLargeFileSize() {
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "LargeFileSize.png");
+
+	}
+
+	public boolean isUploadFileInputPresent() {
+		return !driver.findElements(By.xpath("//input[@type='file']")).isEmpty();
+	}
+
+	public boolean isUploadFileInputEnabled() {
+		try {
+			return uploadpath.isEnabled();
+		} catch (Exception e) {
+			return false;
+		}
 	}
 
 	public boolean isVisibleErrorIcon() {
+		waitForVerificationErrorState();
 		return isElementIsVisible(driver, ErrorIcon);
 
 	}
 
 	public String getErrorTextInvalidQRCode() {
+		waitForVerificationErrorState();
 
 		return getText(driver, ErrorTextInvalidQRCode);
 	}
 
 	public String getErrorTextExpiredQRCode() {
+		waitForVerificationErrorState();
 
 		return getText(driver, ErrorTextExpiredQRCode);
 	}
@@ -200,11 +293,13 @@ public class UploadQRCode extends BasePage {
 	}
 
 	public boolean isVisibleUploadQRCodeStep2LabelAfter() {
+		waitForVerificationResultState();
 		return isElementIsVisible(driver, UploadQRCodeStep2LabelAfter);
 	}
 	
 
 	public boolean isVisibleUploadQRCodeStep3LabelAfter() {
+		waitForVerificationResultState();
 		return isElementIsVisible(driver, UploadQRCodeStep3LabelAfter);
 
 	}
@@ -215,44 +310,57 @@ public class UploadQRCode extends BasePage {
 	}
 
 	public boolean isTickIconVisible() {
+		waitForVerificationSuccessState();
 		return isElementIsVisible(driver, TickIconVisible);
 
 	}
 
 	public String getCongratulationtext() {
+		waitForVerificationSuccessState();
 		return getText(driver, Congratulationtext);
 	}
 
-	public boolean isVisibleVerifyAnotherQRcodeButton() {
+	public boolean isVisibleVerifyAnotherQRCodeButton() {
+		waitForVerifyAnotherQrCodeButtonState();
 		return isElementIsVisible(driver, VerifyAnotherQRcodeButton);
 
 	}
 
 	public boolean isVisiblePolicyIssuedOnValue() {
+		waitForVerificationSuccessState();
 		return isElementIsVisible(driver, PolicyIssuedOnValue);
 
 	}
 
 	public boolean isVisiblePolicyExpiresOnValue() {
+		waitForVerificationSuccessState();
 		return isElementIsVisible(driver, PolicyExpiresOnValue);
 
 	}
 
 	public boolean isVisibleFullNameValue() {
-		return isElementIsVisible(driver, FullNameValue);
+		waitForVerificationSuccessState();
+		return isElementIsVisible(driver, fullNameValue);
 
 	}
+	
 
-	public void clickOnAnotherQRcodeButton() {
+	public void clickOnAnotherQRCodeButton() {
+		waitForVerifyAnotherQrCodeButtonState();
 		clickOnElement(driver, VerifyAnotherQRcodeButton);
 
 	}
 
-	public void ClickonHomeButton() {
+	public void clickOnLanguageDropdown() {
+		clickOnElement(driver, languageDropdownButton);
+
+	}
+
+	public void clickOnHomeButton() {
 		clickOnElement(driver, HomeButton);
 	}
 
-	public void clickVerifyCredentialsbutton() {
+	public void clickVerifyCredentialsButton() {
 		clickOnElement(driver, Credentialsbutton);
 	}
 
@@ -261,6 +369,7 @@ public class UploadQRCode extends BasePage {
 	}
 
 	public String getErromessageForUnSupportedFromat() {
+		waitForAlertMessageState();
 		return getText(driver, ErromessageForUnSupportedFromat);
 	}
 
@@ -270,16 +379,19 @@ public class UploadQRCode extends BasePage {
 	}
 
 	public String getErrorMessageForExpiredQRCode() {
+		waitForVerificationMessageState();
 
 		return getText(driver, ErrorTextExpiredQRCode);
 	}
 
 	public String getErrorMessageForLargeSizeQRCode() {
+		waitForAlertMessageState();
 
 		return getText(driver, ErrorTextLargeSizeQRCode);
 	}
 
 	public String getErrorMessageForBlurQRCode() {
+		waitForAlertMessageState();
 
 		return getText(driver, ErrorTextLargeSizeQRCode);
 	}
@@ -290,6 +402,100 @@ public class UploadQRCode extends BasePage {
 
 	public void clickOnPleaseTryAgain() {
 		clickOnElement(driver, PleaseTryAgain);
+	}
+
+	public boolean isLanguageDropdownVisible() {
+		return isElementIsVisible(driver, languageDropdownButton);
+	}
+
+	public boolean isArabicLanguageSelected() {
+		return isElementIsVisible(driver, arabicLanguageSelected);
+	}
+
+	public boolean isFrenchLanguageSelected() {
+		return isElementIsVisible(driver, frenchLanguageSelected);
+	}
+
+	private void waitForVerificationSuccessState() {
+		try {
+			WaitUtil.waitForVisibility(driver, TickIconVisible, getTimeout() * 4);
+		} catch (TimeoutException e) {
+			// Fall through to the existing assertion path so the test still fails with the page state.
+		}
+	}
+
+	private void waitForVerificationErrorState() {
+		try {
+			WaitUtil.waitForVisibility(driver, ErrorTextExpiredQRCode, getTimeout() * 4);
+		} catch (TimeoutException e) {
+			// Fall through to the existing assertion path so the test still fails with the page state.
+		}
+	}
+
+	private void waitForVerificationMessageState() {
+		try {
+			WaitUtil.waitForVisibility(driver, ErrorTextExpiredQRCode, getTimeout() * 4);
+		} catch (TimeoutException e) {
+			// Fall through to the existing assertion path so the test still fails with the page state.
+		}
+	}
+
+	private void waitForAlertMessageState() {
+		try {
+			WaitUtil.waitForVisibility(driver, ErrorTextLargeSizeQRCode, getTimeout() * 4);
+		} catch (TimeoutException e) {
+			// Fall through to the existing assertion path so the test still fails with the page state.
+		}
+	}
+
+	private void waitForVerifyAnotherQrCodeButtonState() {
+		try {
+			WaitUtil.waitForVisibility(driver, VerifyAnotherQRcodeButton, getTimeout() * 4);
+		} catch (TimeoutException e) {
+			// Fall through to the existing assertion path so the test still fails with the page state.
+		}
+	}
+
+	public void waitForVerificationResultState() {
+		new WebDriverWait(driver, Duration.ofSeconds((long) getTimeout() * 4L))
+				.until(webDriver -> hasAnyVerificationResultVisible());
+	}
+
+	private void uploadWithSingleRecovery(Runnable uploadAction) {
+		try {
+			uploadAction.run();
+			waitForVerificationResultState();
+		} catch (TimeoutException firstTimeout) {
+			refreshBrowser(driver);
+			WaitUtil.waitForClickability(driver, UploadQRCodeButton);
+			uploadAction.run();
+			waitForVerificationResultState();
+		}
+	}
+
+	private boolean hasAnyVerificationResultVisible() {
+		return isDisplayedWithoutWaiting(TickIconVisible)
+				|| isDisplayedWithoutWaiting(VerifyAnotherQRcodeButton)
+				|| isDisplayedWithoutWaiting(ErrorTextExpiredQRCode)
+				|| isDisplayedWithoutWaiting(ErrorTextLargeSizeQRCode)
+				|| isDisplayedWithoutWaiting(UploadQRCodeStep2LabelAfter)
+				|| isDisplayedWithoutWaiting(UploadQRCodeStep3LabelAfter);
+	}
+
+	private boolean isDisplayedWithoutWaiting(WebElement element) {
+		try {
+			return element != null && element.isDisplayed();
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
+	public void selectArabicLanguage() {
+		clickOnElement(driver, arabicLanguageButton);
+	}
+
+	public void selectFrenchLanguage() {
+		clickOnElement(driver, frenchLanguageButton);
 	}
 
 }

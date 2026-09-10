@@ -13,9 +13,9 @@
 
 .loader {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%); /* Center the loader */
+  top: 45%;
+  left: 45%;
+  transform: translate(-50%, -75%); /* Center the loader */
   border: 4px solid rgba(0, 0, 0, 0.1);
   border-left-color: #3498db;
   border-radius: 50%;
@@ -66,6 +66,7 @@
 .scan-container.no-zoom {
   width: 100%;
   max-width: 28rem;
+  min-height: 12rem;
   margin-left: auto;
   margin-right: auto;
   aspect-ratio: 1 / 1;
@@ -177,13 +178,7 @@
 }
 
 .upload-container.fixed-enabled {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background-color: white;
-  padding: 1rem;
-  z-index: 20;
+  display: none;
 }
 
 .upload-container.default {
@@ -202,4 +197,17 @@
 .upload-button-default {
   background-color: #d1d5db;
   color: black;
+}
+
+/* Programmatic upload when triggerElement is set; keeps native file picker working */
+.upload-input-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

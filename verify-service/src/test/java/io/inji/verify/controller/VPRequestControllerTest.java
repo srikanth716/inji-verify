@@ -1,5 +1,6 @@
 package io.inji.verify.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
@@ -20,8 +21,9 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.request.async.DeferredResult;
 
-
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
@@ -29,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 public class VPRequestControllerTest {
 
@@ -48,22 +51,31 @@ public class VPRequestControllerTest {
     public void testCreateVPRequest_Success() throws Exception {
         FormatDto formatDto = new FormatDto(null, null, null);
         VPDefinitionResponseDto vpDefinitionResponseDto = new VPDefinitionResponseDto("id", new ArrayList<>(), "name", "purposr", formatDto, new ArrayList<>());
-        VPRequestCreateDto createDto = new VPRequestCreateDto("cId", "tId", "pdId", "nonce", vpDefinitionResponseDto);
+        VPRequestCreateDto createDto = new VPRequestCreateDto("cId", "tId",
+                "pdId", "nonce", vpDefinitionResponseDto, false, false);
         VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
 
         when(verifiablePresentationRequestService.createAuthorizationRequest(any())).thenReturn(responseDto);
 
         mockMvc.perform(post("/vp-request")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(createDto)))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createDto)))
                 .andExpect(status().isCreated())
-                .andExpect(content().string(objectMapper.writeValueAsString(responseDto)));
-
+                .andExpect(result -> {
+                    JsonNode expected = objectMapper.readTree(
+                            objectMapper.writeValueAsString(responseDto)
+                    );
+                    JsonNode actual = objectMapper.readTree(
+                            result.getResponse().getContentAsString()
+                    );
+                    assertEquals(expected, actual);
+                });
     }
 
     @Test
     public void testCreateVPRequest_BadRequest_NoDefinition() throws Exception {
-        VPRequestCreateDto createDto = new VPRequestCreateDto("cId", "tId", null, "nonce", null);
+        VPRequestCreateDto createDto = new VPRequestCreateDto("cId", "tId",
+                null, "nonce", null, false, false);
 
         mockMvc.perform(post("/vp-request")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -79,8 +91,8 @@ public class VPRequestControllerTest {
         FormatDto formatDto = new FormatDto(null, null, null);
         VPDefinitionResponseDto vpDefinitionResponseDto = new VPDefinitionResponseDto("id", new ArrayList<>(), "name", "purposr", formatDto, new ArrayList<>());
 
-        VPRequestCreateDto createDto = new VPRequestCreateDto("cId", "tId", "pdId", "nonce", vpDefinitionResponseDto);
-
+        VPRequestCreateDto createDto = new VPRequestCreateDto("cId", "tId",
+                "pdId", "nonce", vpDefinitionResponseDto, false, false);
         when(verifiablePresentationRequestService.createAuthorizationRequest(any()))
                 .thenThrow(new PresentationDefinitionNotFoundException());
 
@@ -124,5 +136,25 @@ public class VPRequestControllerTest {
                 .andExpect(content().string(jwt));
 
         verify(verifiablePresentationRequestService, times(1)).getVPRequestJwt(requestId);
+    }
+
+    @Test
+    public void testCreateVPSessionRequest_SetsCookie() throws Exception {
+        FormatDto formatDto = new FormatDto(null, null, null);
+        VPDefinitionResponseDto vpDefinitionResponseDto = new VPDefinitionResponseDto("id", new ArrayList<>(), "name", "purpose", formatDto, new ArrayList<>());
+        VPRequestCreateDto createDto = new VPRequestCreateDto("cId", "tId", "pdId", "nonce", vpDefinitionResponseDto, false, true);
+        VPRequestResponseDto responseDto = new VPRequestResponseDto("tId", "rId", mock(), 0L, "");
+
+        when(verifiablePresentationRequestService.createAuthorizationRequest(any())).thenReturn(responseDto);
+
+        String expectedCookieValue = Base64.getEncoder().encodeToString("tId".getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(post("/vp-session-request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(createDto)))
+                .andExpect(status().isCreated())
+                .andExpect(header().exists("Set-Cookie"))
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("transaction_id=" + expectedCookieValue)))
+                .andExpect(header().string("Set-Cookie", org.hamcrest.Matchers.containsString("HttpOnly")));
     }
 }

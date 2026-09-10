@@ -3,11 +3,11 @@ import CameraAccessDenied from "./CameraAccessDenied";
 import { useAppDispatch } from "../../../redux/hooks";
 import {
   goToHomeScreen,
-  verificationComplete,
+  verificationComplete
 } from "../../../redux/features/verification/verification.slice";
 import { raiseAlert } from "../../../redux/features/alerts/alerts.slice";
-import { QRCodeVerification } from "@mosip/react-inji-verify-sdk";
-import { DisplayTimeout } from "../../../utils/config";
+import { QRCodeVerification } from "@injistack/react-inji-verify-sdk";
+import { getClientId, isVPSubmissionSupported, vcVerificationV2Request} from "../../../utils/commonUtils";
 
 function QrScanner({ onClose, scannerActive }: {
   onClose: () => void;
@@ -21,23 +21,21 @@ function QrScanner({ onClose, scannerActive }: {
     setIsScanning(true);
   }, []);
 
-  const scheduleVcDisplayTimeOut = () => {
-    setTimeout(() => {
-      dispatch(goToHomeScreen({}));
-    }, DisplayTimeout)
-  };
+const handleOnVCProcessed = (data: any[]) => {
+        const vc = data[0].vc;
+        const verificationResponse = data[0].verificationResponse;
+    const vcStatus = verificationResponse.verificationStatus ??
+        verificationResponse.vcResults?.[0]?.vcStatus ??
+        verificationResponse.vpResultStatus;
 
-  const handleOnVCProcessed = (data: {
-    vc: unknown;
-    vcStatus: string
-  }[]) => {
-    dispatch(verificationComplete({verificationResult: data[0]}));
-    scheduleVcDisplayTimeOut();
-  }
-
-  function getClientId() {
-    return window._env_.CLIENT_ID;
-  }
+        dispatch(verificationComplete({verificationResult: {
+                    vc,
+                    vcStatus,
+                    verificationResponse
+                }
+            })
+        );
+};
 
   return (
     <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black lg:relative lg:inset-auto lg:w-[21rem] lg:h-auto lg:aspect-square lg:bg-transparent">
@@ -68,6 +66,8 @@ function QrScanner({ onClose, scannerActive }: {
             }
           }}
           clientId={getClientId()}
+          isVPSubmissionSupported={isVPSubmissionSupported()}
+          vcVerificationV2Request ={vcVerificationV2Request}
         />
       </div>
 

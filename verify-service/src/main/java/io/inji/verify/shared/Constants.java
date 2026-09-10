@@ -26,6 +26,7 @@ public final class Constants {
     public static final String VP_REQUEST_URI = "/vp-request";
     public static final String RESPONSE_TYPE =  "vp_token";
     public static final String RESPONSE_MODE =  "direct_post";
+    public static final String COOKIE_NAME = "transaction_id";
 
     public static final String TRANSACTION_ID_PREFIX = "txn";
     public static final String REQUEST_ID_PREFIX = "req";
@@ -47,4 +48,6 @@ public final class Constants {
     public static final String KEY_VERIFIABLE_CREDENTIAL = "verifiableCredential";
     public static final String KEY_CREDENTIAL = "credential";
 
+    // STATUS PURPOSE
+    public static final String STATUS_PURPOSE_REVOKED = "revocation";
 }

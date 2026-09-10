@@ -5,10 +5,10 @@
    <modelVersion>4.0.0</modelVersion>
    <groupId>io.inji.verify</groupId>
    <artifactId>uitest-injiverify</artifactId>
-   <version>0.15.1</version>
+   <version>0.18.2</version>
    <name>inji-ui-verify</name>
    <description>Parent project of ui automation of inji-verify</description>
-   <url>https://github.com/mosip/inji-verify</url>
+   <url>https://github.com/inji/inji-verify</url>
 
     <licenses>
         <license>
@@ -21,8 +21,8 @@
         <developer>
             <name>Mosip</name>
             <email>mosip.emailnotifier@gmail.com</email>
-            <organization>io.mosip</organization>
-            <organizationUrl>https://github.com/mosip/inji-verify</organizationUrl>
+            <organization>io.inji</organization>
+            <organizationUrl>https://github.com/inji/inji-verify</organizationUrl>
         </developer>
     </developers>
 
@@ -50,7 +50,7 @@
         <browserstack.local.version>1.1.5</browserstack.local.version>
         <browserstack.sdk.version>1.31.1</browserstack.sdk.version>
         <commons.lang.version>2.6</commons.lang.version>
-        <aws.sdk.s3.version>1.12.597</aws.sdk.s3.version>
+        <aws.sdk.s3.version>1.12.794</aws.sdk.s3.version>
     </properties>
 
     <dependencies>
@@ -170,6 +170,17 @@
             <version>7.17.0</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>javase</artifactId>
+            <version>3.5.3</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -177,7 +188,7 @@
             <testResource>
                 <directory>src/test/resources</directory>
                 <includes>
-                    <include>**/*.feature</include>
+                    <include>**/*</include>
                 </includes>
             </testResource>
         </testResources>

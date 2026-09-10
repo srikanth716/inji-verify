@@ -11,6 +11,9 @@ import {
   textColorMapping,
 } from "../../../../utils/config";
 import VcDetailsGrid from "./VcDetailsGrid";
+import i18next from "i18next";
+import VcSvgTemplate from "./VcSvgTemplate";
+import { getTemplateUrl } from "../../../../utils/svg-template-utils";
 
 interface ModalProps {
   isOpen: boolean;
@@ -30,7 +33,9 @@ const DisplayVcDetailsModal: React.FC<ModalProps> = ({
   logo,
 }) => {
   const { t } = useTranslation("Verify");
-  const orderedDetails = vc && getDetailsOrder(vc);
+  const currentLang = i18next.language;
+  const orderedDetails = vc && getDetailsOrder(vc, currentLang);
+  const templateUrl = getTemplateUrl(vc);
 
   if (!isOpen) return null;
   return (
@@ -51,10 +56,10 @@ const DisplayVcDetailsModal: React.FC<ModalProps> = ({
                 {convertToTitleCase(vcType)}
               </h2>
               <div
-                className={`rounded-xl max-w-[120px] ${backgroundColorMapping[status]} border ${borderColorMapping[status]} p-1`}
+                className={`rounded-xl max-w-[120px] ${backgroundColorMapping[status as VcStatus]} border ${borderColorMapping[status as VcStatus]} p-1`}
               >
                 <p
-                  className={`font-normal text-smallTextSize text-center ${textColorMapping[status]}`}
+                  className={`font-normal text-smallTextSize text-center ${textColorMapping[status as VcStatus]}`}
                 >
                   {t(status)}
                 </p>
@@ -70,10 +75,11 @@ const DisplayVcDetailsModal: React.FC<ModalProps> = ({
         </div>
 
         <div className="space-y-4">
-          <VcDetailsGrid
-            orderedDetails={orderedDetails}
-            vc={vc}
-          />
+          {templateUrl ? (
+            <VcSvgTemplate vc={vc} templateUrl={templateUrl} />
+          ) : (
+            <VcDetailsGrid orderedDetails={orderedDetails} vc={vc} />
+          )}
         </div>
 
         <div className="flex justify-end space-x-4 mt-6">

@@ -1,6 +1,6 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
-import { claim, VpSubmissionResultInt } from "../../../../types/data-types";
+import {claim, VcStatus, VpSubmissionResultInt} from "../../../../types/data-types";
 import { useVerifyFlowSelector } from "../../../../redux/features/verification/verification.selector";
 import {
   backgroundColorMapping,
@@ -10,16 +10,16 @@ import {
 
 interface VpVerifyResultSummaryProps {
   verifiedVcs: VpSubmissionResultInt[];
-  unverifiedClaims: claim[];
+  unverifiedCredentials: claim[];
 }
 
 const VpVerifyResultSummary: React.FC<VpVerifyResultSummaryProps> = ({
   verifiedVcs,
-  unverifiedClaims,
+  unverifiedCredentials,
 }) => {
   const { t } = useTranslation("Verify");
-  const originalSelectedClaims = useVerifyFlowSelector((state) => state.originalSelectedClaims);
-  const NoOfClaims = originalSelectedClaims.length;
+  const originalSelectedCredentials = useVerifyFlowSelector((state) => state.originalSelectedCredentials);
+  const NoOfClaims = originalSelectedCredentials.length;
   const NoOfValid: number = verifiedVcs.filter(
     (vc) => vc.vcStatus === "SUCCESS"
   ).length;
@@ -28,6 +28,9 @@ const VpVerifyResultSummary: React.FC<VpVerifyResultSummaryProps> = ({
   ).length;
   const NoOfInvalid: number = verifiedVcs.filter(
     (vc) => vc.vcStatus === "INVALID"
+  ).length;
+  const NoOfRevoked: number = verifiedVcs.filter(
+    (vc) => vc.vcStatus === "REVOKED"
   ).length;
 
   return (
@@ -40,9 +43,9 @@ const VpVerifyResultSummary: React.FC<VpVerifyResultSummaryProps> = ({
       <div className="flex justify-center w-[392px]">
         {verifiedVcs.map((vc, index) => {
           const status = vc.vcStatus;
-          const bgColor = backgroundColorMapping[status];
-          const textColor = textColorMapping[status];
-          const borderColor = borderColorMapping[status];
+          const bgColor = backgroundColorMapping[status as VcStatus];
+          const textColor = textColorMapping[status as VcStatus];
+          const borderColor = borderColorMapping[status as VcStatus];
           return (
             index ===
               verifiedVcs.findIndex(
@@ -63,13 +66,15 @@ const VpVerifyResultSummary: React.FC<VpVerifyResultSummaryProps> = ({
                       NoOfExpired + "/" + NoOfClaims}
                     {vc.vcStatus === "INVALID" &&
                       NoOfInvalid + "/" + NoOfClaims}
+                    {vc.vcStatus === "REVOKED" &&
+                      NoOfRevoked + "/" + NoOfClaims}
                   </span>
                 </p>
               </div>
             )
           );
         })}
-        {unverifiedClaims.length > 0 && (
+        {unverifiedCredentials.length > 0 && (
           <div
             className={`rounded-xl bg-[#EFEFEF] min-w-[80px] border border-[#C4C4C4] mr-2 p-1`}
           >
@@ -77,7 +82,7 @@ const VpVerifyResultSummary: React.FC<VpVerifyResultSummaryProps> = ({
               className={`font-normal text-lgNormalTextSize text-center text-[#636363]`}
             >
               {t("notShared")}{" "}
-              {unverifiedClaims.length + "/" + NoOfClaims}
+              {unverifiedCredentials.length + "/" + NoOfClaims}
             </p>
           </div>
         )}

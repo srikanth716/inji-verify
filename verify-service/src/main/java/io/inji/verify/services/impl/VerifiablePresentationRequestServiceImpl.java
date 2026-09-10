@@ -2,7 +2,11 @@ package io.inji.verify.services.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nimbusds.jose.*;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JOSEObjectType;
+import com.nimbusds.jose.JWSSigner;
+import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.crypto.Ed25519Signer;
 import com.nimbusds.jose.jwk.OctetKeyPair;
 import com.nimbusds.jose.util.JSONObjectUtils;
@@ -35,15 +39,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.async.DeferredResult;
-
 import java.text.ParseException;
 import java.time.Instant;
-import java.util.*;
-
+import java.util.List;
+import java.util.Optional;
+import java.util.HashMap;
+import java.util.NoSuchElementException;
+import java.util.Date;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
-
 import static io.inji.verify.shared.Constants.VP_FORMATS;
-import static io.inji.verify.shared.Constants.VP_REQUEST_URI;
 
 @Service
 @Slf4j
@@ -80,15 +85,17 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
         long expiresAt = Instant.now().plusSeconds(Constants.DEFAULT_EXPIRY).toEpochMilli();
         String nonce = vpRequestCreate.getNonce() != null ? vpRequestCreate.getNonce() : SecurityUtils.generateNonce();
         String responseUri = verifyServiceBaseUrl + Constants.RESPONSE_SUBMISSION_URI_ROOT + Constants.RESPONSE_SUBMISSION_URI;
+        boolean acceptVPWithoutHolderProof = vpRequestCreate.isAcceptVPWithoutHolderProof();
+        boolean responseCodeValidationRequired = vpRequestCreate.isResponseCodeValidationRequired();
 
         AuthorizationRequestResponseDto authorizationRequestResponseDto = Optional.ofNullable(vpRequestCreate.getPresentationDefinitionId())
                 .map(presentationDefinitionId -> presentationDefinitionRepository.findById(presentationDefinitionId)
                 .map(presentationDefinition -> {
                     VPDefinitionResponseDto vpDefinitionResponseDto = new VPDefinitionResponseDto(presentationDefinition.getId(), presentationDefinition.getInputDescriptors(), presentationDefinition.getName(), presentationDefinition.getPurpose(), presentationDefinition.getFormat(), presentationDefinition.getSubmissionRequirements());
-                    return new AuthorizationRequestResponseDto(vpRequestCreate.getClientId(), presentationDefinition.getURL(), vpDefinitionResponseDto, nonce, responseUri);
+                    return new AuthorizationRequestResponseDto(vpRequestCreate.getClientId(), presentationDefinition.getURL(), vpDefinitionResponseDto, nonce, responseUri, acceptVPWithoutHolderProof, responseCodeValidationRequired);
                 })
                 .orElseThrow(PresentationDefinitionNotFoundException::new))
-                .orElseGet(() -> new AuthorizationRequestResponseDto(vpRequestCreate.getClientId(), null, vpRequestCreate.getPresentationDefinition(), nonce, responseUri));
+                .orElseGet(() -> new AuthorizationRequestResponseDto(vpRequestCreate.getClientId(), null, vpRequestCreate.getPresentationDefinition(), nonce, responseUri, acceptVPWithoutHolderProof, responseCodeValidationRequired));
 
         AuthorizationRequestCreateResponse authorizationRequestCreateResponse = new AuthorizationRequestCreateResponse(requestId, transactionId, authorizationRequestResponseDto, expiresAt);
         authorizationRequestCreateResponseRepository.save(authorizationRequestCreateResponse);
@@ -98,7 +105,6 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
             return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), null, authorizationRequestCreateResponse.getExpiresAt(), "%s/%s".formatted(requestUri, authorizationRequestCreateResponse.getRequestId()));
         }
         return new VPRequestResponseDto(authorizationRequestCreateResponse.getTransactionId(), authorizationRequestCreateResponse.getRequestId(), authorizationRequestCreateResponse.getAuthorizationDetails(), authorizationRequestCreateResponse.getExpiresAt(), null);
-
     }
 
     @Override
@@ -188,6 +194,7 @@ public class VerifiablePresentationRequestServiceImpl implements VerifiablePrese
                 })
                 .orElseThrow(VPRequestNotFoundException::new);
     }
+
     private String createAndSignAuthorizationRequestJwt(String verifierDid, AuthorizationRequestResponseDto authorizationRequest, String state) {
 
         try {
