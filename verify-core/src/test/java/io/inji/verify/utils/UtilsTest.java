@@ -1,19 +1,25 @@
 package io.inji.verify.utils;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.upokecenter.cbor.CBORObject;
-<<<<<<< HEAD:verify-service/src/test/java/io/inji/verify/utils/UtilsTest.java
-=======
 import io.inji.verify.dto.core.CredentialStatusErrorDto;
 import io.inji.verify.dto.core.ErrorDto;
 import io.inji.verify.dto.result.HolderProofCheckDto;
 import io.inji.verify.dto.verification.ExpiryCheckDto;
 import io.inji.verify.dto.verification.SchemaAndSignatureCheckDto;
->>>>>>> 73095bd4 (#2148 split into two components verify-core and verify-service (#2231)):verify-core/src/test/java/io/inji/verify/utils/UtilsTest.java
 import io.inji.verify.dto.verification.StatusCheckDto;
+import io.inji.verify.exception.CredentialStatusCheckException;
 import io.inji.verify.exception.InvalidCredentialException;
+import io.inji.verify.shared.Constants;
 import io.mosip.pixelpass.PixelPass;
 import io.mosip.vercred.vcverifier.constants.CredentialFormat;
 import io.mosip.vercred.vcverifier.data.CredentialStatusResult;
+import io.mosip.vercred.vcverifier.data.VerificationResult;
+import io.mosip.vercred.vcverifier.data.VerificationStatus;
+import io.mosip.vercred.vcverifier.exception.StatusCheckErrorCode;
+import io.mosip.vercred.vcverifier.exception.StatusCheckException;
+import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -126,9 +132,10 @@ public class UtilsTest {
 
     @Test
     void shouldReturnSdJwtFormatForValidSdJwtString() {
-        String sdJwt = "eyJ0eXAiOiJ2YytzZC1qd3QifQ.payload.signature~disclosure";
+        // eyJ0eXAiOiJkYytzZC1qd3QifQ = {"typ":"dc+sd-jwt"}
+        String sdJwt = "eyJ0eXAiOiJkYytzZC1qd3QifQ.payload.signature~disclosure";
         CredentialFormat format = Utils.getCredentialFormat(sdJwt);
-        assertEquals(CredentialFormat.VC_SD_JWT, format);
+        assertEquals(CredentialFormat.DC_SD_JWT, format);
     }
 
     @Test
@@ -276,8 +283,6 @@ public class UtilsTest {
         assertNotNull(result);
         assertEquals("John", result.get("name"));
     }
-<<<<<<< HEAD:verify-service/src/test/java/io/inji/verify/utils/UtilsTest.java
-=======
 
     // ── generateID ────────────────────────────────────────────────────────────
 
@@ -671,5 +676,4 @@ public class UtilsTest {
         assertNotNull(result);
         assertTrue(result.containsKey("sub"));
     }
->>>>>>> 73095bd4 (#2148 split into two components verify-core and verify-service (#2231)):verify-core/src/test/java/io/inji/verify/utils/UtilsTest.java
 }
