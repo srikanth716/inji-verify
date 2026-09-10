@@ -1,5 +1,6 @@
 import {
     AppError,
+    DcApiSubmissionData,
     DcqlQuery,
     VPRequestBody, VPVerificationRequest,
 } from "../components/openid4vp-verification/OpenID4VPVerification.types";
@@ -7,14 +8,23 @@ import { vcSubmissionBody, VCVerificationV2Request, VCVerificationV2Response} fr
 import { QrData } from "../types/OVPSchemeQrData";
 import { isCWT } from "./cborUtils";
 
+const base64UrlEncode = (bytes: Uint8Array): string =>
+  btoa(String.fromCharCode.apply(null, Array.from(bytes)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+
 const generateNonce = (): string => {
-  const randomBytes = new Uint8Array(16);
-  crypto.getRandomValues(randomBytes);
-  return btoa(String.fromCharCode.apply(null, Array.from(randomBytes)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-}
+  if (!window.crypto?.getRandomValues) {
+    throw new Error(
+      "Web Crypto API is required. This SDK supports only browsers with crypto.getRandomValues()."
+    );
+  }
+
+  const bytes = new Uint8Array(32);
+  window.crypto.getRandomValues(bytes);
+  return base64UrlEncode(bytes);
+};
 
 export const vcVerificationV2 = async (credential: unknown, url: string, config?: VCVerificationV2Request): Promise<VCVerificationV2Response> => {
     const vcString = isCWT(credential)
@@ -81,7 +91,7 @@ export const vcSubmission = async (
   }
 };
 
-const isAppError = (error: unknown): error is AppError => (
+export const isAppError = (error: unknown): error is AppError => (
   typeof error === 'object' &&
   error !== null &&
   'errorMessage' in error &&
@@ -112,7 +122,8 @@ export const vpSessionRequest = async (
   dcqlQuery: DcqlQuery,
   clientId: string,
   txnId?: string,
-  responseCodeValidationRequired?: boolean
+  responseCodeValidationRequired?: boolean,
+  responseMode?: "direct_post" | "dc_api"
 ) => {
   const requestBody: VPRequestBody = {
     clientId: clientId,
@@ -123,6 +134,9 @@ export const vpSessionRequest = async (
   if (responseCodeValidationRequired) {
     requestBody.responseCodeValidationRequired = true;
   }
+  if (responseMode) {
+    requestBody.responseMode = responseMode;
+  }
 
   try {
     const response = await fetch(url + "/v2/vp-session-request", {
@@ -131,6 +145,8 @@ export const vpSessionRequest = async (
         "Content-Type": "application/json",
       },
       credentials: "include",
+      // Keep an origin-bearing Referer as a best-effort fallback when Origin is stripped.
+      referrerPolicy: "origin",
       body: JSON.stringify(requestBody),
     });
     if (response.status !== 201) {
@@ -148,6 +164,66 @@ export const vpSessionRequest = async (
     return data;
   } catch (error) {
     console.error(error);
+    if (isAppError(error)) {
+      throw error;
+    }
+    if (error instanceof Error) {
+      throw Error(error.message);
+    } else {
+      throw new Error("An unknown error occurred");
+    }
+  }
+};
+
+export const getVpRequestJwt = async (requestUri: string, signal?: AbortSignal): Promise<string> => {
+  try {
+    const response = await fetch(requestUri, { signal });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const record = errorData as Record<string, unknown>;
+      throw {
+        errorCode: (record.errorCode as string) || "NO_AUTH_REQUEST",
+        errorMessage:
+          (record.errorMessage as string) ||
+          (record.error as string) ||
+          "Failed to fetch authorization request JWT",
+      } as AppError;
+    }
+    return await response.text();
+  } catch (error) {
+    if (isAppError(error)) {
+      throw error;
+    }
+    if (error instanceof Error) {
+      throw Error(error.message);
+    } else {
+      throw new Error("An unknown error occurred");
+    }
+  }
+};
+
+export const vpResultSubmission = async (responseUri: string, requestId: string, data: DcApiSubmissionData): Promise<void> => {
+  try {
+    const response = await fetch(responseUri, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      referrerPolicy: "origin",
+      body: JSON.stringify({ ...data, requestId }),
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const record = errorData as Record<string, unknown>;
+      throw {
+        errorCode: (record.errorCode as string) || "DC_API_SUBMIT_FAILED",
+        errorMessage:
+          (record.errorMessage as string) ||
+          (record.error as string) ||
+          "Failed to submit DC API presentation",
+      } as AppError;
+    }
+  } catch (error) {
     if (isAppError(error)) {
       throw error;
     }

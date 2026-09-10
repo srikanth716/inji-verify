@@ -5,6 +5,7 @@ import static io.restassured.RestAssured.given;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -97,12 +98,32 @@ public class InjiVerifyUtil extends AdminTestUtil {
 					InjiVerifyConfigManager.getproperty(InjiVerifyConstants.PRESENTATION_DEFINITION_ID));
 		}
 
-		if (jsonString.contains("$INJIVERIFYBASEURL$")) {
-			jsonString = replaceKeywordWithValue(jsonString, "$INJIVERIFYBASEURL$",
-					InjiVerifyConfigManager.getproperty(InjiVerifyConstants.INJI_VERIFY_BASE_URL));
+		String injiVerifyBaseUrlValue = InjiVerifyConfigManager
+				.getproperty(InjiVerifyConstants.INJI_VERIFY_BASE_URL);
+		if (injiVerifyBaseUrlValue != null) {
+			injiVerifyBaseUrlValue = injiVerifyBaseUrlValue.trim();
+		}
+
+		if (jsonString.contains(InjiVerifyConstants.INJI_VERIFY_BASE_URL_PLACEHOLDER)) {
+			jsonString = replaceKeywordWithValue(jsonString, InjiVerifyConstants.INJI_VERIFY_BASE_URL_PLACEHOLDER,
+					injiVerifyBaseUrlValue);
+		}
+
+		if (jsonString.contains(InjiVerifyConstants.REDIRECT_URI_CLIENT_ID_PLACEHOLDER)) {
+			jsonString = replaceKeywordWithValue(jsonString, InjiVerifyConstants.REDIRECT_URI_CLIENT_ID_PLACEHOLDER,
+					buildRedirectUriClientId(injiVerifyBaseUrlValue));
 		}
 
 		return jsonString;
+	}
+
+	public static String buildRedirectUriClientId(String injiVerifyBaseUrlValue) {
+		String base = injiVerifyBaseUrlValue == null ? "" : injiVerifyBaseUrlValue.trim();
+		while (base.endsWith("/")) {
+			base = base.substring(0, base.length() - 1);
+		}
+		return InjiVerifyConstants.REDIRECT_URI_CLIENT_ID_PREFIX + base
+				+ InjiVerifyConstants.VP_SUBMISSION_DIRECT_POST_PATH;
 	}
 
 	public static String getResponseCode() {
@@ -236,24 +257,15 @@ public class InjiVerifyUtil extends AdminTestUtil {
 		}
 		String value = setCookieHeader.split(";", 2)[0];
 
-		if (testCaseName != null) {
-			if (testCaseName.contains(TC_VP_SESSION_REQUEST_RESPONSE_CODE_VALIDATION_FALSE_SID)) {
-				setTransactionCookieByFlag(value, false);
-				return;
-			}
-			if (testCaseName.contains(TC_VP_SESSION_REQUEST_ALL_VALID_SMOKE_SID)) {
-				setTransactionCookieByFlag(value, true);
-				return;
-			}
+		if (testCaseName == null) {
+			return;
 		}
-		try {
-			JSONObject requestJson = new JSONObject(requestBodyJson);
-			if (requestJson.has("responseCodeValidationRequired")) {
-				boolean flag = requestJson.getBoolean("responseCodeValidationRequired");
-				setTransactionCookieByFlag(value, flag);
-			}
-		} catch (Exception e) {
-			logger.error("Failed saving transaction cookie by responseCodeValidationRequired", e);
+		if (testCaseName.contains(TC_VP_SESSION_REQUEST_RESPONSE_CODE_VALIDATION_FALSE_SID)) {
+			setTransactionCookieByFlag(value, false);
+			return;
+		}
+		if (testCaseName.contains(TC_VP_SESSION_REQUEST_ALL_VALID_SMOKE_SID)) {
+			setTransactionCookieByFlag(value, true);
 		}
 	}
 
@@ -401,6 +413,206 @@ public class InjiVerifyUtil extends AdminTestUtil {
 
 	public static String decodeBase64Url(String encoded) {
 		return new String(Base64.getUrlDecoder().decode(encoded));
+	}
+
+	/**
+	 * Validates client_metadata shape per OpenID4VP v1.0: vp_formats_supported
+	 * (not vp_formats), ldp_vc (not ldp_vp), dc+sd-jwt, and no client_name.
+	 * Does not enforce optional proof_type / sd-jwt_alg_values / kb-jwt_alg_values
+	 * arrays or legacy vc+sd-jwt. Validated in Java because Mosip output validation
+	 * cannot resolve JSON paths containing '+' (e.g. dc+sd-jwt).
+	 */
+	private static final String CLIENT_METADATA = "client_metadata";
+	private static final String VP_FORMATS = "vp_formats";
+	private static final String VP_FORMATS_SUPPORTED = "vp_formats_supported";
+	private static final String CLIENT_NAME = "client_name";
+	private static final String LDP_VP = "ldp_vp";
+	private static final String LDP_VC = "ldp_vc";
+	private static final String DC_SD_JWT = "dc+sd-jwt";
+	private static final String AUTHORIZATION_DETAILS = "authorizationDetails";
+	private static final String RESPONSE_CODE_VALIDATION_REQUIRED = "responseCodeValidationRequired";
+	private static final String VP_REQUEST_WITH_VALID_DATA_FOR_VP_SESSION_RESULT_TEMPLATE =
+			"VpRequestWithvaliddataForVpSessionResult";
+
+	public static void validateOpenId4VpClientMetadata(String payloadJson) throws AdminTestException {
+		JSONObject payload = new JSONObject(payloadJson);
+
+		if (!payload.has(CLIENT_METADATA)) {
+			throw new AdminTestException(
+					"client_metadata must be present in Authorization Request for decentralized_identifier client_id");
+		}
+
+		JSONObject clientMetadata = payload.getJSONObject(CLIENT_METADATA);
+		assertForbiddenClientMetadataKeys(clientMetadata);
+
+		if (!clientMetadata.has(VP_FORMATS_SUPPORTED)) {
+			throw new AdminTestException(
+					"client_metadata must include vp_formats_supported per OpenID4VP v1.0");
+		}
+
+		JSONObject vpFormatsSupported = clientMetadata.getJSONObject(VP_FORMATS_SUPPORTED);
+		assertVpFormatsSupportedKeys(vpFormatsSupported);
+		assertFormatObjectPresent(vpFormatsSupported, DC_SD_JWT);
+	}
+
+	/**
+	 * Validates OpenID4VP redirect_uri: client identifier create responses:
+	 * by-value Authorization Request, URI part equals response_uri, and in-band
+	 * client_metadata (issue #2229 / #1720).
+	 */
+	public static void validateRedirectUriClientIdCreateResponse(String testCaseName, String requestJson,
+			String responseJson) throws AdminTestException {
+		if (testCaseName == null || !testCaseName.contains("CreateRedirectUriClientId")
+				|| !testCaseName.contains("_Valid_") || testCaseName.contains("_Neg")) {
+			return;
+		}
+		if (responseJson == null || responseJson.isBlank()) {
+			throw new AdminTestException("Empty response for redirect_uri: clientId create");
+		}
+
+		JSONObject request = new JSONObject(requestJson);
+		JSONObject response = new JSONObject(responseJson);
+		String expectedClientId = request.optString("clientId", "");
+		if (!expectedClientId.startsWith(InjiVerifyConstants.REDIRECT_URI_CLIENT_ID_PREFIX)) {
+			throw new AdminTestException("Request clientId must use redirect_uri: prefix");
+		}
+		String expectedResponseUri = expectedClientId
+				.substring(InjiVerifyConstants.REDIRECT_URI_CLIENT_ID_PREFIX.length());
+
+		if (response.has("requestUri") && !response.isNull("requestUri")
+				&& !response.optString("requestUri").isBlank()) {
+			throw new AdminTestException(
+					"redirect_uri: clientId must return Authorization Request by value (requestUri must be absent)");
+		}
+		if (!response.has(AUTHORIZATION_DETAILS) || response.isNull(AUTHORIZATION_DETAILS)) {
+			throw new AdminTestException(
+					"redirect_uri: clientId must return authorizationDetails (by-value / unsigned request)");
+		}
+
+		JSONObject authorizationDetails = response.getJSONObject(AUTHORIZATION_DETAILS);
+		String actualClientId = authorizationDetails.optString("clientId", null);
+		if (!expectedClientId.equals(actualClientId)) {
+			throw new AdminTestException(
+					"authorizationDetails.clientId mismatch. expected=" + expectedClientId + " actual=" + actualClientId);
+		}
+		String actualResponseUri = authorizationDetails.optString("responseUri", null);
+		if (!expectedResponseUri.equals(actualResponseUri)) {
+			throw new AdminTestException(
+					"authorizationDetails.responseUri must equal URI part of redirect_uri: clientId. expected="
+							+ expectedResponseUri + " actual=" + actualResponseUri);
+		}
+
+		if (!authorizationDetails.has(CLIENT_METADATA) || authorizationDetails.isNull(CLIENT_METADATA)) {
+			throw new AdminTestException(
+					"client_metadata must be present in-band for redirect_uri: clientId (OpenID4VP 1.0)");
+		}
+		JSONObject clientMetadata = authorizationDetails.getJSONObject(CLIENT_METADATA);
+		assertForbiddenClientMetadataKeys(clientMetadata);
+		if (!clientMetadata.has(VP_FORMATS_SUPPORTED)) {
+			throw new AdminTestException(
+					"client_metadata must include vp_formats_supported for redirect_uri: clientId");
+		}
+		JSONObject vpFormatsSupported = clientMetadata.getJSONObject(VP_FORMATS_SUPPORTED);
+		assertVpFormatsSupportedKeys(vpFormatsSupported);
+		assertFormatObjectPresent(vpFormatsSupported, DC_SD_JWT);
+	}
+
+	private static void assertForbiddenClientMetadataKeys(JSONObject clientMetadata) throws AdminTestException {
+		Iterator<String> keys = clientMetadata.keys();
+		while (keys.hasNext()) {
+			switch (keys.next()) {
+				case VP_FORMATS:
+					throw new AdminTestException(
+							"Deprecated vp_formats must not be present in client_metadata; expected vp_formats_supported per OpenID4VP v1.0");
+				case CLIENT_NAME:
+					throw new AdminTestException("client_name must not be present in client_metadata");
+				default:
+					break;
+			}
+		}
+	}
+
+	private static void assertVpFormatsSupportedKeys(JSONObject vpFormatsSupported) throws AdminTestException {
+		Iterator<String> keys = vpFormatsSupported.keys();
+		while (keys.hasNext()) {
+			switch (keys.next()) {
+				case LDP_VP:
+					throw new AdminTestException(
+							"Deprecated ldp_vp must not be present in vp_formats_supported; expected ldp_vc per OpenID4VP v1.0");
+				default:
+					break;
+			}
+		}
+		assertFormatObjectPresent(vpFormatsSupported, LDP_VC);
+	}
+
+	private static void assertFormatObjectPresent(JSONObject vpFormatsSupported, String formatKey)
+			throws AdminTestException {
+		if (!vpFormatsSupported.has(formatKey) || !(vpFormatsSupported.opt(formatKey) instanceof JSONObject)) {
+			throw new AdminTestException("vp_formats_supported must include " + formatKey + " as a JSON object");
+		}
+	}
+
+	/**
+	 * Validates authorizationDetails.responseCodeValidationRequired in VP request
+	 * create responses. Done in Java because Mosip output validation does not
+	 * reliably resolve nested boolean fields.
+	 */
+	public static void validateAuthorizationDetailsResponseCodeValidationRequired(String responseJson,
+			boolean expected) throws AdminTestException {
+		JSONObject response = new JSONObject(responseJson);
+		if (!response.has(AUTHORIZATION_DETAILS) || response.isNull(AUTHORIZATION_DETAILS)) {
+			throw new AdminTestException(
+					"authorizationDetails must be present in VP request create response for pre-registered clientId");
+		}
+		JSONObject authorizationDetails = response.getJSONObject(AUTHORIZATION_DETAILS);
+		if (!authorizationDetails.has(RESPONSE_CODE_VALIDATION_REQUIRED)) {
+			throw new AdminTestException("authorizationDetails must include " + RESPONSE_CODE_VALIDATION_REQUIRED);
+		}
+		boolean actual = authorizationDetails.getBoolean(RESPONSE_CODE_VALIDATION_REQUIRED);
+		if (actual != expected) {
+			throw new AdminTestException(AUTHORIZATION_DETAILS + "." + RESPONSE_CODE_VALIDATION_REQUIRED
+					+ " expected " + expected + " but was " + actual);
+		}
+	}
+
+	public static boolean usesVpSessionResultOutputTemplate(String outputTemplate) {
+		return outputTemplate != null
+				&& outputTemplate.contains(VP_REQUEST_WITH_VALID_DATA_FOR_VP_SESSION_RESULT_TEMPLATE);
+	}
+
+	/**
+	 * Validates authorizationDetails.responseCodeValidationRequired when the test
+	 * uses the VP session result output template. Skips when only status code is
+	 * checked or input JSON is unavailable.
+	 */
+	public static void validateAuthorizationDetailsResponseCodeValidationRequiredFromInput(
+			String outputTemplate, boolean checkOnlyStatusCodeInResponse, String inputJson, String responseJson)
+			throws AdminTestException {
+		if (!usesVpSessionResultOutputTemplate(outputTemplate) || checkOnlyStatusCodeInResponse) {
+			return;
+		}
+		if (inputJson == null || inputJson.trim().isEmpty()) {
+			throw new AdminTestException(
+					"Input JSON is required to validate authorizationDetails.responseCodeValidationRequired");
+		}
+		if (responseJson == null || responseJson.trim().isEmpty()) {
+			throw new AdminTestException(
+					"Response body is required to validate authorizationDetails.responseCodeValidationRequired");
+		}
+		try {
+			JSONObject requestJson = new JSONObject(inputJson);
+			if (requestJson.has(RESPONSE_CODE_VALIDATION_REQUIRED)) {
+				validateAuthorizationDetailsResponseCodeValidationRequired(responseJson,
+						requestJson.getBoolean(RESPONSE_CODE_VALIDATION_REQUIRED));
+			}
+		} catch (AdminTestException e) {
+			throw e;
+		} catch (Exception e) {
+			logger.error("Failed to parse input JSON for responseCodeValidationRequired validation", e);
+			throw new AdminTestException(
+					"Failed to parse input JSON for responseCodeValidationRequired validation: " + e.getMessage());
+		}
 	}
 
 	public static String decodeAndCombineJwt(String jwtString) {
