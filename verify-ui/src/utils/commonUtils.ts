@@ -222,56 +222,100 @@ export const getDetailsOrder = (vc: any, currentLanguage: string): { key: string
   }
 };
 
-const groupCredentialsByType = (matching: MatchingVc[]) => {
-  const groupedCredentials = new Map<string, MatchingVc[]>();
+const extractLocalTypeIdentifier = (typeValue: string): string => {
+  const hashIndex = typeValue.lastIndexOf("#");
+  if (hashIndex >= 0) {
+    const localId = typeValue.substring(hashIndex + 1);
+    return localId || typeValue;
+  }
+  const slashIndex = typeValue.lastIndexOf("/");
+  if (slashIndex >= 0) {
+    const localId = typeValue.substring(slashIndex + 1);
+    return localId || typeValue;
+  }
+  return typeValue;
+};
 
-  for (const credential of matching) {
-    const credentialType = getCredentialType(credential.vc);
-
-    if (!groupedCredentials.has(credentialType)) {
-      groupedCredentials.set(credentialType, []);
-    }
-
-    groupedCredentials.get(credentialType)!.push(credential);
+const credentialTypesMatch = (submittedType: string, configuredType: string): boolean => {
+  if (!submittedType || !configuredType) {
+    return false;
+  }
+  if (submittedType === configuredType) {
+    return true;
   }
 
-  return groupedCredentials;
-};
+  const submittedLocal = extractLocalTypeIdentifier(submittedType);
+  const configuredLocal = extractLocalTypeIdentifier(configuredType);
 
-const selectPreferredCredential = (credentials: MatchingVc[]) => {
-  const successfulCredential = credentials.find(
-    (credential) => credential.vcStatus === "SUCCESS"
+  return (
+    submittedLocal === configuredLocal ||
+    submittedType === configuredLocal ||
+    submittedLocal === configuredType
   );
-
-  return successfulCredential ?? credentials[0];
 };
 
-const filterPreferredCredentials = (matching: MatchingVc[]) => {
-  const groupedCredentials = groupCredentialsByType(matching);
+const getConfiguredTypeValuesFromClaim = (selectedClaim: claim): string[] => {
+  const configuredTypes: string[] = [];
 
-  return Array.from(groupedCredentials.values()).map(selectPreferredCredential);
+  for (const credentialDefinition of selectedClaim.dcqlQuery?.credentials ??
+    []) {
+    for (const typeGroup of credentialDefinition.meta?.type_values ?? []) {
+      for (const typeValue of typeGroup) {
+        if (typeof typeValue === "string" && typeValue) {
+          configuredTypes.push(typeValue);
+        }
+      }
+    }
+    for (const vctValue of credentialDefinition.meta?.vct_values ?? []) {
+      if (typeof vctValue === "string" && vctValue) {
+        configuredTypes.push(vctValue);
+      }
+    }
+  }
+
+  return configuredTypes;
+};
+
+const credentialMatchesClaim = (credential: any, selectedClaim: claim): boolean => {
+  const submittedType = getCredentialType(credential);
+  const configuredTypes = getConfiguredTypeValuesFromClaim(selectedClaim);
+
+  return configuredTypes.some((configuredType) =>
+    credentialTypesMatch(submittedType, configuredType),
+  );
 };
 
 export const calculateVerifiedClaims = (
   selectedClaims: claim[],
   verificationSubmissionResult: MatchingVc[]
-) => {
-  const matching = verificationSubmissionResult.filter((credential) =>
-    selectedClaims.some(
-      (claim) => getCredentialType(credential.vc) === claim.type
-    )
+) => verificationSubmissionResult;
+
+export const getDcqlCredentialQueryCount = (claims: claim[]): number =>
+  claims.reduce(
+    (count, selectedClaim) =>
+      count + (selectedClaim.dcqlQuery?.credentials?.length ?? 0),
+    0,
   );
 
-  return filterPreferredCredentials(matching);
+export const getTotalCredentialCount = (
+  verifiedVcs: MatchingVc[],
+  unverifiedClaims: claim[],
+  originalSelectedClaims: claim[],
+): number => {
+  const dcqlQueryCount = getDcqlCredentialQueryCount(originalSelectedClaims);
+  const submittedOrMissingCount =
+    verifiedVcs.length + getDcqlCredentialQueryCount(unverifiedClaims);
+
+  return Math.max(dcqlQueryCount, submittedOrMissingCount);
 };
 
 export const calculateUnverifiedClaims = (
   originalSelectedClaims: claim[],
   verificationSubmissionResult: { vc: LdpVc | object; vcStatus: VcStatus }[]
 ): claim[] => {
-  return originalSelectedClaims.filter((claim) => {
+  return originalSelectedClaims.filter((selectedClaim) => {
     return !verificationSubmissionResult.some(
-      (vcResult) => getCredentialType(vcResult.vc) === claim.type
+      (vcResult) => credentialMatchesClaim(vcResult.vc, selectedClaim),
     );
   });
 };
