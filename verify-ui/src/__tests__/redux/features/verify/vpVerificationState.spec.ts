@@ -4,7 +4,10 @@ import vpVerificationReducer, {
     setFlowType,
     getVpRequest,
     verificationSubmissionComplete,
-    resetVpRequest
+    resetVpRequest,
+    setSelectedWallet,
+    setShowWalletSelector,
+    showMissingCredentialOptions,
 } from "../../../../redux/features/verify/vpVerificationState";
 import { VCShareType } from "../../../../types/data-types";
 import {getVerifiableClaims, VerificationSteps} from "../../../../utils/config";
@@ -54,6 +57,87 @@ describe("vpVerification slice", () => {
 
         expect(state.selectedCredentials).toHaveLength(1);
         expect(state.sharingType).toBe(VCShareType.SINGLE);
+    });
+
+    test("should merge credential_sets from selected credentials into dcqlQuery", () => {
+        const firstCredentialSets = [
+            {
+                options: [["mosip_verifiable_credential_id"], ["life_insurance_credential_id"]],
+            },
+        ];
+        const secondCredentialSets = [
+            {
+                options: [["health_insurance_credential_id"]],
+            },
+        ];
+
+        const selectedCredentials = [
+            {
+                id: "1",
+                type: "Type1",
+                essential: true,
+                dcqlQuery: {
+                    credentials: [{ id: "mosip_verifiable_credential_id", format: "ldp_vc", meta: {} }],
+                    credential_sets: firstCredentialSets,
+                },
+            },
+            {
+                id: "2",
+                type: "Type2",
+                essential: false,
+                dcqlQuery: {
+                    credentials: [{ id: "life_insurance_credential_id", format: "ldp_vc", meta: {} }],
+                    credential_sets: secondCredentialSets,
+                },
+            },
+        ] as any;
+
+        const initialState = {
+            ...vpVerificationReducer(undefined, { type: "@@INIT" }),
+            selectedCredentials: [],
+            originalSelectedCredentials: [],
+            unVerifiedCredentials: [],
+            dcqlQuery: mockDcqlQuery,
+        } as any;
+
+        const state = vpVerificationReducer(
+            initialState,
+            setSelectedCredentials({ selectedCredentials })
+        );
+
+        expect(state.dcqlQuery.credentials).toHaveLength(2);
+        expect(state.dcqlQuery.credential_sets).toEqual([
+            ...firstCredentialSets,
+            ...secondCredentialSets,
+        ]);
+    });
+
+    test("should omit credential_sets from dcqlQuery when none of the selected credentials define it", () => {
+        const selectedCredentials = [
+            {
+                id: "2",
+                type: "Type2",
+                essential: false,
+                dcqlQuery: {
+                    credentials: [{ id: "desc2", format: "dc+sd-jwt", meta: {} }],
+                },
+            },
+        ] as any;
+
+        const initialState = {
+            ...vpVerificationReducer(undefined, { type: "@@INIT" }),
+            selectedCredentials: [],
+            originalSelectedCredentials: [],
+            unVerifiedCredentials: [],
+            dcqlQuery: mockDcqlQuery,
+        } as any;
+
+        const state = vpVerificationReducer(
+            initialState,
+            setSelectedCredentials({ selectedCredentials })
+        );
+
+        expect(state.dcqlQuery).not.toHaveProperty("credential_sets");
     });
 
     test("should handle setSelectCredential with SelectWalletPanel open", () => {
@@ -142,6 +226,82 @@ describe("vpVerification slice", () => {
         expect(state.flowType).toBe("crossDevice");
     });
 
+    test("uses unverified credentials when requesting again after partial sharing", () => {
+        const missingCredential = {
+            id: "missing",
+            type: "Type2",
+            essential: false,
+            dcqlQuery: mockDcqlQuery,
+        } as any;
+        const initialState = {
+            ...vpVerificationReducer(undefined, { type: "@@INIT" }),
+            isPartiallyShared: true,
+            unVerifiedCredentials: [missingCredential],
+            selectedCredentials: [],
+            originalSelectedCredentials: [],
+        } as any;
+
+        const state = vpVerificationReducer(
+            initialState,
+            getVpRequest({ selectedCredentials: [] }),
+        );
+
+        expect(state.selectedCredentials).toEqual([missingCredential]);
+        expect(state.unVerifiedCredentials).toEqual([]);
+        expect(state.activeScreen).toBe(VerificationSteps.VERIFY.ScanQrCode);
+    });
+
+    test("stores the selected wallet and opens the wallet selector", () => {
+        const selectedWalletState = vpVerificationReducer(
+            vpVerificationReducer(undefined, { type: "@@INIT" }),
+            setSelectedWallet({ walletId: "wallet-id", walletBaseUrl: "https://wallet.example" }),
+        );
+        const state = vpVerificationReducer(selectedWalletState, setShowWalletSelector());
+
+        expect(state.selectedWalletId).toBe("wallet-id");
+        expect(state.selectedWalletBaseUrl).toBe("https://wallet.example");
+        expect(state.SelectWalletPanel).toBe(true);
+        expect(state.SelectionPanel).toBe(false);
+        expect(state.flowType).toBe("sameDevice");
+    });
+
+    test("shows missing credentials in the wallet selector for same-device flow", () => {
+        const missingCredentials = [
+            { id: "missing", type: "Type2", essential: false, dcqlQuery: mockDcqlQuery },
+        ] as any;
+        const initialState = {
+            ...vpVerificationReducer(undefined, { type: "@@INIT" }),
+            flowType: "sameDevice",
+            unVerifiedCredentials: missingCredentials,
+            selectedCredentials: [],
+            isShowResult: true,
+        } as any;
+
+        const state = vpVerificationReducer(initialState, showMissingCredentialOptions());
+
+        expect(state.selectedCredentials).toEqual(missingCredentials);
+        expect(state.SelectWalletPanel).toBe(true);
+        expect(state.SelectionPanel).toBe(false);
+        expect(state.isShowResult).toBe(false);
+    });
+
+    test("shows missing credentials in the selection panel for cross-device flow", () => {
+        const initialState = {
+            ...vpVerificationReducer(undefined, { type: "@@INIT" }),
+            flowType: "crossDevice",
+            unVerifiedCredentials: [
+                { id: "missing", type: "Type2", essential: false, dcqlQuery: mockDcqlQuery },
+            ],
+            selectedCredentials: [],
+        } as any;
+
+        const state = vpVerificationReducer(initialState, showMissingCredentialOptions());
+
+        expect(state.SelectWalletPanel).toBe(false);
+        expect(state.SelectionPanel).toBe(true);
+        expect(state.activeScreen).toBe(VerificationSteps.VERIFY.SelectCredential);
+    });
+
     test("should handle verificationSubmissionComplete (full success)", () => {
         (calculateUnverifiedClaims as jest.Mock).mockReturnValue([]);
 
@@ -192,6 +352,29 @@ describe("vpVerification slice", () => {
         expect(state.unVerifiedCredentials).toEqual([]);
         expect(state.activeScreen).toBe(VerificationSteps.VERIFY.DisplayResult);
         expect(state.verificationSubmissionResult).toEqual(verificationResult);
+    });
+
+    test("shows the missing-credential step after a partial verification", () => {
+        const missingCredential = { id: "missing", type: "Type2", dcqlQuery: mockDcqlQuery } as any;
+        (calculateUnverifiedClaims as jest.Mock).mockReturnValue([missingCredential]);
+
+        const initialState = {
+            ...vpVerificationReducer(undefined, { type: "@@INIT" }),
+            method: "VERIFY",
+            flowType: "sameDevice",
+            originalSelectedCredentials: [missingCredential],
+            verificationSubmissionResult: [],
+        } as any;
+
+        const state = vpVerificationReducer(
+            initialState,
+            verificationSubmissionComplete({ verificationResult: [] } as any),
+        );
+
+        expect(state.isPartiallyShared).toBe(true);
+        expect(state.unVerifiedCredentials).toEqual([missingCredential]);
+        expect(state.activeScreen).toBe(VerificationSteps.VERIFY.RequestMissingCredential);
+        expect(state.flowType).toBe("sameDevice");
     });
 
     test("should append all service credentials without deduplicating by type", () => {

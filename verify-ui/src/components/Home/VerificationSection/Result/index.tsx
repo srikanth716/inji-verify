@@ -52,7 +52,7 @@ const Result = () => {
 
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          dispatch(raiseAlert({ message, type: "error" }));
+          dispatch(raiseAlert({ message, severity: "error", open: true }));
 
         }
       } else if (typeof vc === "string") {
@@ -62,7 +62,7 @@ const Result = () => {
           setCredentialType(claims.regularClaims.vct);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          dispatch(raiseAlert({ message, type: "error" }));
+          dispatch(raiseAlert({ message, severity: "error", open: true }));
         }
       } else {
         setClaims(vc as LdpVc);
@@ -111,7 +111,7 @@ const Result = () => {
           <Button
             title={t("Common:Button.verifyAnotherQrCode")}
             onClick={handleVerifyAnotherQrCode}
-            className="mx-auto mt-6 mb-20 lg:mb-6 lg:w-[339px]"
+            className="mx-auto mt-6 mb-20 w-[339px] lg:mb-6"
           />
         </div>
       </div>

@@ -21,6 +21,7 @@ The SDK is published as `@injistack/react-inji-verify-sdk` and provides two inde
    - [Basic Usage Example](#basic-usage-example)
 3. [OpenID4VPVerification](#openid4vpverification)
    - [Props](#props-1)
+   - [Supported flows](#supported-flows)
    - [Flow Selection Logic](#flow-selection-logic)
    - [Result Shapes](#result-shapes-1)
    - [Basic Usage Example](#basic-usage-example-1)
@@ -108,7 +109,7 @@ import { QRCodeVerification } from "@injistack/react-inji-verify-sdk";
 
 When the QR code contains a data-share URL (prefixed with `INJI_OVP://`):
 
-**`isVPSubmissionSupported=false` (default):** Redirects directly to the Online VC Provider with `client_id` and `redirect_uri`. The provider returns a VC via redirect. Simple redirect, no backend VP session involved.
+**`isVPSubmissionSupported=false` (default):** Redirects directly to the Online VC Provider with `client_id` and `redirect_uri`. The provider returns an OpenID4VP 1.0 DCQL `vp_token` in the redirect hash (no `presentation_submission`). The SDK extracts the VC and verifies it via `/v2/vc-verification`. No backend VP session involved.
 
 **`isVPSubmissionSupported=true`:** Full VP flow — creates a VP request on the backend, redirects to the Online VC Provider with full authorization parameters, receives `response_code` on redirect back, and fetches results via `/vp-session-results`.
 
@@ -188,9 +189,9 @@ import { QRCodeVerification } from "@injistack/react-inji-verify-sdk";
 
 ## OpenID4VPVerification
 
-Handles the full OpenID4VP v1.0 flow — creates the VP request, displays a QR code or redirects to a wallet, polls for status, and returns verification results. Supports cross-device and same-device (mobile and web wallet) flows.
+Handles the full OpenID4VP v1.0 flow — creates the VP request, displays a QR code or redirects to a wallet (or uses Digital Credentials API), polls for status, and returns verification results. Supports three flow families across four presentation paths: **Generate QR Code**, **Open Web Wallet**, **Open Wallet with DC API**, and **Open Wallet in Mobile** (without DC API).
 
-For a detailed description of each flow see [OpenID4VP-1.0.0.md](./OpenID4VP-1.0.0.md).
+For a detailed description of each flow see [OpenID4VP-1.0.0.md](./OpenID4VP-1.0.0.md). The configuration matrix is under [Supported flows](#supported-flows).
 
 ### Import
 
@@ -205,7 +206,7 @@ import { OpenID4VPVerification } from "@injistack/react-inji-verify-sdk";
 | Prop | Type | Description |
 |---|---|---|
 | `verifyServiceUrl` | `string` | Base URL of the Verify Backend (e.g. `https://verify.example.com/v1/verify`) |
-| `clientId` | `string` | Verifier client identifier. Use the pre-registered string for by-value flows or `decentralized_identifier:did:...` for DID-based by-reference flows |
+| `clientId` | `string` | Verifier client identifier. Use the pre-registered string for by-value flows or `decentralized_identifier:did:...` or `x509_san_dns:...` for signed-request by-reference flows |
 | `dcqlQuery` | `DcqlQuery` | DCQL query describing which credentials to request. Replaces `presentationDefinition`. Note: `trusted_authorities` is not supported — queries containing it will be rejected. |
 | `onQrCodeExpired` | `() => void` | Called when the QR code / authorization request expires before submission |
 | `onError` | `(error: AppError) => void` | Called on any error during the flow |
@@ -222,6 +223,8 @@ import { OpenID4VPVerification } from "@injistack/react-inji-verify-sdk";
 | Prop | Type | Default | Description |
 |---|---|---|---|
 | `isSameDeviceFlowEnabled` | `boolean` | `true` | When `true`, triggers same-device flow on click. When `false`, always shows QR code (cross-device) |
+| `enableDcApi` | `boolean` | `false` | Same-device only: use W3C Digital Credentials API (`response_mode=dc_api`). Mutually exclusive with `webWalletBaseUrl`. Requires signed-request `clientId` (`decentralized_identifier:` or `x509_san_dns:`). If unsupported at runtime, falls back to deep-link without surfacing an error |
+| `dcApiTimeoutMs` | `number` | `300000` | Timeout (ms) for DC API JWT fetch and `navigator.credentials.get`. Invalid values fall back to 5 minutes |
 | `webWalletBaseUrl` | `string` | — | Base URL of a web wallet. When set, redirects to `{webWalletBaseUrl}/authorize?...` and enables `responseCodeValidationRequired` |
 | `triggerElement` | `ReactNode` | — | UI element that starts the flow on click. If omitted, the flow starts automatically on mount |
 | `transactionId` | `string` | — | Optional. Reuse an existing transaction instead of generating one |
@@ -249,24 +252,59 @@ import { OpenID4VPVerification } from "@injistack/react-inji-verify-sdk";
 | `statusCheckFilters` | `string[]` | `[]` | Run only selected checks (e.g. `["revocation"]`) |
 | `includeClaims` | `boolean` | `false` | Include extracted claims in result |
 
+### Supported flows
+
+`OpenID4VPVerification` supports four presentation paths. Configure props as below (plus required `verifyServiceUrl`, `clientId`, `dcqlQuery`, and result/error callbacks).
+
+| Flow | When to use | Key props | `response_mode` | What the user sees |
+|---|---|---|---|---|
+| **Generate QR Code** | Cross-device: wallet on another phone scans the verifier screen | `isSameDeviceFlowEnabled={false}` | `direct_post` | QR (`openid4vp://authorize?…`); SDK long-polls status |
+| **Open Web Wallet** | Same-device browser redirect to a web wallet | `isSameDeviceFlowEnabled={true}` (default), `webWalletBaseUrl="https://…"`, `enableDcApi` unset/`false` | `direct_post` + `responseCodeValidationRequired=true` | Redirect to `{webWalletBaseUrl}/authorize?…`; return via `#response_code=` |
+| **Open Wallet with DC API** | Same-device mobile or desktop browser that supports Digital Credentials API (`processDcAPIFlow()`) | `isSameDeviceFlowEnabled={true}`, `enableDcApi={true}`, **no** `webWalletBaseUrl`; `clientId` must be `decentralized_identifier:` or `x509_san_dns:` | `dc_api` | Browser `navigator.credentials.get`; SDK submits to `/vp-submission/dc-api` |
+| **Open Wallet in Mobile** (without DC API) | Same-device mobile deep link to a native wallet | `isSameDeviceFlowEnabled={true}`, `enableDcApi` unset/`false` (or DC API unsupported), **no** `webWalletBaseUrl`, mobile UA | `direct_post` | Redirect to `openid4vp://authorize?…` (or `protocol` override) |
+
+**Shared notes**
+- `enableDcApi` and `webWalletBaseUrl` are **mutually exclusive** (throws if both are set).
+- **Open Wallet with DC API** runs on any supported browser (desktop or mobile) when `isDcApiSupported(clientId)` is true — it is not mobile-only.
+- If DC API is not used or not supported, desktop same-device fallback requires `webWalletBaseUrl` (**Open Web Wallet**). Without it, the flow returns `MISSING_WEB_WALLET_BASE_URL`.
+- If `enableDcApi={true}` but the browser/`clientId` does not support DC API, the SDK **silently falls back** to the deep-link / native-wallet path (no `DC_API_NOT_SUPPORTED` error); on desktop that fallback still needs `webWalletBaseUrl`.
+- Verify UI maps `ENABLE_DC_API=true` to `enableDcApi`, and disables DC API when a web wallet is selected.
+
+#### How DC API relates to QR codes
+
+DC API in this SDK is **same-device browser mediation** (`response_mode=dc_api`). It does **not** render a QR for the wallet; the browser mediator receives the signed request JWT and returns credential data to the SDK.
+
+QR codes are the **Generate QR Code** flow (`isSameDeviceFlowEnabled={false}`, always `direct_post`). That path is independent of `enableDcApi`.
+
+What *is* shared with DC API is the **by-reference request JWT** when `clientId` uses `decentralized_identifier:` or `x509_san_dns:`:
+
+- Both the DC API mediator and a wallet that scanned a QR/`request_uri` deep link call `GET /v2/vp-request/{requestId}`.
+- The JWT header is the same trust model either way: `kid` for DID, `x5c` for `x509_san_dns` (see Stoplight [Get VP Request JWT](https://mosip.stoplight.io/docs/inji-verify/branches/main/11d908cda74f6-get-vp-request-jwt-v2-open-id-4-vp-1-0)).
+- So DC API does not “encode a QR”, but it reuses the same signed authorization request artifact that QR/deep-link by-reference flows already use. Cross-device QR remains `direct_post`; same-device DC API remains `dc_api`.
+
 ### Flow Selection Logic
 
-The component determines which flow to use at trigger time:
+The component picks a path at trigger time:
 
-```
+```text
 isSameDeviceFlowEnabled = false
-  → Cross-device: generate QR code
+  → Generate QR Code (response_mode=direct_post)
 
 isSameDeviceFlowEnabled = true (default)
+  → enableDcApi = true AND !webWalletBaseUrl AND isDcApiSupported(clientId)
+      → Open Wallet with DC API (response_mode=dc_api; desktop or mobile)
+  → enableDcApi = true but unsupported at runtime
+      → Fall back to deep-link / native-wallet path (no DC_API_NOT_SUPPORTED error);
+        on desktop without webWalletBaseUrl, report MISSING_WEB_WALLET_BASE_URL
   → webWalletBaseUrl provided
-      → Same-device web wallet: redirect to {webWalletBaseUrl}/authorize?...
+      → Open Web Wallet
   → Mobile device (detected via user agent)
-      → Same-device mobile wallet: redirect to openid4vp://authorize?...
-  → Desktop without webWalletBaseUrl
+      → Open Wallet in Mobile without DC API (openid4vp://…)
+  → Desktop without webWalletBaseUrl / DC API
       → Error: MISSING_WEB_WALLET_BASE_URL
 ```
 
-For flow diagrams covering cross-device, same-device mobile, same-device web wallet, and server-to-server flows, see [OpenID4VP-1.0.0.md](./OpenID4VP-1.0.0.md).
+For sequence diagrams (cross-device, same-device mobile, web wallet, DC API, server-to-server), see [OpenID4VP-1.0.0.md](./OpenID4VP-1.0.0.md).
 
 ### Server-to-Server Flow
 
