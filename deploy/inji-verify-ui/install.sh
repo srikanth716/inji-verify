@@ -7,7 +7,7 @@ if [ $# -ge 1 ] ; then
 fi
 
 NS=injiverify
-CHART_VERSION=1.0.0-alpha.1-develop
+CHART_VERSION=1.0.0-alpha.2-develop
 
 DEFAULT_INJIVERIFY_HOST=$( kubectl get cm inji-stack-config -n config-server -o jsonpath={.data.injiverify-host} )
 # Check if INJIVERIFY_HOST is present under configmap/inji-stack-config of configserver
@@ -79,8 +79,8 @@ function installing_inji-verify-ui() {
   done
 
   while true; do
-    read -p "Enable ENABLE_DC_API? (true/false) [default: true]: " ENABLE_DC_API
-    ENABLE_DC_API=${ENABLE_DC_API:-true}
+    read -p "Enable ENABLE_DC_API? (true/false) [default: false]: " ENABLE_DC_API
+    ENABLE_DC_API=${ENABLE_DC_API:-false}
     if [[ "$ENABLE_DC_API" == "true" || "$ENABLE_DC_API" == "false" ]]; then
       break
     else

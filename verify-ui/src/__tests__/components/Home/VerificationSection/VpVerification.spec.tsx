@@ -204,7 +204,7 @@ describe("VpVerification Component", () => {
         );
     });
 
-    test("keeps enableDcApi disabled on same-device until the published SDK supports it", () => {
+    test("enables enableDcApi on same-device when ENABLE_DC_API is true and no web wallet is selected", () => {
         Object.assign((window as any)._env_, { ENABLE_DC_API: "true" });
         mockState({
             flowType: "sameDevice",
@@ -213,7 +213,7 @@ describe("VpVerification Component", () => {
         render(<VpVerification />);
         expect(screen.getByTestId("openid-verification-sdk")).toHaveAttribute(
             "data-enable-dc-api",
-            "false"
+            "true"
         );
     });
 
