@@ -501,9 +501,9 @@ Used when verification runs in a browser that supports the W3C Digital Credentia
 - `enableDcApi={true}`
 - Do **not** set `webWalletBaseUrl`
 - `clientId` must use a signed-request scheme: `decentralized_identifier:…` or `x509_san_dns:…`
-- Browser must support Digital Credentials API with protocol `openid4vp-v1-signed` (Chrome 144.0.7559.59+ for Chromium; see CVE-2026-0904)
+- Browser must support Digital Credentials API with protocol `openid4vp-v1-signed` (Chrome 144.0.7559.59+ on Linux/Windows, or 144.0.7559.60+ on macOS; see CVE-2026-0904)
 
-If DC API is enabled but unsupported at runtime (browser or `clientId`), the SDK **silently falls back** to the deep-link / native-wallet path. On desktop without `webWalletBaseUrl`, that fallback still requires a web wallet URL.
+If DC API is enabled but unsupported at runtime (browser or `clientId`), the SDK falls back to the deep-link / native-wallet path. On mobile, this can launch a native wallet without `webWalletBaseUrl`. On desktop, because `enableDcApi` and `webWalletBaseUrl` are mutually exclusive, disable `enableDcApi` and configure `webWalletBaseUrl` to use a web-wallet fallback (otherwise the SDK reports `MISSING_WEB_WALLET_BASE_URL`).
 
 ```javascript
 import { OpenID4VPVerification } from "@injistack/react-inji-verify-sdk";
