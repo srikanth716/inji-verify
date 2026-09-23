@@ -1,7 +1,7 @@
 {
-  "clientId": "$REDIRECT_URI_CLIENT_ID$",
-  "nonce": "IvfM76kOqj8Xy5H9pFBGBQ",
-  "responseCodeValidationRequired": true,
+  "clientId": "{{clientId}}",
+  "nonce": "{{nonce}}",
+  "responseCodeValidationRequired": {{responseCodeValidationRequired}},
   "dcqlQuery": {
     "credentials": [
       {
@@ -13,7 +13,8 @@
               "MOSIPVerifiableCredential"
             ]
           ]
-        }
+        },
+        "require_cryptographic_holder_binding": true
       }
     ]
   }
