@@ -15,6 +15,11 @@ Inji Verify SDK provides ready-to-use **React components** to integrate [OpenID4
    - [Option A: QR Code Verification](#option-a-qr-code-verification-scan--upload)
      - [Verification Response](#verification-response-1)
    - [Option B: OpenID4VP Verification](#option-b-openid4vp-verification)
+     - [Cross-device flow](#1-cross-device-flow-qr-code-scan-from-another-device)
+     - [Same Device Flow with Mobile Wallet](#2-same-device-flow-with-mobile-wallet)
+     - [Same Device Flow with Web Wallet](#3-same-device-flow-with-web-wallet)
+     - [Digital Credentials API (DC API)](#4-digital-credentials-api-dc-api)
+     - [Server-to-server callback](#5-server-to-server-callback-onvpreceived)
      - [Verification Response](#verification-response-2)
      - [DCQL Query](#dcql-query)
      - [`require_cryptographic_holder_binding`](#require_cryptographic_holder_binding)
@@ -30,6 +35,7 @@ Inji Verify SDK provides ready-to-use **React components** to integrate [OpenID4
 1. **A React project** (TypeScript recommended)
 2. **A verification backend** - You need a server that can verify credentials
 3. **Camera permissions** - For QR scanning features
+4. **Digital Credentials API (optional)** - For same-device DC API flow: a capable browser and a signed-request `clientId` (`decentralized_identifier:` or `x509_san_dns:`)
 
 ### Backend Requirements:
 
@@ -116,6 +122,8 @@ function MyApp() {
   );
 }
 ```
+
+For Digital Credentials API verification, set `enableDcApi={true}` with a signed-request `clientId` (`decentralized_identifier:…` or `x509_san_dns:…`) and omit `webWalletBaseUrl`. The browser mediates same-device and cross-device (browser DC API QR). See [Digital Credentials API (DC API)](#4-digital-credentials-api-dc-api).
 
 ## Verification Response
 
@@ -313,9 +321,9 @@ If `summariseResults = false`, the response will be:
 | `claims`                       | object  | Includes all claims from credentialSubject                          |
 
 ### Option B: OpenID4VP Verification
-OpenID4VPVerification Component verifies Verifiable Presentations securely using OpenID4VP standards for both cross-device and same-device flows.
+OpenID4VPVerification Component verifies Verifiable Presentations securely using OpenID4VP standards for both cross-device and same-device flows. Same-device presentation can use a native wallet deep link, a web wallet redirect, or the [W3C Digital Credentials API](https://www.w3.org/TR/digital-credentials/) (`enableDcApi`).
 
-**Perfect for:** Integrating with digital wallets (like mobile ID apps)
+**Perfect for:** Integrating with digital wallets (like mobile ID apps) and browser-mediated credential sharing
 
 Follow these steps to integrate:
 
@@ -479,11 +487,85 @@ sequenceDiagram
 
 > **NOTE**
 >
-> When webWalletBaseUrl is configured, we use web-wallets to support verification flow.
->In the absence of webWalletBaseUrl, the SDK falls back to a deep link mechanism to launch the native wallet application if any supported mobile wallet is installed.
+> When `webWalletBaseUrl` is configured, the SDK redirects to that web wallet.
+> In the absence of `webWalletBaseUrl`, the SDK falls back to a deep link to launch a native wallet if one is installed (mobile), unless DC API is enabled and supported (see below).
+>
+> `enableDcApi` and `webWalletBaseUrl` are **mutually exclusive** — setting both throws an error.
 
+#### 4. Digital Credentials API (DC API)
 
-#### 4. Server-to-server callback (onVPReceived)
+Used when verification runs in a browser that supports the W3C Digital Credentials API. The SDK calls `navigator.credentials.get` and submits the wallet response to the verifier backend (`response_mode=dc_api`). The **browser** mediates wallet selection: same-device presentation, or cross-device via the **browser’s own DC API QR** (not the SDK OpenID4VP QR).
+
+**Requirements:**
+- `isSameDeviceFlowEnabled={true}` (default) — required for the SDK to enter the DC API path
+- `enableDcApi={true}`
+- Do **not** set `webWalletBaseUrl`
+- `clientId` must use a signed-request scheme: `decentralized_identifier:…` or `x509_san_dns:…`
+- Browser must support Digital Credentials API with protocol `openid4vp-v1-signed` (Chrome 144.0.7559.59+ for Chromium; see CVE-2026-0904)
+
+If DC API is enabled but unsupported at runtime (browser or `clientId`), the SDK **silently falls back** to the deep-link / native-wallet path. On desktop without `webWalletBaseUrl`, that fallback still requires a web wallet URL.
+
+```javascript
+import { OpenID4VPVerification } from "@injistack/react-inji-verify-sdk";
+export default function VerifyWithDcApi() {
+    return (
+        <OpenID4VPVerification
+            triggerElement={<button>Verify with Digital Credentials API</button>}
+            verifyServiceUrl="https://your-backend.com/v1/verify"
+            // Signed-request client_id is required for DC API
+            clientId="decentralized_identifier:did:web:verify.example.com"
+            dcqlQuery={{
+                credentials: [{
+                    id: "id_card",
+                    format: "ldp_vc",
+                    meta: { type_values: [["DriverLicenseCredential"]] }
+                }]
+            }}
+            isSameDeviceFlowEnabled={true}
+            enableDcApi={true}
+            // Optional: timeout for JWT fetch + navigator.credentials.get (default 300000 ms)
+            // dcApiTimeoutMs={300000}
+            onVPProcessed={(result) => {
+                console.log("VP processed:", result);
+            }}
+            onQrCodeExpired={() => {
+                console.log("Authorization request expired");
+            }}
+            onError={(error) => {
+                console.error("Verification error:", error);
+            }}
+        />
+    );
+}
+```
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UserBrowser as User Browser
+    participant VerifierBackend as Verifier Backend
+    participant WalletMediator as Wallet (via DC API)
+
+    UserBrowser->>VerifierBackend: POST /v2/vp-session-request (responseMode=dc_api)
+    VerifierBackend-->>UserBrowser: Set HttpOnly Cookie (transaction_id) + requestUri / responseUri
+    UserBrowser->>VerifierBackend: GET /v2/vp-request/{requestId} (signed JWT)
+    VerifierBackend-->>UserBrowser: Signed authorization request JWT
+    UserBrowser->>WalletMediator: navigator.credentials.get (openid4vp-v1-signed)
+    WalletMediator-->>UserBrowser: Credential data (vp_token or error)
+    UserBrowser->>VerifierBackend: POST /vp-submission/dc-api (JSON)
+    UserBrowser->>VerifierBackend: POST /vp-session-results (Cookie auto-sent)
+    VerifierBackend-->>UserBrowser: Verification result
+```
+
+> **NOTE**
+>
+> With `enableDcApi`, same-device and cross-device are both handled inside the Digital Credentials API browser flow. Cross-device uses the **browser/DC API QR** shown by `navigator.credentials.get` — that QR is part of DC API, not the SDK.
+>
+> Do **not** confuse this with the SDK OpenID4VP QR (`isSameDeviceFlowEnabled={false}`, `response_mode=direct_post`). That is a separate flow and is not DC API cross-device.
+>
+> Audience checks for DC API use `origin:…` (from the verifier page origin) instead of `clientId`.
+
+#### 5. Server-to-server callback (onVPReceived)
 ```javascript
 import { OpenID4VPVerification } from "@injistack/react-inji-verify-sdk";
 
@@ -692,11 +774,14 @@ dcqlQuery={{
 | Property                  | Type     | Default        | Description                               |
 |---------------------------| -------- |----------------|-------------------------------------------|
 | `dcqlQuery`               | object   | -              | DCQL query describing requested credentials (required) |
-| `protocol`                | string   | "openid4vp://" | Protocol for QR codes (optional)          |
+| `protocol`                | string   | "openid4vp://" | Protocol for QR codes / deep links (optional) |
 | `onVPProcessed`           | function | -              | Get full results immediately              |
 | `onVPReceived`            | function | -              | Get transaction ID only                   |
-| `onQrCodeExpired`         | function | -              | Handle QR code expiration                 |
+| `onQrCodeExpired`         | function | -              | Handle QR code / authorization request expiration |
 | `isSameDeviceFlowEnabled` | boolean  | true           | Enable same-device flow (optional)        |
+| `enableDcApi`             | boolean  | false          | Use W3C Digital Credentials API (`response_mode=dc_api`). Browser mediates same-device and cross-device (browser DC API QR). Mutually exclusive with `webWalletBaseUrl`. Requires signed-request `clientId` (`decentralized_identifier:` or `x509_san_dns:`). If unsupported at runtime, falls back to deep-link without surfacing an error |
+| `dcApiTimeoutMs`          | number   | 300000         | Timeout (ms) for DC API JWT fetch and `navigator.credentials.get` |
+| `webWalletBaseUrl`        | string   | -              | Base URL of a web wallet. Mutually exclusive with `enableDcApi` |
 | `qrCodeStyles`            | object   | -              | Customize QR code appearance              |
 | `vpVerificationRequest`   | object   | -              | contains request body for VP Verification |
 
@@ -704,3 +789,5 @@ dcqlQuery={{
 
 - **React Only:** Won't work with Angular, Vue, or React Native
 - **Backend Required:** You must have a verification service running
+- **DCQL only:** `presentationDefinition` / `presentationDefinitionId` are not supported
+- **DC API (`enableDcApi`):** Requires a signed-request `clientId` and a capable browser; cannot be combined with `webWalletBaseUrl`. Same-device and cross-device are mediated by the browser Digital Credentials API (including the browser’s DC API QR for cross-device). That is separate from the SDK OpenID4VP QR path (`isSameDeviceFlowEnabled={false}`, `direct_post`)
