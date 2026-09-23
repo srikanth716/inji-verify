@@ -542,19 +542,40 @@ export default function VerifyWithDcApi() {
 ```mermaid
 sequenceDiagram
     autonumber
-    participant UserBrowser as User Browser
-    participant VerifierBackend as Verifier Backend
-    participant WalletMediator as Wallet (via DC API)
+    participant User
+    participant SDK as Verify UI (SDK)
+    participant Service as verify-service
+    participant DcApi as Browser DC API layer
+    participant Wallet as Wallet (same device)
 
-    UserBrowser->>VerifierBackend: POST /v2/vp-session-request (responseMode=dc_api)
-    VerifierBackend-->>UserBrowser: Set HttpOnly Cookie (transaction_id) + requestUri / responseUri
-    UserBrowser->>VerifierBackend: GET /v2/vp-request/{requestId} (signed JWT)
-    VerifierBackend-->>UserBrowser: Signed authorization request JWT
-    UserBrowser->>WalletMediator: navigator.credentials.get (openid4vp-v1-signed)
-    WalletMediator-->>UserBrowser: Credential data (vp_token or error)
-    UserBrowser->>VerifierBackend: POST /vp-submission/dc-api (JSON)
-    UserBrowser->>VerifierBackend: POST /vp-session-results (Cookie auto-sent)
-    VerifierBackend-->>UserBrowser: Verification result
+    SDK->>Service: POST /v2/vp-session-request<br/>(response_mode=dc_api, expected_origins)
+    Service-->>SDK: requestId (+ Set-Cookie: transaction_id)
+    SDK->>Service: GET /v2/vp-request/{requestId}
+    Service-->>SDK: signed JWT (openid4vp-v1-signed)
+
+    Note over SDK,DcApi: Requires user gesture (button click)
+    SDK->>DcApi: navigator.credentials.get({ digital: {...} })
+    DcApi->>Wallet: Deliver request + verified Origin
+    Wallet->>User: Show credential chooser
+    User->>Wallet: Select credential(s), approve
+    Wallet-->>DcApi: DigitalCredential { vp_token } (or error)
+    DcApi-->>SDK: Resolve promise with DigitalCredential
+
+    alt Wallet returned vp_token
+        SDK->>Service: POST /vp-submission/dc-api<br/>{ requestId, vp_token }
+        Note over Service: Validate structure, DCQL match,<br/>nonce, aud == origin:&lt;origin&gt;
+        alt Validation passes
+            Service-->>SDK: 200 OK
+            SDK->>Service: POST /vp-session-results (Cookie auto-sent)
+            Service-->>SDK: Verification result
+            SDK->>User: Show result screen
+        else Validation fails
+            Service-->>SDK: 400 Bad Request
+            SDK->>User: Show error in Verify UI<br/>(not sent back to Wallet)
+        end
+    else Wallet returned error
+        SDK->>User: Show wallet-reported error
+    end
 ```
 
 > **NOTE**
