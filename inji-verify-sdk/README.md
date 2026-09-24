@@ -123,7 +123,7 @@ function MyApp() {
 }
 ```
 
-For Digital Credentials API verification, set `enableDcApi={true}` with a signed-request `clientId` (`decentralized_identifier:…` or `x509_san_dns:…`) and omit `webWalletBaseUrl`. The browser mediates same-device wallet selection through the Digital Credentials API. Cross-device presentation uses the SDK OpenID4VP QR with `direct_post`. See [Digital Credentials API (DC API)](#4-digital-credentials-api-dc-api).
+For Digital Credentials API verification, set `enableDcApi={true}` with a signed-request `clientId` (`decentralized_identifier:…` or `x509_san_dns:…`) and omit `webWalletBaseUrl`. When `isSameDeviceFlowEnabled={true}`, the browser mediates wallet selection through the Digital Credentials API and may display its own QR for cross-device presentation on supported desktop browsers. When `isSameDeviceFlowEnabled={false}`, the SDK uses its OpenID4VP QR with `direct_post`. See [Digital Credentials API (DC API)](#4-digital-credentials-api-dc-api).
 
 ## Verification Response
 
@@ -494,7 +494,7 @@ sequenceDiagram
 
 #### 4. Digital Credentials API (DC API)
 
-Used when verification runs in a browser that supports the W3C Digital Credentials API. The SDK calls `navigator.credentials.get` and submits the wallet response to the verifier backend (`response_mode=dc_api`). The browser mediates same-device wallet selection through the Digital Credentials API. Cross-device presentation uses the SDK OpenID4VP QR with `direct_post`.
+Used when verification runs in a browser that supports the W3C Digital Credentials API. The SDK calls `navigator.credentials.get` and submits the wallet response to the verifier backend (`response_mode=dc_api`). When `isSameDeviceFlowEnabled={true}`, the browser mediates wallet selection through the Digital Credentials API and may display its own QR for cross-device presentation on supported desktop browsers. When `isSameDeviceFlowEnabled={false}`, the SDK uses its OpenID4VP QR with `direct_post`.
 
 **Requirements:**
 - `isSameDeviceFlowEnabled={true}` (default) — required for the SDK to enter the DC API path
