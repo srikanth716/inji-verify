@@ -198,6 +198,46 @@ Set `webWalletBaseUrl` on the SDK component to enable this flow.
 
 Used when the verifier UI runs in a capable browser (Chrome with Digital Credentials API support) and `enableDcApi` is set on the SDK. Instead of a QR / deep link / web-wallet redirect, the browser mediates the request with a wallet via `navigator.credentials.get`.
 
+```mermaid
+sequenceDiagram
+    autonumber
+    participant User
+    participant SDK as Verify UI (SDK)
+    participant Service as verify-service
+    participant DcApi as Browser DC API layer
+    participant Wallet as Wallet (same device)
+
+    SDK->>Service: POST /v2/vp-session-request<br/>(response_mode=dc_api, expected_origins)
+    Service-->>SDK: requestId, requestUri, responseUri<br/>(+ Set-Cookie: transaction_id)
+    SDK->>Service: GET {requestUri}
+    Service-->>SDK: signed JWT (openid4vp-v1-signed)
+
+    Note over SDK,DcApi: Requires user gesture (button click)
+    SDK->>DcApi: navigator.credentials.get({ digital: {...} })
+    DcApi->>Wallet: Deliver request + verified Origin
+    Wallet->>User: Show credential chooser
+    User->>Wallet: Select credential(s), approve
+    Wallet-->>DcApi: DigitalCredential { vp_token } (or error)
+    DcApi-->>SDK: Resolve promise with DigitalCredential
+
+    alt Wallet returned vp_token
+        SDK->>Service: POST {responseUri}<br/>{ requestId, vp_token }
+        Note over Service: Validate structure, DCQL match,<br/>nonce, aud == origin:&lt;origin&gt;
+        alt Validation passes
+            Service-->>SDK: 200 OK
+            SDK->>Service: POST /vp-session-results (Cookie auto-sent)
+            Service-->>SDK: Verification result
+            SDK->>User: Show result screen
+        else Validation fails
+            Service-->>SDK: 400 Bad Request
+            SDK->>User: Show error in Verify UI<br/>(not sent back to Wallet)
+        end
+    else Wallet returned error
+        SDK->>Service: POST {responseUri}<br/>{ requestId, error }
+        SDK->>User: Show wallet-reported error
+    end
+```
+
 **Requirements:**
 - `clientId` must use a signed-request scheme: `decentralized_identifier:` or `x509_san_dns:`
 - Session is created with `responseMode=dc_api` (and `responseCodeValidationRequired=false`)

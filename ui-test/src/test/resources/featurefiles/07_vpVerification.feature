@@ -34,8 +34,9 @@ Feature: Inji Verify vpVerification testing
     And User clicks on Proceed button
     #And User is redirected to inji-web wallet presentation page
     And User click on trust verifier
-    And User selects the credential for verification
+    #And User selects the credential for verification
     And User clicks consent and share button
+    And User clicks consent and share card button
     And VP result is posted back to inji-verify successfully
 
   @smoke @verifyingVpVerification
