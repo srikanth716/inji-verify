@@ -340,26 +340,26 @@ paths:
             |---|---|
             | `dcql_query.credentials.required` | Each DCQL credential entry must not be null. |
             | `dcql_query.credentials.invalid` | dcql_query.credentials must be a non-empty array. |
-            | `dcql_query.credentials` | Each DCQL credential entry must contain id. |
-            | `dcql_query.credentials` | Credential id must contain only alphanumeric characters, underscores, and hyphens. |
-            | `dcql_query.credentials` | Duplicate credential ids are not allowed. |
-            | `dcql_query.credentials` | Each DCQL credential entry must contain format. |
-            | `dcql_query.credentials` | DCQL credential format must be a valid format. |
-            | `dcql_query.credentials` | Each DCQL credential entry must contain meta. |
-            | `dcql_query.credentials` | DCQL meta must not contain null/blank values. |
-            | `dcql_query.credentials` | Each value in type_values must be a valid IRI (absolute or relative). |
-            | `dcql_query.credentials` | DCQL meta must not contain duplicate values. |
-            | `dcql_query.credentials` | DCQL meta fields must match the specified credential format. |
+            | `dcql_query.credentials.id.required` | Each DCQL credential entry must contain id. |
+            | `dcql_query.credentials.id.invalid` | Credential id must contain only alphanumeric characters, underscores, and hyphens. |
+            | `dcql_query.credentials.duplicate_id` | Duplicate credential ids are not allowed. |
+            | `dcql_query.credentials.format.required` | Each DCQL credential entry must contain format. |
+            | `dcql_query.credentials.format.invalid` | DCQL credential format must be a valid format. |
+            | `dcql_query.credentials.meta.required` | Each DCQL credential entry must contain meta. |
+            | `dcql_query.credentials.meta.invalid` | DCQL meta must not contain null/blank values. |
+            | `dcql_query.credentials.meta.invalid_iri` | Each value in type_values must be a valid IRI (absolute or relative). |
+            | `dcql_query.credentials.meta.duplicates` | DCQL meta must not contain duplicate values. |
+            | `dcql_query.credentials.meta.format_mismatch` | DCQL meta fields must match the specified credential format. |
             | `dcql_query.claim_path.required` | Each claim must contain path. |
             | `dcql_query.claim_path.invalid` | DCQL claim path must be a valid path. |
-            | `dcql_query.credentials` | Duplicate claim paths are not allowed within a single credential query. |
-            | `dcql_query.credentials` | Claim id must contain only alphanumeric characters, underscores, and hyphens. |
-            | `dcql_query.credentials` | Duplicate claim ids are not allowed. |
-            | `dcql_query.credentials` | DCQL claim values must be a non-empty array if claim values field is present. |
-            | `dcql_query.credentials` | claim_sets must not be empty if claim_sets field is present. |
-            | `dcql_query.credentials` | claim_sets contains missing claim id reference. |
-            | `dcql_query.credentials` | claim_sets contains unknown claim id reference. |
-            | `dcql_query.credentials` | credential_sets contains unknown credential id reference. |
+            | `dcql_query.credentials.duplicate_claim_path` | Duplicate claim paths are not allowed within a single credential query. |
+            | `dcql_query.credentials.claim_id.invalid` | Claim id must contain only alphanumeric characters, underscores, and hyphens. |
+            | `dcql_query.credentials.duplicate_claim_id` | Duplicate claim ids are not allowed. |
+            | `dcql_query.credentials.claim_values.invalid` | DCQL claim values must be a non-empty array if claim values field is present. |
+            | `dcql_query.claim_sets.empty` | claim_sets must not be empty if claim_sets field is present. |
+            | `dcql_query.claim_sets.missing_id` | claim_sets contains missing claim id reference. |
+            | `dcql_query.claim_sets.unknown_id` | claim_sets contains unknown claim id reference. |
+            | `dcql_query.credential_sets.unknown_id` | credential_sets contains unknown credential id reference. |
             | `dcql_query.credential_sets.required` | Each credential_set entry must contain options. |
             | `dcql_query.credential_sets.invalid` | DCQL credential_sets must be a non-empty array with non-empty values. |
             | `dcql_query.credential_sets` | credential_sets must contain at least one required entry. |
@@ -391,12 +391,12 @@ paths:
                 invalid_format:
                   summary: Unsupported credential format
                   value:
-                    errorCode: dcql_query.credentials
+                    errorCode: dcql_query.credentials.format.invalid
                     errorMessage: DCQL credential format must be a valid format.
                 duplicate_credential_id:
                   summary: Duplicate credential id in DCQL query
                   value:
-                    errorCode: dcql_query.credentials
+                    errorCode: dcql_query.credentials.duplicate_id
                     errorMessage: Duplicate credential ids are not allowed.
   /v2/vp-session-request:
     post:
