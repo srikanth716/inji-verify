@@ -35,7 +35,7 @@ public enum ErrorCode {
     DCQL_MISSING_CLAIM_ID("dcql_query_missing_claim_id","claim_sets contains missing claim id reference."),
     DCQL_EMPTY_CLAIM_SET("dcql_query_empty_claim_set","claim_sets must not be empty if claim_sets field is present."),
     DCQL_CLAIM_PATH_INVALID("dcql_query_claim_path_invalid","DCQL claim path must be a valid path."),
-    DCQL_ALL_CREDENTIAL_SETS_OPTIONAL("dcql_query.credential_sets","credential_sets must contain at least one required entry."),
+    DCQL_ALL_CREDENTIAL_SETS_OPTIONAL("dcql_query_all_credential_sets_optional","credential_sets must contain at least one required entry."),
     CLIENT_ID_REQUIRED("invalid_request","client_id is required"),
     INVALID_RESPONSE_MODE("invalid_request", "responseMode must be direct_post or dc_api."),
     DC_API_REQUIRES_SIGNED_CLIENT_ID("invalid_request", "DC API response_mode requires a decentralized_identifier or x509_san_dns client_id."),

@@ -362,7 +362,7 @@ paths:
             | `dcql_query_invalid_credential_set` | credential_sets contains unknown credential id reference. |
             | `dcql_query_credential_sets_required` | Each credential_set entry must contain options. |
             | `dcql_query_credential_sets_invalid` | DCQL credential_sets must be a non-empty array with non-empty values. |
-            | `dcql_query.credential_sets` | credential_sets must contain at least one required entry. |
+            | `dcql_query_all_credential_sets_optional` | credential_sets must contain at least one required entry. |
           content:
             application/json:
               schema:
