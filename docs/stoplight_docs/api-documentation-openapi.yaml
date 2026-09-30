@@ -360,6 +360,8 @@ paths:
             | `dcql_query.credentials` | claim_sets contains missing claim id reference. |
             | `dcql_query.credentials` | claim_sets contains unknown claim id reference. |
             | `dcql_query.credentials` | credential_sets contains unknown credential id reference. |
+            | `dcql_query.credential_sets.required` | Each credential_set entry must contain options. |
+            | `dcql_query.credential_sets.invalid` | DCQL credential_sets must be a non-empty array with non-empty values. |
             | `dcql_query.credential_sets` | credential_sets must contain at least one required entry. |
           content:
             application/json:
