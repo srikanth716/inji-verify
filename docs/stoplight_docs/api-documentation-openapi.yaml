@@ -338,8 +338,8 @@ paths:
 
             | errorCode | errorMessage |
             |---|---|
-            | `dcql_query.credentials` | Each DCQL credential entry must not be null. |
-            | `dcql_query.credentials` | dcql_query.credentials must be a non-empty array. |
+            | `dcql_query.credentials.required` | Each DCQL credential entry must not be null. |
+            | `dcql_query.credentials.invalid` | dcql_query.credentials must be a non-empty array. |
             | `dcql_query.credentials` | Each DCQL credential entry must contain id. |
             | `dcql_query.credentials` | Credential id must contain only alphanumeric characters, underscores, and hyphens. |
             | `dcql_query.credentials` | Duplicate credential ids are not allowed. |
@@ -350,8 +350,8 @@ paths:
             | `dcql_query.credentials` | Each value in type_values must be a valid IRI (absolute or relative). |
             | `dcql_query.credentials` | DCQL meta must not contain duplicate values. |
             | `dcql_query.credentials` | DCQL meta fields must match the specified credential format. |
-            | `dcql_query.credentials` | Each claim must contain path. |
-            | `dcql_query.credentials` | DCQL claim path must be a valid path. |
+            | `dcql_query.claim_path.required` | Each claim must contain path. |
+            | `dcql_query.claim_path.invalid` | DCQL claim path must be a valid path. |
             | `dcql_query.credentials` | Duplicate claim paths are not allowed within a single credential query. |
             | `dcql_query.credentials` | Claim id must contain only alphanumeric characters, underscores, and hyphens. |
             | `dcql_query.credentials` | Duplicate claim ids are not allowed. |
