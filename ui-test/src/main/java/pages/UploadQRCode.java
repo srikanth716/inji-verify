@@ -198,7 +198,7 @@ public class UploadQRCode extends BasePage {
 	}
 
 	public void clickOnUploadBoundaryMinSizeQRCode() {
-		uploadFileForStaticQr(driver, UploadQRCodeButton, "QRCode_10KB.jpg");
+		uploadFileForStaticQr(driver, UploadQRCodeButton, "QRCode_10KB.png");
 
 	}
 
