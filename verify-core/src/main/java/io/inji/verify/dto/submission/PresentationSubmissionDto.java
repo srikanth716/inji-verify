@@ -3,9 +3,8 @@ package io.inji.verify.dto.submission;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.nimbusds.jose.shaded.gson.annotations.SerializedName;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import java.util.List;
@@ -15,13 +14,11 @@ import java.util.List;
 @Valid
 public class  PresentationSubmissionDto {
     @NotNull(message = "Presentation Submission ID cannot be null")
-    @NotBlank(message = "Presentation Submission ID cannot be blank")
-    @NotEmpty(message = "Presentation Submission ID cannot be empty")
+    @Size(min = 1, message = "Presentation Submission ID cannot be empty")
     private final String id;
 
     @NotNull(message = "Definition ID cannot be null")
-    @NotBlank(message = "Definition ID cannot be blank")
-    @NotEmpty(message = "Definition ID cannot be empty")
+    @Size(min = 1, message = "Definition ID cannot be empty")
     @JsonProperty("definition_id")
     @SerializedName("definition_id")
     private final String definitionId;
