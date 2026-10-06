@@ -408,7 +408,7 @@ CreateNewVerificationRequest:
         "nullCredentialEntry": false
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_credentials_invalid",
       "errorMessage": "dcql_query.credentials must be a non-empty array."
 }'
 
@@ -424,8 +424,8 @@ CreateNewVerificationRequest:
         "nullCredentialEntry": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
-      "errorMessage": "dcql_query.credentials must be a non-empty array."
+      "errorCode": "dcql_query_credentials_required",
+      "errorMessage": "dcql_query.credentials is required."
 }'
 
   Injiverify_CreateNewVerificationRequest_Missing_Credential_Id_Neg:
@@ -440,7 +440,7 @@ CreateNewVerificationRequest:
       "missingId": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_credential_id_required",
       "errorMessage": "Each DCQL credential entry must contain id."
 }'
 
@@ -456,7 +456,7 @@ CreateNewVerificationRequest:
         "invalidCredentialId": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_credential_id_invalid",
       "errorMessage": "Credential id must contain only alphanumeric characters, underscores, and hyphens."
 }'
 
@@ -472,7 +472,7 @@ CreateNewVerificationRequest:
 		"duplicateCredentialIds": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_duplicate_credential_id",
       "errorMessage": "Duplicate credential ids are not allowed."
 }'
 
@@ -488,7 +488,7 @@ CreateNewVerificationRequest:
       "missingFormat": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_credential_format_required",
       "errorMessage": "Each DCQL credential entry must contain format."
 }'
 
@@ -504,7 +504,7 @@ CreateNewVerificationRequest:
         "unsupportedFormat": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_credential_format_invalid",
       "errorMessage": "DCQL credential format must be a valid format."
 }'
 
@@ -520,7 +520,7 @@ CreateNewVerificationRequest:
         "missingMeta": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_meta_required",
       "errorMessage": "Each DCQL credential entry must contain meta."
 }'
 
@@ -536,7 +536,7 @@ CreateNewVerificationRequest:
         "nullValue": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_meta_invalid",
       "errorMessage": "DCQL meta must not contain null/blank values."
 }'
 
@@ -552,7 +552,7 @@ CreateNewVerificationRequest:
       "duplicateValue": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_meta_duplicates",
       "errorMessage": "DCQL meta must not contain duplicate values."
 }'
 
@@ -568,7 +568,7 @@ CreateNewVerificationRequest:
       "mismatch": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_meta_not_matching_format",
       "errorMessage": "DCQL meta fields must match the specified credential format."
 }'
 
@@ -582,7 +582,7 @@ CreateNewVerificationRequest:
       outputTemplate: injiverify/errorCodeAndMessage
       input: '{}'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_meta_type_value_invalid_iri",
       "errorMessage": "Each value in type_values must be a valid IRI (absolute or relative)."
 }'
 
@@ -598,8 +598,8 @@ CreateNewVerificationRequest:
       "missingPath": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
-      "errorMessage": "DCQL claim path must be a valid path."
+      "errorCode": "dcql_query_claim_path_required",
+      "errorMessage": "Each claim must contain path."
 }'
 
   Injiverify_CreateNewVerificationRequest_Invalid_Claim_Path_Neg:
@@ -630,7 +630,7 @@ CreateNewVerificationRequest:
       "duplicatePath": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_duplicate_claim_path",
       "errorMessage": "Duplicate claim paths are not allowed within a single credential query."
 }'
 
@@ -646,7 +646,7 @@ CreateNewVerificationRequest:
       "invalidClaimId": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_claim_id_invalid",
       "errorMessage": "Claim id must contain only alphanumeric characters, underscores, and hyphens."
 }'
 
@@ -662,7 +662,7 @@ CreateNewVerificationRequest:
         "duplicateClaimId": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_duplicate_claim_id",
       "errorMessage": "Duplicate claim ids are not allowed."
 }'
 
@@ -678,7 +678,7 @@ CreateNewVerificationRequest:
         "emptyClaimValues": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_claim_values_invalid",
       "errorMessage": "DCQL claim values must be a non-empty array if claim values field is present."
 }'
 
@@ -695,7 +695,7 @@ CreateNewVerificationRequest:
         "emptyClaimSets": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
+      "errorCode": "dcql_query_empty_claim_set",
       "errorMessage": "claim_sets must not be empty if claim_sets field is present."
 }'
 
@@ -712,8 +712,8 @@ CreateNewVerificationRequest:
         "missingClaimReference": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
-      "errorMessage": "claim_sets contains unknown claim id reference."
+      "errorCode": "dcql_query_claim_set_unknown_claim_id",
+      "errorMessage": "claim_sets references a claim id that is not defined in claims."
 }'
 
   Injiverify_CreateNewVerificationRequest_Unknown_Claim_Set_Reference_Neg:
@@ -728,8 +728,8 @@ CreateNewVerificationRequest:
         "claimSets": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
-      "errorMessage": "claim_sets contains unknown claim id reference."
+      "errorCode": "dcql_query_claim_set_unknown_claim_id",
+      "errorMessage": "claim_sets references a claim id that is not defined in claims."
 }'
 
   Injiverify_CreateNewVerificationRequest_Unknown_Credential_Set_Id_Neg:
@@ -744,8 +744,8 @@ CreateNewVerificationRequest:
         "credentialSets": true
       }'
       output: '{
-      "errorCode": "dcql_query.credentials",
-      "errorMessage": "credential_sets contains unknown credential id reference."
+      "errorCode": "dcql_query_credential_set_unknown_credential_id",
+      "errorMessage": "credential_sets references a credential id that is not defined in credentials."
 }'
 
   Injiverify_CreateNewVerificationRequest_All_Credential_Sets_Optional_Neg:
@@ -761,7 +761,25 @@ CreateNewVerificationRequest:
         "optionalOnly": true
       }'
       output: '{
-      "errorCode": "dcql_query.credential_sets",
+      "errorCode": "dcql_query_all_credential_sets_optional",
       "errorMessage": "credential_sets must contain at least one required entry."
 }'
 
+  Injiverify_CreateVpRequest_ForWithoutPresentationId:
+      endPoint: /v1/verify/v2/vp-request
+      description: Creating a fresh VP request for testing submission without presentation ID
+      uniqueIdentifier: TC_InjiVerify_CreateNewVerificationRequest_49
+      role: noauth
+      checkOnlyStatusCodeInResponse: true
+      restMethod: post
+      inputTemplate: injiverify/CreateNewVerificationRequest/CreateNewVerificationRequest
+      outputTemplate: injiverify/responseCode
+      input: '{
+        "clientId": "decentralized_identifier:did:web:mosip.github.io:inji-mock-services:openid4vp-service:docs",
+        "nonce": "NkdHJkBIbdOdQaAjWm8gpA",
+		"acceptVPWithoutHolderProof": false,
+        "responseCodeValidationRequired": false
+      }'
+      output: '{
+        "responseCode": "201"
+}'
