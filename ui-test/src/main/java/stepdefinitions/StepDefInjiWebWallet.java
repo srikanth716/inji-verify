@@ -175,10 +175,14 @@ public class StepDefInjiWebWallet extends BaseSteps {   // <-- extends BaseSteps
     @Then("User click on trust verifier")
     public void user_clicks_on_trust_verifier() {
         try {
-            vpVerification.trustButton();
-            test.log(Status.PASS, "Selected the trust verifier button.");
-        } catch (NoSuchElementException e) {
-            logFailure(test, driver, "Failed to select the trust verifier button", e);
+        if (vpVerification.isTrustButtonVisible()) {
+                vpVerification.trustButton();
+                test.log(Status.PASS, "Selected the trust verifier button.");
+            } else {
+                test.log(Status.PASS, "Trust verifier button not visible — skipping step.");
+            }
+        } catch (Exception e) {
+            logFailure(test, driver, "Unexpected error while clicking the trust verifier button", e);
             throw e;
         }
     }

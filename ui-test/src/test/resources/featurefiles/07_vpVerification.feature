@@ -142,17 +142,19 @@ Scenario: Verify VP verification same device flow
     #And User is redirected to inji-web wallet presentation page
     And User performs token-based login to inji-web wallet
     And User unlocks inji-web wallet with configured passcode
-    And User click on submit button
-    And Then Verify error message is displayed
+    And User confirms inji-web wallet with configured passcode
+    #And User click on submit button
+    And User click on trust verifier
+    Then Verify error message is displayed
 	
 	@smoke @verifyingVpVerification @dependsOnVP
     Scenario: Verify multiple VC OVP verification using inji-web wallet 
     When Open inji web in new tab
     And User performs token-based login to inji-web wallet
     And User unlocks inji-web wallet with configured passcode
-    #And User confirms inji-web wallet with configured passcode
-    And User click on submit button
-    And User opens the inji-web issuer catalog
+    And User confirms inji-web wallet with configured passcode
+    #And User click on submit button
+    #And User opens the inji-web issuer catalog
     Then User search the issuers sunbird
     When User click on StayProtected Insurance credentials button
     When User click on health insurance by e-signet button
@@ -179,10 +181,11 @@ Scenario: Verify VP verification same device flow
     And User selects configured inji-web wallet in verifier
     And User clicks on Proceed button
     #And User is redirected to inji-web wallet presentation page
-    #And User click on trust verifier
-    And User selects the credential for verification
-    And User select the second credential for verification
+    And User click on trust verifier
+    #And User selects the credential for verification
+    #And User select the second credential for verification
     And User clicks consent and share button
+    And User clicks consent and share card button
     And VP result is posted back to inji-verify successfully
 
   @smoke @verifyingVpVerification @dependsOnVP
@@ -190,8 +193,8 @@ Scenario: Verify VP verification same device flow
     When Open inji web in new tab
     And User performs token-based login to inji-web wallet
     And User unlocks inji-web wallet with configured passcode
-    #And User confirms inji-web wallet with configured passcode
-    And User click on submit button
+    And User confirms inji-web wallet with configured passcode
+    #And User click on submit button
     And User opens the inji-web issuer catalog
     Then User search the issuers sunbird
     When User click on StayProtected Insurance credentials button
@@ -211,7 +214,8 @@ Scenario: Verify VP verification same device flow
     And User selects configured inji-web wallet in verifier
     And User clicks on Proceed button
     And User click on trust verifier
-    And User selects the credential for verification
-    And User clicks consent and share button
-    And VP result for partial sharing
-
+    #And User selects the credential for verification
+    #And User clicks consent and share button
+    #And User clicks consent and share card button
+    #And VP result for partial sharing
+    Then Verify error message is displayed

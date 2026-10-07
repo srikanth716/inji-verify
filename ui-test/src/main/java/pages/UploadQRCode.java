@@ -166,6 +166,11 @@ public class UploadQRCode extends BasePage {
 		uploadWithSingleRecovery(() -> clickOnUploadQRCodeJpeg());
 	}
 
+	public void uploadJpegAndWaitForOfflineResult() {
+		clickOnUploadQRCodeJpeg();
+		new WebDriverWait(driver, Duration.ofSeconds((long) getTimeout() * 4L))
+				.until(webDriver -> hasAnyOfflineVerificationResultVisible());
+	}
 	public void uploadAnotherJpegAndWaitForVerificationResult() {
 		uploadWithSingleRecovery(() -> clickOnAnotherUploadQRCodeJpeg());
 	}
@@ -474,6 +479,15 @@ public class UploadQRCode extends BasePage {
 	}
 
 	private boolean hasAnyVerificationResultVisible() {
+		return isDisplayedWithoutWaiting(TickIconVisible)
+				|| isDisplayedWithoutWaiting(VerifyAnotherQRcodeButton)
+				|| isDisplayedWithoutWaiting(ErrorTextExpiredQRCode)
+				|| isDisplayedWithoutWaiting(ErrorTextLargeSizeQRCode)
+				|| isDisplayedWithoutWaiting(UploadQRCodeStep2LabelAfter)
+				|| isDisplayedWithoutWaiting(UploadQRCodeStep3LabelAfter);
+	}
+
+	private boolean hasAnyOfflineVerificationResultVisible() {
 		return isDisplayedWithoutWaiting(TickIconVisible)
 				|| isDisplayedWithoutWaiting(VerifyAnotherQRcodeButton)
 				|| isDisplayedWithoutWaiting(ErrorTextExpiredQRCode)

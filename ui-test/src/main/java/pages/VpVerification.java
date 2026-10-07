@@ -2,8 +2,8 @@ package pages;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
 import org.openqa.selenium.support.PageFactory;
@@ -330,6 +330,16 @@ public class VpVerification extends BasePage {
 		clickOnElement(driver, proccedButton);
 	}
 
+	public boolean isTrustButtonVisible() {
+		try {
+			new WebDriverWait(driver, Duration.ofSeconds(3))
+				.until(ExpectedConditions.visibilityOf(trustButton));
+			return trustButton.isDisplayed();
+		} catch (TimeoutException e) {
+			return false;
+		}
+	}
+	
 	public void trustButton() {
 		new WebDriverWait(driver, Duration.ofSeconds(getTimeout()));
 		clickOnElement(driver, trustButton);

@@ -959,6 +959,20 @@ public class StepDef extends BaseSteps {
         }
     }
 
+    @When("Upload QR code file JPEG offline")
+    public void uploadQRCodeFileJpegOffline() {
+        try {
+            uploadqrcode.uploadJpegAndWaitForOfflineResult();
+            test.log(Status.PASS, "Successfully uploaded the QR code file in JPEG format for offline scenario.");
+        } catch (NoSuchElementException e) {
+            logFailure(test, driver, "Element not found while uploading the QR code JPEG file in offline scenario", e);
+            throw e;
+        } catch (Exception e) {
+            logFailure(test, driver, "Unexpected error while uploading the QR code JPEG file in offline scenario", e);
+            throw e;
+        }
+    }
+    
     @When("Upload another QR code file JPEG")
     public void uploadAnotherQRCodeFileJpeg() {
         try {

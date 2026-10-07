@@ -212,7 +212,7 @@ Feature: Inji Verify upload qr code testing
   Scenario: Verify upload qr code when internet is unavailable
     And Verify that Upload button visible
     And turn off internet connection
-    And Upload QR code file JPEG
+    And Upload QR code file JPEG offline
     Then Validate offline upload error message with please try again button
     And Verify click on please try again button
     Then Validate offline upload error message with please try again button
