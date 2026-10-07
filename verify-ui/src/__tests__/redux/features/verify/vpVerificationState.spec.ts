@@ -212,6 +212,50 @@ describe("vpVerification slice", () => {
         ]);
     });
 
+    test("does not make an unconfigured credential mandatory when another claim declares credential_sets", () => {
+        const declaredSets = [
+            { options: [["configured_credential_id"]], required: true },
+        ];
+        const selectedCredentials = [
+            {
+                id: "1",
+                type: "Type1",
+                essential: true,
+                dcqlQuery: {
+                    credentials: [{ id: "configured_credential_id", format: "ldp_vc", meta: {} }],
+                    credential_sets: declaredSets,
+                },
+            },
+            {
+                id: "2",
+                type: "Type2",
+                essential: false,
+                dcqlQuery: {
+                    credentials: [{ id: "unconfigured_credential_id", format: "ldp_vc", meta: {} }],
+                },
+            },
+        ] as any;
+
+        const initialState = {
+            ...vpVerificationReducer(undefined, { type: "@@INIT" }),
+            selectedCredentials: [],
+            originalSelectedCredentials: [],
+            unVerifiedCredentials: [],
+            dcqlQuery: mockDcqlQuery,
+        } as any;
+
+        const state = vpVerificationReducer(
+            initialState,
+            setSelectedCredentials({ selectedCredentials })
+        );
+
+        expect(state.dcqlQuery.credentials).toEqual([
+            { id: "configured_credential_id", format: "ldp_vc", meta: {} },
+            { id: "unconfigured_credential_id", format: "ldp_vc", meta: {} },
+        ]);
+        expect(state.dcqlQuery.credential_sets).toEqual(declaredSets);
+    });
+
     test("requires an optional credential when it is the only selection", () => {
         (getVerifiableClaims as jest.Mock).mockReturnValueOnce([
             {

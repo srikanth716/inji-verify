@@ -20,17 +20,7 @@ const mergeDcqlFromCredentials = (credentials: claim[]): DcqlQuery => {
     return { credentials: credentialQueries };
   }
 
-  const coveredIds = new Set(
-    declaredSets.flatMap((set) => set.options?.flat() ?? [])
-  );
-  const uncoveredSets = credentialQueries
-    .filter((credential) => !coveredIds.has(credential.id))
-    .map((credential) => ({
-      options: [[credential.id]],
-      required: true,
-    }));
-
-  let credentialSets = [...declaredSets, ...uncoveredSets];
+  let credentialSets = declaredSets;
   // A query with only optional sets is rejected. If nothing else is required,
   // the selected optional sets become required.
   if (!credentialSets.some((set) => set.required !== false)) {
