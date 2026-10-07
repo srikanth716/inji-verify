@@ -167,6 +167,85 @@ describe("vpVerification slice", () => {
         expect(state.dcqlQuery).not.toHaveProperty("credential_sets");
     });
 
+    test("keeps an optional credential optional when another selected credential is required", () => {
+        const selectedCredentials = [
+            {
+                id: "1",
+                type: "Type1",
+                essential: true,
+                dcqlQuery: {
+                    credentials: [{ id: "mosip_verifiable_credential_id", format: "ldp_vc", meta: {} }],
+                    credential_sets: [
+                        { options: [["mosip_verifiable_credential_id"]], required: false },
+                    ],
+                },
+            },
+            {
+                id: "2",
+                type: "Type2",
+                essential: false,
+                dcqlQuery: {
+                    credentials: [{ id: "health_insurance_credential_id", format: "ldp_vc", meta: {} }],
+                    credential_sets: [
+                        { options: [["health_insurance_credential_id"]], required: true },
+                    ],
+                },
+            },
+        ] as any;
+
+        const initialState = {
+            ...vpVerificationReducer(undefined, { type: "@@INIT" }),
+            selectedCredentials: [],
+            originalSelectedCredentials: [],
+            unVerifiedCredentials: [],
+            dcqlQuery: mockDcqlQuery,
+        } as any;
+
+        const state = vpVerificationReducer(
+            initialState,
+            setSelectedCredentials({ selectedCredentials })
+        );
+
+        expect(state.dcqlQuery.credential_sets).toEqual([
+            { options: [["mosip_verifiable_credential_id"]], required: false },
+            { options: [["health_insurance_credential_id"]], required: true },
+        ]);
+    });
+
+    test("requires an optional credential when it is the only selection", () => {
+        (getVerifiableClaims as jest.Mock).mockReturnValueOnce([
+            {
+                id: "1",
+                type: "Type1",
+                essential: true,
+                dcqlQuery: {
+                    credentials: [{ id: "mosip_verifiable_credential_id", format: "ldp_vc", meta: {} }],
+                    credential_sets: [
+                        { options: [["mosip_verifiable_credential_id"]], required: false },
+                    ],
+                },
+            },
+            {
+                id: "2",
+                type: "Type2",
+                essential: false,
+                dcqlQuery: {
+                    credentials: [{ id: "health_insurance_credential_id", format: "ldp_vc", meta: {} }],
+                    credential_sets: [
+                        { options: [["health_insurance_credential_id"]], required: true },
+                    ],
+                },
+            },
+        ]);
+
+        const state = vpVerificationReducer(undefined, setSelectCredential());
+
+        expect(state.selectedCredentials).toHaveLength(1);
+        expect(state.dcqlQuery.credential_sets).toEqual([
+            { options: [["mosip_verifiable_credential_id"]], required: true },
+        ]);
+    });
+
     test("should handle setSelectCredential with SelectWalletPanel open", () => {
         (getVerifiableClaims as jest.Mock).mockReturnValue([
             {

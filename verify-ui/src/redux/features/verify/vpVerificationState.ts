@@ -9,12 +9,37 @@ const DEFAULT_CREDENTIALS = (): claim[] =>
   getVerifiableClaims()?.filter((c) => c.essential) ?? [];
 
 const mergeDcqlFromCredentials = (credentials: claim[]): DcqlQuery => {
-  const credentialSets = credentials.flatMap(
+  const credentialQueries = credentials.flatMap(
+    (c) => c.dcqlQuery?.credentials ?? []
+  );
+  const declaredSets = credentials.flatMap(
     (c) => c.dcqlQuery?.credential_sets ?? []
   );
+
+  if (declaredSets.length === 0) {
+    return { credentials: credentialQueries };
+  }
+
+  const coveredIds = new Set(
+    declaredSets.flatMap((set) => set.options?.flat() ?? [])
+  );
+  const uncoveredSets = credentialQueries
+    .filter((credential) => !coveredIds.has(credential.id))
+    .map((credential) => ({
+      options: [[credential.id]],
+      required: true,
+    }));
+
+  let credentialSets = [...declaredSets, ...uncoveredSets];
+  // A query with only optional sets is rejected. If nothing else is required,
+  // the selected optional sets become required.
+  if (!credentialSets.some((set) => set.required !== false)) {
+    credentialSets = credentialSets.map((set) => ({ ...set, required: true }));
+  }
+
   return {
-    credentials: credentials.flatMap((c) => c.dcqlQuery?.credentials ?? []),
-    ...(credentialSets.length > 0 ? { credential_sets: credentialSets } : {}),
+    credentials: credentialQueries,
+    credential_sets: credentialSets,
   };
 };
 

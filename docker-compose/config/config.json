@@ -19,6 +19,16 @@
               ]
             }
           }
+        ],
+        "credential_sets": [
+          {
+            "options": [
+              [
+                "mosip_verifiable_credential_id"
+              ]
+            ],
+            "required": false
+          }
         ]
       }
     },
@@ -40,6 +50,16 @@
               ]
             },
             "multiple": true
+          }
+        ],
+        "credential_sets": [
+          {
+            "options": [
+              [
+                "life_insurance_credential_id"
+              ]
+            ],
+            "required": true
           }
         ]
       }
@@ -63,6 +83,16 @@
             },
             "multiple": true
           }
+        ],
+        "credential_sets": [
+          {
+            "options": [
+              [
+                "health_insurance_credential_id"
+              ]
+            ],
+            "required": true
+          }
         ]
       }
     },
@@ -81,6 +111,16 @@
                 "MockVerifiableCredential_SD_JWT"
               ]
             }
+          }
+        ],
+        "credential_sets": [
+          {
+            "options": [
+              [
+                "mock_identity_sd_jwt_credential_id"
+              ]
+            ],
+            "required": true
           }
         ]
       }
@@ -102,6 +142,16 @@
                 ]
               ]
             }
+          }
+        ],
+        "credential_sets": [
+          {
+            "options": [
+              [
+                "land_statement_credential_id"
+              ]
+            ],
+            "required": true
           }
         ]
       }
@@ -134,6 +184,16 @@
                 "values": [true]
               }
             ]
+          }
+        ],
+        "credential_sets": [
+          {
+            "options": [
+              [
+                "eu_pid_sd_jwt"
+              ]
+            ],
+            "required": true
           }
         ]
       }
