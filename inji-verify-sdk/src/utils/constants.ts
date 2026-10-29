@@ -63,4 +63,10 @@ export const VP_FORMATS_SUPPORTED = {
     "sd-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
     "kb-jwt_alg_values": ["RS256", "ES256", "ES256K", "EdDSA"],
   },
+  // OpenID4VP 1.0 Appendix B.2.2. COSE alg values: ESP256, ES256, and
+  // HMAC 256/256 with ECDH on P-256 (ISO 18013-5 DeviceMac).
+  mso_mdoc: {
+    issuerauth_alg_values: [-9, -7],
+    deviceauth_alg_values: [-9, -7, -65537],
+  },
 } as const;

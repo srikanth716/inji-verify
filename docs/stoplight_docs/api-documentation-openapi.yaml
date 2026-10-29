@@ -1795,11 +1795,12 @@ components:
           example: age_credential_query
         format:
           type: string
-          description: 'Credential format to request. Supported values: `ldp_vc`, `dc+sd-jwt`, `vc+sd-jwt`.'
+          description: 'Credential format to request. Supported values: `ldp_vc`, `dc+sd-jwt`, `vc+sd-jwt`, `mso_mdoc`.'
           enum:
             - ldp_vc
             - dc+sd-jwt
             - vc+sd-jwt
+            - mso_mdoc
           example: ldp_vc
         meta:
           $ref: '#/components/schemas/DcqlMeta'
@@ -1858,6 +1859,12 @@ components:
           example:
             - - VerifiableCredential
               - AgeCredential
+        doctype_value:
+          type: string
+          description: |-
+            `mso_mdoc` only. Required document type, for example `org.iso.18013.5.1.mDL`.
+            Must not be combined with `vct_values` or `type_values`. Other formats must not set it.
+          example: org.iso.18013.5.1.mDL
     DcqlClaim:
       type: object
       required:
@@ -1871,10 +1878,8 @@ components:
         path:
           type: array
           description: |-
-            JSONPath-like path to the claim within the credential. Segment types:
-            - string: object key lookup
-            - integer: array index
-            - null: array wildcard (expands to all array elements)
+            Path to the claim. For `ldp_vc`, `dc+sd-jwt`, and `vc+sd-jwt` each segment is a string (object key), an integer (array index), or null (array wildcard).
+            For `mso_mdoc` the path is exactly two strings: the namespace, then the element identifier. Wildcards and indexes are rejected.
           items:
             oneOf:
               - type: string
@@ -1887,6 +1892,12 @@ components:
           type: array
           description: 'Optional. The resolved claim value must type-and-value match at least one declared value (OR). Supported types: null, string, boolean, integer.'
           items: {}
+        intent_to_retain:
+          type: boolean
+          description: |-
+            `mso_mdoc` only. ISO 18013-5 IntentToRetain for this element.
+            Carried to the wallet on the authorization request. Never used to accept or reject the response.
+          example: true
     DcqlCredentialSet:
       type: object
       required:

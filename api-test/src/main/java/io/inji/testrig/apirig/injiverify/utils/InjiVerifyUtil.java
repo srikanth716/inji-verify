@@ -519,6 +519,7 @@ public class InjiVerifyUtil extends AdminTestUtil {
 		JSONObject vpFormatsSupported = clientMetadata.getJSONObject(VP_FORMATS_SUPPORTED);
 		assertVpFormatsSupportedKeys(vpFormatsSupported);
 		assertFormatObjectPresent(vpFormatsSupported, DC_SD_JWT);
+		assertMsoMdocFormat(vpFormatsSupported);
 	}
 
 	/**
@@ -584,6 +585,7 @@ public class InjiVerifyUtil extends AdminTestUtil {
 		JSONObject vpFormatsSupported = clientMetadata.getJSONObject(VP_FORMATS_SUPPORTED);
 		assertVpFormatsSupportedKeys(vpFormatsSupported);
 		assertFormatObjectPresent(vpFormatsSupported, DC_SD_JWT);
+		assertMsoMdocFormat(vpFormatsSupported);
 	}
 
 	private static void assertForbiddenClientMetadataKeys(JSONObject clientMetadata) throws AdminTestException {
@@ -619,6 +621,34 @@ public class InjiVerifyUtil extends AdminTestUtil {
 			throws AdminTestException {
 		if (!vpFormatsSupported.has(formatKey) || !(vpFormatsSupported.opt(formatKey) instanceof JSONObject)) {
 			throw new AdminTestException("vp_formats_supported must include " + formatKey + " as a JSON object");
+		}
+	}
+
+	/**
+	 * OpenID4VP 1.0 Appendix B.2.2. Issuer auth is ES256 / ESP256. Device auth adds
+	 * the ISO 18013-5 P-256 device MAC so both binding methods are advertised.
+	 */
+	private static void assertMsoMdocFormat(JSONObject vpFormatsSupported) throws AdminTestException {
+		assertFormatObjectPresent(vpFormatsSupported, "mso_mdoc");
+		JSONObject msoMdoc = vpFormatsSupported.getJSONObject("mso_mdoc");
+		assertCoseAlgs(msoMdoc, "issuerauth_alg_values", -9, -7);
+		assertCoseAlgs(msoMdoc, "deviceauth_alg_values", -9, -7, -65537);
+	}
+
+	private static void assertCoseAlgs(JSONObject format, String field, int... expected) throws AdminTestException {
+		if (!format.has(field) || !(format.opt(field) instanceof org.json.JSONArray)) {
+			throw new AdminTestException("mso_mdoc." + field + " must be a non-empty array of COSE alg integers");
+		}
+		org.json.JSONArray actual = format.getJSONArray(field);
+		if (actual.length() != expected.length) {
+			throw new AdminTestException("mso_mdoc." + field + " length expected " + expected.length
+					+ " but was " + actual.length());
+		}
+		for (int i = 0; i < expected.length; i++) {
+			if (actual.optInt(i, Integer.MIN_VALUE) != expected[i]) {
+				throw new AdminTestException("mso_mdoc." + field + "[" + i + "] expected " + expected[i]
+						+ " but was " + actual.opt(i));
+			}
 		}
 	}
 

@@ -159,7 +159,7 @@ Create a VP request and establish a browser session. Used by the Inji Verify SDK
 | `direct_post` (default) | Wallet submits to `/v2/vp-submission/direct-post` |
 | `dc_api` | Browser SDK submits to `/vp-submission/dc-api` after Digital Credentials API mediation |
 
-`dc_api` requires a signed-request `clientId` (`decentralized_identifier:` or `x509_san_dns:`), `responseCodeValidationRequired=false`, and an `Origin`/`Referer` header so the server can store `expected_origins`. The by-reference response includes both `requestUri` and `responseUri`.
+`dc_api` requires a signed-request `clientId` (`decentralized_identifier:` or `x509_san_dns:`), `responseCodeValidationRequired=false`, and an `Origin`/`Referer` header so the server can store `expected_origins`. The by-reference response includes both `requestUri` and `responseUri`. An `mso_mdoc` query uses these same modes. Its shape is `meta.doctype_value` plus claim paths of `[namespace, element]`. See [OpenID4VP — Online Credential Sharing](OpenID4VP-1.0.0.md#requesting-an-iso-mdoc-mso_mdoc).
 
 **`responseCodeValidationRequired`** — set to `true` for same-device web wallet flows. When enabled, the backend generates a single-use `responseCode` on VP submission by Wallet and appends it to the `redirectUri` as `#response_code=<uuid>`. The SDK reads it from the URL hash and passes it to `/vp-session-results`. Leave `false` (default) for QR scan, deep-link, and DC API flows. Must be `false` with `responseMode=dc_api`.
 

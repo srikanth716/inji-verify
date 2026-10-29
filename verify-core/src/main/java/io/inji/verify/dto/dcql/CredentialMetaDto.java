@@ -17,7 +17,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@Schema(description = "Represents the metadata of a credential in DCQL, including SD-JWT VC vct values and W3C VC expanded type values.")
+@Schema(description = "Represents the metadata of a credential in DCQL, including SD-JWT VC vct values, W3C VC expanded type values, and an ISO mdoc document type.")
 public class CredentialMetaDto {
 
     /**
@@ -42,4 +42,13 @@ public class CredentialMetaDto {
             @NotEmpty(message = "DCQL_META_INVALID")
             List<@NotBlank(message = "DCQL_META_INVALID") String>
             > typeValues;
+
+    /**
+     * ISO mdoc document type. Required when {@code format} is {@code mso_mdoc},
+     * and forbidden on every other format. OpenID4VP 1.0 Appendix B.2.3.
+     */
+    @JsonProperty("doctype_value")
+    @SerializedName("doctype_value")
+    @Schema(description = "ISO mdoc only. Document type the wallet must present, for example org.iso.18013.5.1.mDL.")
+    private String doctypeValue;
 }

@@ -1,6 +1,7 @@
 package io.inji.verify.shared;
 
 import io.inji.verify.dto.client.LdpVc;
+import io.inji.verify.dto.client.MsoMdoc;
 import io.inji.verify.dto.client.VpFormatsSupported;
 import io.inji.verify.dto.client.SdJwt;
 
@@ -53,19 +54,44 @@ public final class Constants {
     public static final String RSA_SIGNATURE_2018 = "RsaSignature2018";
     public static final String ED25519_SIGNATURE_2018 = "Ed25519Signature2018";
     public static final String ED25519_SIGNATURE_2020 = "Ed25519Signature2020";
+    /**
+     * COSE {@code alg} for ECDSA with SHA-256. This is the value an mdoc puts in the
+     * IssuerAuth or DeviceSignature header. OpenID4VP 1.0 B.2.2 also treats a P-256 key
+     * with this header as matching the fully-specified value {@link #COSE_ALG_ESP256}.
+     */
+    public static final int COSE_ALG_ES256 = -7;
+    /** Fully-specified ECDSA using P-256 and SHA-256. */
+    public static final int COSE_ALG_ESP256 = -9;
+    /**
+     * OpenID4VP private-use identifier for ISO 18013-5 DeviceMac:
+     * HMAC 256/256 with the MAC key from ECDH on P-256.
+     */
+    public static final int COSE_ALG_DEVICE_MAC_P256 = -65537;
+
+    private static final List<Integer> MSO_MDOC_ISSUER_AUTH_ALGS = List.of(
+            COSE_ALG_ESP256,
+            COSE_ALG_ES256);
+    private static final List<Integer> MSO_MDOC_DEVICE_AUTH_ALGS = List.of(
+            COSE_ALG_ESP256,
+            COSE_ALG_ES256,
+            COSE_ALG_DEVICE_MAC_P256);
+
     public static final VpFormatsSupported VP_FORMATS_SUPPORTED = new VpFormatsSupported(new LdpVc(Arrays.asList(
             ED25519_SIGNATURE_2018,
             ED25519_SIGNATURE_2020,
             RSA_SIGNATURE_2018
     )), new SdJwt(SD_JWT_SUPPORTED_ALGORITHMS,
-            SD_JWT_SUPPORTED_ALGORITHMS), 
+            SD_JWT_SUPPORTED_ALGORITHMS),
         new SdJwt(SD_JWT_SUPPORTED_ALGORITHMS,
-            SD_JWT_SUPPORTED_ALGORITHMS));
+            SD_JWT_SUPPORTED_ALGORITHMS),
+        new MsoMdoc(MSO_MDOC_ISSUER_AUTH_ALGS, 
+                MSO_MDOC_DEVICE_AUTH_ALGS));
 
     // Credential formats
     public static final String FORMAT_LDP_VC = "ldp_vc";
     public static final String FORMAT_DC_SD_JWT = "dc+sd-jwt";
     public static final String FORMAT_VC_SD_JWT = "vc+sd-jwt";
+    public static final String FORMAT_MSO_MDOC = "mso_mdoc";
 
     // LDP VC type values
     public static final String LDP_TYPE_VERIFIABLE_PRESENTATION = "VerifiablePresentation";

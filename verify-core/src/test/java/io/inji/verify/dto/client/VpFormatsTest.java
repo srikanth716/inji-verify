@@ -15,7 +15,7 @@ public class VpFormatsTest {
         List<String> proofTypes = Arrays.asList("LdProof", "JsonWebSignature2020");
         LdpVc ldpVc = new LdpVc(proofTypes);
 
-        VpFormatsSupported vpFormatsSupported = new VpFormatsSupported(ldpVc,null,null);
+        VpFormatsSupported vpFormatsSupported = new VpFormatsSupported(ldpVc,null,null, null);
 
         assertNotNull(vpFormatsSupported.getLdpVc(), "The LdpVp object should not be null.");
         assertEquals(ldpVc, vpFormatsSupported.getLdpVc(), "The LdpVp object should match the one set in the constructor.");
@@ -29,7 +29,7 @@ public class VpFormatsTest {
 
     @Test
     public void testVpFormats_WithNullLdpVp() {
-        VpFormatsSupported vpFormatsSupported = new VpFormatsSupported(null,null,null);
+        VpFormatsSupported vpFormatsSupported = new VpFormatsSupported(null,null,null, null);
 
         assertNull(vpFormatsSupported.getLdpVc(), "The LdpVp object should be null when initialized with null.");
     }
@@ -39,7 +39,7 @@ public class VpFormatsTest {
         List<String> proofTypes = Arrays.asList();
         LdpVc ldpVc = new LdpVc(proofTypes);
 
-        VpFormatsSupported vpFormatsSupported = new VpFormatsSupported(ldpVc,null,null);
+        VpFormatsSupported vpFormatsSupported = new VpFormatsSupported(ldpVc,null,null, null);
 
         assertNotNull(vpFormatsSupported.getLdpVc(), "The LdpVp object should not be null.");
         assertEquals(ldpVc, vpFormatsSupported.getLdpVc(), "The LdpVp object should match the one set in the constructor.");
@@ -55,7 +55,7 @@ public class VpFormatsTest {
 
         SdJwt sdJwt = new SdJwt(algs, proofTypes);
 
-        VpFormatsSupported vpFormatsSupported = new VpFormatsSupported(null, sdJwt, null);
+        VpFormatsSupported vpFormatsSupported = new VpFormatsSupported(null, sdJwt, null, null);
 
         assertNotNull(vpFormatsSupported.getSdJwt(), "The SdJwt object should not be null.");
         assertEquals(sdJwt, vpFormatsSupported.getSdJwt(), "The SdJwt object should match the one set in the constructor.");

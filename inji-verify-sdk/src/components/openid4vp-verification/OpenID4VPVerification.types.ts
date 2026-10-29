@@ -34,6 +34,11 @@ export interface DcqlClaimQuery {
   path: string[];
   /** Array of allowed values. Claim is returned only if its value matches one of these. */
   values?: unknown[];
+  /**
+   * ISO mdoc only. Whether the verifier intends to retain this element.
+   * Carried on the authorization request and never used to accept or reject the response.
+   */
+  intent_to_retain?: boolean;
 }
 
 /**
@@ -53,6 +58,8 @@ export interface DcqlCredentialMeta {
   vct_values?: string[];
   /** W3C VC (JSON-LD): expanded type values. */
   type_values?: string[][];
+  /** ISO mdoc only. Required document type, for example `org.iso.18013.5.1.mDL`. */
+  doctype_value?: string;
 }
 
 /**
@@ -61,7 +68,7 @@ export interface DcqlCredentialMeta {
 export interface DcqlCredentialQuery {
   /** Unique identifier for this credential within the request and response. */
   id: string;
-  /** Credential format (e.g., "dc+sd-jwt", "vc+sd-jwt"). */
+  /** Credential format (`ldp_vc`, `dc+sd-jwt`, `vc+sd-jwt`, or `mso_mdoc`). */
   format: string;
   /** Whether multiple credentials of this type can be returned. Defaults to false. */
   multiple?: boolean;

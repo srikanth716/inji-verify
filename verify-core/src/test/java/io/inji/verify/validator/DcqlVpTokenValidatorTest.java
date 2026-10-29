@@ -63,11 +63,11 @@ class DcqlVpTokenValidatorTest {
 
     private static CredentialQueryDto cred(String id) {
         // binding=false: ldpVcToken carries a VerifiableCredential, not a VerifiablePresentation
-        return new CredentialQueryDto(id, "ldp_vc", new CredentialMetaDto(null, null), false, false, null, null);
+        return new CredentialQueryDto(id, "ldp_vc", new CredentialMetaDto(null, null, null), false, false, null, null);
     }
 
     private static CredentialQueryDto credWithFormat(String id, String format) {
-        return new CredentialQueryDto(id, format, new CredentialMetaDto(null, null), true, false, null, null);
+        return new CredentialQueryDto(id, format, new CredentialMetaDto(null, null, null), true, false, null, null);
     }
 
     private static CredentialSetQueryDto requiredSet(List<List<String>> options) {
@@ -486,7 +486,7 @@ class DcqlVpTokenValidatorTest {
     void shouldPass_whenMultipleTrueAndMoreThanOneCredentialSubmitted() {
         // multiple=true: multiple elements in the array are allowed
         CredentialQueryDto credWithMultiple =
-                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null), true, true, null, null);
+                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null, null), true, true, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithMultiple), null);
 
         ObjectNode token = MAPPER.createObjectNode();
@@ -508,7 +508,7 @@ class DcqlVpTokenValidatorTest {
     void shouldPass_whenBindingRequiredAndAllElementsAreVerifiablePresentation() {
         // require_cryptographic_holder_binding=true: VerifiablePresentation is expected
         CredentialQueryDto credWithBinding =
-                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null);
+                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null, null), true, false, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithBinding), null);
         ObjectNode token = MAPPER.createObjectNode();
         token.putArray("cred1").addObject().put("type", "VerifiablePresentation");
@@ -519,7 +519,7 @@ class DcqlVpTokenValidatorTest {
     void shouldFail_whenBindingRequiredAndElementIsVerifiableCredential() {
         // require_cryptographic_holder_binding=true but wallet submits VerifiableCredential
         CredentialQueryDto credWithBinding =
-                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null);
+                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null, null), true, false, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithBinding), null);
         ObjectNode token = MAPPER.createObjectNode();
         token.putArray("cred1").addObject().put("type", "VerifiableCredential");
@@ -534,7 +534,7 @@ class DcqlVpTokenValidatorTest {
     void shouldPass_whenBindingNotRequiredAndAllElementsAreVerifiableCredential() {
         // require_cryptographic_holder_binding=false: VerifiableCredential is expected
         CredentialQueryDto credNoBinding =
-                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null), false, false, null, null);
+                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null, null), false, false, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credNoBinding), null);
         ObjectNode token = MAPPER.createObjectNode();
         token.putArray("cred1").addObject().put("type", "VerifiableCredential");
@@ -546,7 +546,7 @@ class DcqlVpTokenValidatorTest {
     void shouldFail_whenBindingNotRequiredAndElementIsVerifiablePresentation() {
         // require_cryptographic_holder_binding=false but wallet submits VerifiablePresentation
         CredentialQueryDto credNoBinding =
-                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null), false, false, null, null);
+                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null, null), false, false, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credNoBinding), null);
         ObjectNode token = MAPPER.createObjectNode();
         token.putArray("cred1").addObject().put("type", "VerifiablePresentation");
@@ -562,7 +562,7 @@ class DcqlVpTokenValidatorTest {
         // multiple=true, require_cryptographic_holder_binding=true
         // first element is VP, second is VC — second should fail
         CredentialQueryDto credMultiple =
-                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null), true, true, null, null);
+                new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null, null), true, true, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credMultiple), null);
 
         ObjectNode token = MAPPER.createObjectNode();
@@ -585,7 +585,7 @@ class DcqlVpTokenValidatorTest {
     @Test
     void shouldPass_whenDcSdJwtBindingRequired_andCnfPresentAndKbJwtPresent() {
         CredentialQueryDto credWithBinding =
-                new CredentialQueryDto("cred1", "dc+sd-jwt", new CredentialMetaDto(null, null), true, false, null, null);
+                new CredentialQueryDto("cred1", "dc+sd-jwt", new CredentialMetaDto(null, null, null), true, false, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithBinding), null);
         ObjectNode token = MAPPER.createObjectNode();
         token.putArray("cred1").add(DC_SD_JWT_WITH_CNF_AND_KB);
@@ -596,7 +596,7 @@ class DcqlVpTokenValidatorTest {
     void shouldFail_whenDcSdJwtBindingRequired_andCnfClaimAbsent() {
         // No cnf in payload — SD-JWT does not support Holder Binding at all
         CredentialQueryDto credWithBinding =
-                new CredentialQueryDto("cred1", "dc+sd-jwt", new CredentialMetaDto(null, null), true, false, null, null);
+                new CredentialQueryDto("cred1", "dc+sd-jwt", new CredentialMetaDto(null, null, null), true, false, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithBinding), null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -609,7 +609,7 @@ class DcqlVpTokenValidatorTest {
     void shouldFail_whenDcSdJwtBindingRequired_andCnfPresentButKbJwtAbsent() {
         // cnf present (supports binding) but KB-JWT not included
         CredentialQueryDto credWithBinding =
-                new CredentialQueryDto("cred1", "dc+sd-jwt", new CredentialMetaDto(null, null), true, false, null, null);
+                new CredentialQueryDto("cred1", "dc+sd-jwt", new CredentialMetaDto(null, null, null), true, false, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithBinding), null);
         ObjectNode token = MAPPER.createObjectNode();
         token.putArray("cred1").add(DC_SD_JWT_WITH_CNF_NO_KB);
@@ -624,7 +624,7 @@ class DcqlVpTokenValidatorTest {
     void shouldPass_whenDcSdJwtBindingNotRequired_andCnfAbsent() {
         // holderBindingRequired=false: cnf and KB-JWT are not checked
         CredentialQueryDto credNoBinding =
-                new CredentialQueryDto("cred1", "dc+sd-jwt", new CredentialMetaDto(null, null), false, false, null, null);
+                new CredentialQueryDto("cred1", "dc+sd-jwt", new CredentialMetaDto(null, null, null), false, false, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credNoBinding), null);
         assertDoesNotThrow(() -> validator.validateVpTokenAgainstDcql(query, dcSdJwtToken("cred1")));
     }
@@ -638,7 +638,7 @@ class DcqlVpTokenValidatorTest {
     private static CredentialQueryDto credWithTypeValues(String id, List<List<String>> typeValues) {
         // binding=false: token carries VerifiableCredential, not VerifiablePresentation
         return new CredentialQueryDto(id, Constants.FORMAT_LDP_VC,
-                new CredentialMetaDto(null, typeValues), false, false, null, null);
+                new CredentialMetaDto(null, typeValues, null), false, false, null, null);
     }
 
     private static JsonNode ldpVcTokenWithTypes(String id, String... types) {
@@ -788,7 +788,7 @@ class DcqlVpTokenValidatorTest {
     private static CredentialQueryDto credWithTypeValuesAndBinding(String id, List<List<String>> typeValues) {
         // binding=true (default): token carries VerifiablePresentation wrapping the VC(s)
         return new CredentialQueryDto(id, Constants.FORMAT_LDP_VC,
-                new CredentialMetaDto(null, typeValues), true, false, null, null);
+                new CredentialMetaDto(null, typeValues, null), true, false, null, null);
     }
 
     /**
@@ -916,7 +916,7 @@ class DcqlVpTokenValidatorTest {
 
     private static CredentialQueryDto credWithVctValues(String id, List<String> vctValues) {
         // holder binding off so E doesn't reject test SD-JWTs that lack a KB-JWT
-        return new CredentialQueryDto(id, Constants.FORMAT_DC_SD_JWT, new CredentialMetaDto(vctValues, null), false, false, null, null);
+        return new CredentialQueryDto(id, Constants.FORMAT_DC_SD_JWT, new CredentialMetaDto(vctValues, null, null), false, false, null, null);
     }
 
     private static JsonNode sdJwtToken(String id, String sdJwt) {
@@ -993,12 +993,12 @@ class DcqlVpTokenValidatorTest {
 
     private static CredentialQueryDto credWithClaims(String id, boolean holderBinding, List<ClaimQueryDto> claims) {
         return new CredentialQueryDto(id, Constants.FORMAT_LDP_VC,
-                new CredentialMetaDto(null, null), holderBinding, false, claims, null);
+                new CredentialMetaDto(null, null, null), holderBinding, false, claims, null);
     }
 
     /** Builds a ClaimQueryDto with a path from varargs. Use Arrays.asList directly when path contains null. */
     private static ClaimQueryDto claimPath(Object... path) {
-        return new ClaimQueryDto(null, Arrays.asList(path), null);
+        return new ClaimQueryDto(null, Arrays.asList(path), null, null);
     }
 
     /** vp_token where the entry for id is a VerifiableCredential with the given credentialSubject. */
@@ -1098,7 +1098,7 @@ class DcqlVpTokenValidatorTest {
     void shouldFail_whenWildcardStepAppliedToObject() {
         // Per DCQL §7.1.1: null step requires the current node to be an array; applying to an object is an error.
         // credentialSubject is an object, so [null, "city"] must abort with claim-not-found.
-        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto(null, Arrays.asList(null, "city"), null));
+        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto(null, Arrays.asList(null, "city"), null, null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("cred1", false, claims)), null);
 
         ObjectNode credentialSubject = MAPPER.createObjectNode();
@@ -1113,7 +1113,7 @@ class DcqlVpTokenValidatorTest {
     @Test
     void shouldPass_whenWildcardStepSelectsFromArray() {
         // null step on an array: path = ["items", null, "city"] selects "city" from every element of the "items" array
-        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto(null, Arrays.asList("items", null, "city"), null));
+        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto(null, Arrays.asList("items", null, "city"), null, null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("cred1", false, claims)), null);
 
         ObjectNode credentialSubject = MAPPER.createObjectNode();
@@ -1126,7 +1126,7 @@ class DcqlVpTokenValidatorTest {
     @Test
     void shouldFail_whenWildcardStepFindsNoMatchingKey() {
         // path = ["items", null, "country"] — array elements have "city" not "country" → empty selection
-        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto(null, Arrays.asList("items", null, "country"), null));
+        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto(null, Arrays.asList("items", null, "country"), null, null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("cred1", false, claims)), null);
 
         ObjectNode credentialSubject = MAPPER.createObjectNode();
@@ -1242,7 +1242,7 @@ class DcqlVpTokenValidatorTest {
     // -------------------------------------------------------------------------
 
     private static ClaimQueryDto claimPathWithValues(List<Object> values, Object... path) {
-        return new ClaimQueryDto(null, Arrays.asList(path), values);
+        return new ClaimQueryDto(null, Arrays.asList(path), values, null);
     }
 
     @Test
@@ -1472,7 +1472,7 @@ class DcqlVpTokenValidatorTest {
 
     private static CredentialQueryDto sdJwtCredentialQueryWithClaims(String id, List<ClaimQueryDto> claims) {
         // holder binding off: no KB-JWT required
-        return new CredentialQueryDto(id, Constants.FORMAT_DC_SD_JWT, new CredentialMetaDto(null, null), false, false, claims, null);
+        return new CredentialQueryDto(id, Constants.FORMAT_DC_SD_JWT, new CredentialMetaDto(null, null, null), false, false, claims, null);
     }
 
     @Test
@@ -1512,7 +1512,7 @@ class DcqlVpTokenValidatorTest {
     void shouldPass_whenSdJwtDottedClaimNameMatchesNestedDcqlPath() {
         // Multipaz discloses age as claim name "age_equal_or_over.18"; DCQL path is ["age_equal_or_over","18"]
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto("age_over_18", List.of("age_equal_or_over", "18"), List.of(true)));
+                new ClaimQueryDto("age_over_18", List.of("age_equal_or_over", "18"), List.of(true), null));
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(sdJwtCredentialQueryWithClaims("cred1", claims)), null);
 
@@ -1523,7 +1523,7 @@ class DcqlVpTokenValidatorTest {
     @Test
     void shouldPass_whenSdJwtNestedAgeClaimPresent() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto("age_over_18", List.of("age_equal_or_over", "18"), List.of(true)));
+                new ClaimQueryDto("age_over_18", List.of("age_equal_or_over", "18"), List.of(true), null));
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(sdJwtCredentialQueryWithClaims("cred1", claims)), null);
 
@@ -1536,7 +1536,7 @@ class DcqlVpTokenValidatorTest {
         // Nested object {"age_equal_or_over":{"18":true}} with path step Integer 18
         // (Jackson deserializes unquoted 18 in DCQL JSON as Integer → array-index branch).
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto("age_over_18", List.of("age_equal_or_over", 18), List.of(true)));
+                new ClaimQueryDto("age_over_18", List.of("age_equal_or_over", 18), List.of(true), null));
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(sdJwtCredentialQueryWithClaims("cred1", claims)), null);
 
@@ -1722,21 +1722,21 @@ class DcqlVpTokenValidatorTest {
 
     /** Builds a ClaimQueryDto with an ID, path, and optional values. */
     private static ClaimQueryDto namedClaim(String id, List<Object> values, Object... path) {
-        return new ClaimQueryDto(id, Arrays.asList(path), values);
+        return new ClaimQueryDto(id, Arrays.asList(path), values, null);
     }
 
     private static CredentialQueryDto ldpVcCredWithClaimSets(String id,
                                                                List<ClaimQueryDto> claims,
                                                                List<List<String>> claimSets) {
         return new CredentialQueryDto(id, Constants.FORMAT_LDP_VC,
-                new CredentialMetaDto(null, null), false, false, claims, claimSets);
+                new CredentialMetaDto(null, null, null), false, false, claims, claimSets);
     }
 
     private static CredentialQueryDto sdJwtCredWithClaimSets(String id,
                                                                List<ClaimQueryDto> claims,
                                                                List<List<String>> claimSets) {
         return new CredentialQueryDto(id, Constants.FORMAT_DC_SD_JWT,
-                new CredentialMetaDto(null, null), false, false, claims, claimSets);
+                new CredentialMetaDto(null, null, null), false, false, claims, claimSets);
     }
 
     // ---- ldp_vc ----
@@ -2076,7 +2076,7 @@ class DcqlVpTokenValidatorTest {
         // FORMAT_VC_SD_JWT: same claim-path resolution as dc+sd-jwt (via isSdJwtFormat)
         List<ClaimQueryDto> claims = List.of(claimPath("name"));
         CredentialQueryDto credVcSdJwt = new CredentialQueryDto("cred1", Constants.FORMAT_VC_SD_JWT,
-                new CredentialMetaDto(null, null), false, false, claims, null);
+                new CredentialMetaDto(null, null, null), false, false, claims, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credVcSdJwt), null);
 
         assertDoesNotThrow(() -> validator.validateVpTokenAgainstDcql(query,
@@ -2087,7 +2087,7 @@ class DcqlVpTokenValidatorTest {
     void shouldFail_whenVcSdJwtVctValuesMismatch() {
         // FORMAT_VC_SD_JWT: validateVctValues path — vct must match one of vct_values
         CredentialQueryDto credVcSdJwt = new CredentialQueryDto("cred1", Constants.FORMAT_VC_SD_JWT,
-                new CredentialMetaDto(List.of("https://example.com/WrongCredential"), null), false, false, null, null);
+                new CredentialMetaDto(List.of("https://example.com/WrongCredential"), null, null), false, false, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credVcSdJwt), null);
 
         // VC_SD_JWT_VCT_MY has typ=vc+sd-jwt and vct="https://example.com/MyCredential"
@@ -2102,7 +2102,7 @@ class DcqlVpTokenValidatorTest {
     void shouldFail_whenVcSdJwtBindingRequired_andCnfAbsent() {
         // FORMAT_VC_SD_JWT: validateHolderBinding with holderBindingRequired=true and no cnf claim
         CredentialQueryDto credWithBinding = new CredentialQueryDto("cred1", Constants.FORMAT_VC_SD_JWT,
-                new CredentialMetaDto(null, null), true, false, null, null);
+                new CredentialMetaDto(null, null, null), true, false, null, null);
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithBinding), null);
 
         // VC_SD_JWT has vc+sd-jwt typ but no cnf in payload → hasSdJwtCnfClaim returns false
@@ -2145,7 +2145,7 @@ class DcqlVpTokenValidatorTest {
         // Directly use the validator bypassing query-level validateClaimSets
         // by building a raw CredentialQueryDto with mismatched claimSets
         CredentialQueryDto credMismatch = new CredentialQueryDto("cred1", Constants.FORMAT_LDP_VC,
-                new CredentialMetaDto(null, null), false, false, claims,
+                new CredentialMetaDto(null, null, null), false, false, claims,
                 List.of(List.of("z"))); // "z" is not in claims
         DCQLQueryDto query = new DCQLQueryDto(List.of(credMismatch), null);
 

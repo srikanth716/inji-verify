@@ -19,4 +19,8 @@ public class VpFormatsSupported {
     @JsonProperty("dc+sd-jwt")
     @SerializedName("dc+sd-jwt")
     private SdJwt dcSdJwt;
+
+    @JsonProperty("mso_mdoc")
+    @SerializedName("mso_mdoc")
+    private MsoMdoc msoMdoc;
 }

@@ -1853,7 +1853,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             DCQLQueryDto dcql = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(
                             "cred1", "dc+sd-jwt",
-                            new CredentialMetaDto(List.of("cred1"), null),
+                            new CredentialMetaDto(List.of("cred1"), null, null),
                             holderBinding, false, null, null)),
                     null);
             return new AuthorizationRequestResponseDto("clientId", dcql, null, "nonce", "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
@@ -1933,7 +1933,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             io.inji.verify.dto.dcql.DCQLQueryDto dcql = new io.inji.verify.dto.dcql.DCQLQueryDto(
                     List.of(new io.inji.verify.dto.dcql.CredentialQueryDto(
                             "age_credential", "ldp_vc",
-                            new io.inji.verify.dto.dcql.CredentialMetaDto(null, List.of(List.of("VerifiableCredential"))),
+                            new io.inji.verify.dto.dcql.CredentialMetaDto(null, List.of(List.of("VerifiableCredential")), null),
                             false, false, null, null)),
                     null);
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
@@ -2413,7 +2413,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             DCQLQueryDto dcql = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(
                             "cred1", "dc+sd-jwt",
-                            new CredentialMetaDto(List.of("cred1"), null),
+                            new CredentialMetaDto(List.of("cred1"), null, null),
                             true, false, null, null)),
                     null);
             return new AuthorizationRequestResponseDto(EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
@@ -2463,7 +2463,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             DCQLQueryDto dcql = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(
                             "cred1", "dc+sd-jwt",
-                            new CredentialMetaDto(List.of("cred1"), null),
+                            new CredentialMetaDto(List.of("cred1"), null, null),
                             false, false, null, null)),
                     null);
             AuthorizationRequestResponseDto authRequest = new AuthorizationRequestResponseDto(
@@ -2501,7 +2501,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             DCQLQueryDto dcql = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(
                             "cred1", "dc+sd-jwt",
-                            new CredentialMetaDto(List.of("cred1"), null),
+                            new CredentialMetaDto(List.of("cred1"), null, null),
                             true, false, null, null)),
                     null);
             AuthorizationRequestResponseDto authRequest = new AuthorizationRequestResponseDto(
@@ -2524,7 +2524,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
 
         private AuthorizationRequestResponseDto buildAuthRequest() {
             DCQLQueryDto dcql = new DCQLQueryDto(
-                    List.of(new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null)),
+                    List.of(new CredentialQueryDto("cred1", "ldp_vc", new CredentialMetaDto(null, null, null), true, false, null, null)),
                     null);
             return new AuthorizationRequestResponseDto(
                     EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false,
@@ -2629,7 +2629,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             DCQLQueryDto dcql = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(
                             "cred1", "dc+sd-jwt",
-                            new CredentialMetaDto(List.of("cred1"), null),
+                            new CredentialMetaDto(List.of("cred1"), null, null),
                             true, false, null, null)),
                     null);
             return new AuthorizationRequestResponseDto(EXPECTED_CLIENT_ID, dcql, null, EXPECTED_NONCE, "responseUri", false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
@@ -2688,7 +2688,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
             DCQLQueryDto dcql = new DCQLQueryDto(
                     List.of(new CredentialQueryDto(
                             "cred1", "dc+sd-jwt",
-                            new CredentialMetaDto(List.of("cred1"), null),
+                            new CredentialMetaDto(List.of("cred1"), null, null),
                             false, false, null, null)),
                     null);
             AuthorizationRequestResponseDto authRequest = new AuthorizationRequestResponseDto(
@@ -2745,7 +2745,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
 
         private AuthorizationRequestCreateResponse authRequestWithDcql(String credentialId) {
             DCQLQueryDto dcqlQuery = new DCQLQueryDto(
-                    List.of(new CredentialQueryDto(credentialId, "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null)),
+                    List.of(new CredentialQueryDto(credentialId, "ldp_vc", new CredentialMetaDto(null, null, null), true, false, null, null)),
                     null);
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
                     CLIENT_ID, dcqlQuery, null, NONCE, "https://resp.example/post", false, false,
@@ -2939,7 +2939,7 @@ public class VerifiablePresentationSubmissionServiceImplTest {
 
         private AuthorizationRequestCreateResponse dcApiAuthRequestWithLdp(String credentialId) {
             DCQLQueryDto dcqlQuery = new DCQLQueryDto(
-                    List.of(new CredentialQueryDto(credentialId, "ldp_vc", new CredentialMetaDto(null, null), true, false, null, null)),
+                    List.of(new CredentialQueryDto(credentialId, "ldp_vc", new CredentialMetaDto(null, null, null), true, false, null, null)),
                     null);
             AuthorizationRequestResponseDto authDetails = new AuthorizationRequestResponseDto(
                     CLIENT_ID, dcqlQuery, null, NONCE, null, false, false,

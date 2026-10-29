@@ -47,12 +47,12 @@ class DcqlNullVsEmptyValidationTest {
 
     @Test
     void should_failOnlyRequiredConstraint_when_claimPathIsNull() {
-        assertEquals(Set.of("DCQL_CLAIM_PATH_REQUIRED"), violationMessages(new ClaimQueryDto(null, null, null)));
+        assertEquals(Set.of("DCQL_CLAIM_PATH_REQUIRED"), violationMessages(new ClaimQueryDto(null, null, null, null)));
     }
 
     @Test
     void should_failOnlyInvalidConstraint_when_claimPathIsEmpty() {
-        assertEquals(Set.of("DCQL_CLAIM_PATH_INVALID"), violationMessages(new ClaimQueryDto(null, List.of(), null)));
+        assertEquals(Set.of("DCQL_CLAIM_PATH_INVALID"), violationMessages(new ClaimQueryDto(null, List.of(), null, null)));
     }
 
     @Test

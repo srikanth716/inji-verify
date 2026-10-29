@@ -45,10 +45,10 @@ class SdJwtRecursiveDisclosureTest {
     void dcqlPath_ageEqualOrOver18_passesForRecursiveDisclosure() {
         DcqlValidator validator = new DcqlValidator();
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto("age_over_18", List.of("age_equal_or_over", "18"), List.of(true)));
+                new ClaimQueryDto("age_over_18", List.of("age_equal_or_over", "18"), List.of(true), null));
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(new CredentialQueryDto("cred1", Constants.FORMAT_DC_SD_JWT,
-                        new CredentialMetaDto(null, null), false, false, claims, null)), null);
+                        new CredentialMetaDto(null, null, null), false, false, claims, null)), null);
         ObjectNode vp = MAPPER.createObjectNode();
         vp.putArray("cred1").add(RECURSIVE);
         assertDoesNotThrow(() -> validator.validateVpTokenAgainstDcql(query, vp));

@@ -27,10 +27,10 @@ public class CredentialQueryDto {
     private String id;
 
     /**
-     * Supported formats: dc+sd-jwt, vc+sd-jwt, ldp_vc.
+     * Supported formats: dc+sd-jwt, vc+sd-jwt, ldp_vc, mso_mdoc.
      */
     @NotBlank(message = "DCQL_CREDENTIAL_FORMAT_REQUIRED")
-    @Schema(description = "Format of the credential being queried. Supported values: 'dc+sd-jwt' (SD-JWT VC per draft-ietf-oauth-sd-jwt-vc-10), 'vc+sd-jwt' (legacy SD-JWT VC format), and 'ldp_vc' (JSON-LD Verifiable Credential).")
+    @Schema(description = "Format of the credential being queried. Supported values: 'dc+sd-jwt' (SD-JWT VC per draft-ietf-oauth-sd-jwt-vc-10), 'vc+sd-jwt' (legacy SD-JWT VC format), 'ldp_vc' (JSON-LD Verifiable Credential), and 'mso_mdoc' (ISO mdoc).")
     private String format;
 
     @Valid

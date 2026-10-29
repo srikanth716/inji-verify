@@ -31,11 +31,11 @@ class DcqlQueryValidatorTest {
     // -------------------------------------------------------------------------
 
     private static CredentialQueryDto cred(String id) {
-        return new CredentialQueryDto(id, Constants.FORMAT_LDP_VC, new CredentialMetaDto(null, null), true, false, null, null);
+        return new CredentialQueryDto(id, Constants.FORMAT_LDP_VC, new CredentialMetaDto(null, null, null), true, false, null, null);
     }
 
     private static CredentialQueryDto credWithFormat(String id, String format) {
-        return new CredentialQueryDto(id, format, new CredentialMetaDto(null, null), true, false, null, null);
+        return new CredentialQueryDto(id, format, new CredentialMetaDto(null, null, null), true, false, null, null);
     }
 
     private static CredentialQueryDto credWithMeta(String id, String format, CredentialMetaDto meta) {
@@ -43,11 +43,11 @@ class DcqlQueryValidatorTest {
     }
 
     private static CredentialQueryDto credWithClaims(String id, List<ClaimQueryDto> claims, List<List<String>> claimSets) {
-        return new CredentialQueryDto(id, Constants.FORMAT_LDP_VC, new CredentialMetaDto(null, null), true, false, claims, claimSets);
+        return new CredentialQueryDto(id, Constants.FORMAT_LDP_VC, new CredentialMetaDto(null, null, null), true, false, claims, claimSets);
     }
 
     private static ClaimQueryDto claim(String claimId, String... path) {
-        return new ClaimQueryDto(claimId, List.of(path), null);
+        return new ClaimQueryDto(claimId, List.of(path), null, null);
     }
 
     private static CredentialSetQueryDto requiredSet(String... ids) {
@@ -219,14 +219,14 @@ class DcqlQueryValidatorTest {
 
     @Test
     void shouldPass_whenLdpVcHasTypeValues() {
-        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(List.of("SomeCredential")));
+        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(List.of("SomeCredential")), null);
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null)));
     }
 
     @Test
     void shouldFail_whenLdpVcHasVctValues() {
-        CredentialMetaDto meta = new CredentialMetaDto(List.of("https://example.com/SomeCredential"), null);
+        CredentialMetaDto meta = new CredentialMetaDto(List.of("https://example.com/SomeCredential"), null, null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
 
@@ -238,14 +238,14 @@ class DcqlQueryValidatorTest {
 
     @Test
     void shouldPass_whenDcSdJwtHasVctValues() {
-        CredentialMetaDto meta = new CredentialMetaDto(List.of("https://example.com/SomeCredential"), null);
+        CredentialMetaDto meta = new CredentialMetaDto(List.of("https://example.com/SomeCredential"), null, null);
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithMeta("c", Constants.FORMAT_DC_SD_JWT, meta)), null)));
     }
 
     @Test
     void shouldFail_whenDcSdJwtHasTypeValues() {
-        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(List.of("SomeCredential")));
+        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(List.of("SomeCredential")), null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_DC_SD_JWT, meta)), null);
 
@@ -262,7 +262,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenVctValuesContainDuplicates() {
         CredentialMetaDto meta = new CredentialMetaDto(
-                List.of("https://example.com/A", "https://example.com/A"), null);
+                List.of("https://example.com/A", "https://example.com/A"), null, null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_DC_SD_JWT, meta)), null);
 
@@ -275,7 +275,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenTypeValuesContainDuplicateOptions() {
         List<String> option = List.of("SomeCredential");
-        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(option, option));
+        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(option, option), null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
 
@@ -288,7 +288,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenTypeValuesOuterArrayIsEmpty() {
         // type_values: [] — outer array must be non-empty per spec
-        CredentialMetaDto meta = new CredentialMetaDto(null, List.of());
+        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(), null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
 
@@ -301,7 +301,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenTypeValuesInnerArrayIsEmpty() {
         // type_values: [[]] — each inner array (AND-set) must not be empty
-        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(List.of()));
+        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(List.of()), null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
 
@@ -315,7 +315,7 @@ class DcqlQueryValidatorTest {
     void shouldFail_whenTypeValuesInnerArrayContainsDuplicateTypes() {
         // type_values: [["A", "A"]] — duplicate within an AND-set is invalid
         CredentialMetaDto meta = new CredentialMetaDto(null,
-                List.of(List.of("VerifiableCredential", "VerifiableCredential")));
+                List.of(List.of("VerifiableCredential", "VerifiableCredential")), null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
 
@@ -330,7 +330,7 @@ class DcqlQueryValidatorTest {
         List<String> option = new ArrayList<>();
         option.add("VerifiableCredential");
         option.add(null);
-        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(option));
+        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(option), null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
 
@@ -343,7 +343,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenTypeValuesInnerArrayContainsBlankEntry() {
         CredentialMetaDto meta = new CredentialMetaDto(null,
-                List.of(List.of("VerifiableCredential", "   ")));
+                List.of(List.of("VerifiableCredential", "   ")), null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
 
@@ -358,7 +358,7 @@ class DcqlQueryValidatorTest {
         List<String> vctValues = new ArrayList<>();
         vctValues.add("https://example.org/vct/MyCredential");
         vctValues.add(null);
-        CredentialMetaDto meta = new CredentialMetaDto(vctValues, null);
+        CredentialMetaDto meta = new CredentialMetaDto(vctValues, null, null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_DC_SD_JWT, meta)), null);
 
@@ -370,7 +370,7 @@ class DcqlQueryValidatorTest {
 
     @Test
     void shouldFail_whenVctValuesContainsBlankEntry() {
-        CredentialMetaDto meta = new CredentialMetaDto(List.of("https://example.org/vct/MyCredential", "  "), null);
+        CredentialMetaDto meta = new CredentialMetaDto(List.of("https://example.org/vct/MyCredential", "  "), null, null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_DC_SD_JWT, meta)), null);
 
@@ -385,7 +385,7 @@ class DcqlQueryValidatorTest {
         List<List<String>> typeValues = List.of(
                 List.of("https://www.w3.org/2018/credentials#VerifiableCredential",
                         "https://example.org/types/UniversityDegreeCredential"));
-        CredentialMetaDto meta = new CredentialMetaDto(null, typeValues);
+        CredentialMetaDto meta = new CredentialMetaDto(null, typeValues, null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
 
@@ -397,7 +397,7 @@ class DcqlQueryValidatorTest {
         // Per spec, a type not defined in any @context remains a relative IRI after JSON-LD processing
         // and that relative IRI IS the fully expanded type — so it must be accepted.
         List<List<String>> typeValues = List.of(List.of("VerifiableCredential", "UniversityDegreeCredential"));
-        CredentialMetaDto meta = new CredentialMetaDto(null, typeValues);
+        CredentialMetaDto meta = new CredentialMetaDto(null, typeValues, null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
 
@@ -408,7 +408,7 @@ class DcqlQueryValidatorTest {
     void shouldFail_whenTypeValuesContainMalformedIri() {
         // A string with spaces or illegal characters is not a valid IRI reference
         List<List<String>> typeValues = List.of(List.of("not a valid iri"));
-        CredentialMetaDto meta = new CredentialMetaDto(null, typeValues);
+        CredentialMetaDto meta = new CredentialMetaDto(null, typeValues, null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
 
@@ -432,21 +432,21 @@ class DcqlQueryValidatorTest {
     void shouldPass_whenClaimsHaveNullIdsAndNoClaimSets() {
         // ids are optional when claim_sets is absent
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, List.of("given_name"), null));
+                new ClaimQueryDto(null, List.of("given_name"), null, null));
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null)));
     }
 
     @Test
     void shouldPass_whenClaimIdContainsAlphanumericUnderscoreHyphen() {
-        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto("claim_1-A", List.of("name"), null));
+        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto("claim_1-A", List.of("name"), null, null));
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null)));
     }
 
     @Test
     void shouldFail_whenClaimIdContainsSpecialChar() {
-        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto("claim@1", List.of("name"), null));
+        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto("claim@1", List.of("name"), null, null));
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithClaims("c", claims, null)), null);
 
@@ -458,7 +458,7 @@ class DcqlQueryValidatorTest {
 
     @Test
     void shouldFail_whenClaimIdContainsSpace() {
-        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto("claim 1", List.of("name"), null));
+        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto("claim 1", List.of("name"), null, null));
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithClaims("c", claims, null)), null);
 
@@ -471,7 +471,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenClaimSetsRequireIdsButClaimIdIsNull() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, List.of("given_name"), null));
+                new ClaimQueryDto(null, List.of("given_name"), null, null));
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithClaims("c", claims, List.of(List.of("claim1")))), null);
 
@@ -552,7 +552,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldPass_whenClaimPathContainsOnlyStrings() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, Arrays.asList("given_name", "family_name"), null));
+                new ClaimQueryDto(null, Arrays.asList("given_name", "family_name"), null, null));
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null)));
     }
@@ -561,7 +561,7 @@ class DcqlQueryValidatorTest {
     void shouldPass_whenClaimPathContainsWildcard() {
         // null element is a valid wildcard step per DCQL spec
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, Arrays.asList(null, "city"), null));
+                new ClaimQueryDto(null, Arrays.asList(null, "city"), null, null));
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null)));
     }
@@ -569,7 +569,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldPass_whenClaimPathContainsNonNegativeInteger() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, Arrays.asList("addresses", 0), null));
+                new ClaimQueryDto(null, Arrays.asList("addresses", 0), null, null));
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null)));
     }
@@ -577,7 +577,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenClaimPathContainsBlankString() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, Arrays.asList("  "), null));
+                new ClaimQueryDto(null, Arrays.asList("  "), null, null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -589,7 +589,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenClaimPathContainsNegativeInteger() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, Arrays.asList(-1), null));
+                new ClaimQueryDto(null, Arrays.asList(-1), null, null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -602,7 +602,7 @@ class DcqlQueryValidatorTest {
     void shouldFail_whenClaimPathContainsIntegerOverMaxValue() {
         long tooBig = (long) Integer.MAX_VALUE + 1;
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, Arrays.asList(tooBig), null));
+                new ClaimQueryDto(null, Arrays.asList(tooBig), null, null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -615,7 +615,7 @@ class DcqlQueryValidatorTest {
     void shouldFail_whenClaimPathContainsBoolean() {
         // boolean is not a valid path element type per DCQL spec
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, Arrays.asList((Object) true), null));
+                new ClaimQueryDto(null, Arrays.asList((Object) true), null, null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -631,8 +631,8 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldPass_whenTwoClaimsHaveDifferentPaths() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto("c1", List.of("name"), null),
-                new ClaimQueryDto("c2", List.of("email"), null));
+                new ClaimQueryDto("c1", List.of("name"), null, null),
+                new ClaimQueryDto("c2", List.of("email"), null, null));
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null)));
     }
@@ -641,8 +641,8 @@ class DcqlQueryValidatorTest {
     void shouldFail_whenTwoClaimsHaveIdenticalPaths() {
         // duplicate paths are rejected when claim_sets is absent
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto("c1", List.of("name"), null),
-                new ClaimQueryDto("c2", List.of("name"), null));
+                new ClaimQueryDto("c1", List.of("name"), null, null),
+                new ClaimQueryDto("c2", List.of("name"), null, null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -654,8 +654,8 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenTwoClaimsHaveIdenticalNestedPaths() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto("c1", List.of("address", "city"), null),
-                new ClaimQueryDto("c2", List.of("address", "city"), null));
+                new ClaimQueryDto("c1", List.of("address", "city"), null, null),
+                new ClaimQueryDto("c2", List.of("address", "city"), null, null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -667,7 +667,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldPass_whenSamePathAppearsInDifferentCredentialQueries() {
         // duplicate paths are only disallowed within a single credential query
-        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto("c1", List.of("name"), null));
+        List<ClaimQueryDto> claims = List.of(new ClaimQueryDto("c1", List.of("name"), null, null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(
                 credWithClaims("cred1", claims, null),
                 credWithClaims("cred2", claims, null)), null);
@@ -680,8 +680,8 @@ class DcqlQueryValidatorTest {
         // duplicate paths are allowed when claim_sets is present — different claim IDs may
         // alias the same path for use in separate options (e.g. first_name vs given_name)
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto("first_name", List.of("name"), null),
-                new ClaimQueryDto("given_name", List.of("name"), null));
+                new ClaimQueryDto("first_name", List.of("name"), null, null),
+                new ClaimQueryDto("given_name", List.of("name"), null, null));
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithClaims("c", claims,
                         List.of(List.of("first_name"), List.of("given_name")))), null);
@@ -696,7 +696,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldPass_whenClaimValuesContainStringsIntegersBooleans() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, List.of("status"), Arrays.asList("active", 1, true, null)));
+                new ClaimQueryDto(null, List.of("status"), Arrays.asList("active", 1, true, null), null));
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null)));
     }
@@ -705,7 +705,7 @@ class DcqlQueryValidatorTest {
     void shouldPass_whenClaimValuesContainLong() {
         // Long is accepted alongside Integer per DCQL spec (both are integral)
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, List.of("score"), Arrays.asList(9999999999L)));
+                new ClaimQueryDto(null, List.of("score"), Arrays.asList(9999999999L), null));
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null)));
     }
@@ -713,7 +713,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldPass_whenClaimValuesIsNull() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, List.of("given_name"), null));
+                new ClaimQueryDto(null, List.of("given_name"), null, null));
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null)));
     }
@@ -721,7 +721,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenClaimValuesContainsDouble() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, List.of("score"), Arrays.asList(1.5)));
+                new ClaimQueryDto(null, List.of("score"), Arrays.asList(1.5), null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -733,7 +733,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenClaimValuesContainsFloat() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, List.of("score"), Arrays.asList(3.14f)));
+                new ClaimQueryDto(null, List.of("score"), Arrays.asList(3.14f), null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -745,7 +745,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenClaimValuesContainsList() {
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, List.of("tags"), Arrays.asList((Object) List.of("a", "b"))));
+                new ClaimQueryDto(null, List.of("tags"), Arrays.asList((Object) List.of("a", "b")), null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -762,7 +762,7 @@ class DcqlQueryValidatorTest {
     void shouldFail_whenCredentialIdIsNull() {
         // Explicitly test the null branch of (id == null || id.isBlank())
         List<CredentialQueryDto> creds = new ArrayList<>();
-        creds.add(new CredentialQueryDto(null, Constants.FORMAT_LDP_VC, new CredentialMetaDto(null, null), true, false, null, null));
+        creds.add(new CredentialQueryDto(null, Constants.FORMAT_LDP_VC, new CredentialMetaDto(null, null, null), true, false, null, null));
         DCQLQueryDto query = new DCQLQueryDto(creds, null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -783,7 +783,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldFail_whenVcSdJwtHasTypeValues() {
         // FORMAT_VC_SD_JWT branch in validateCredentialMeta switch — typeValues not allowed
-        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(List.of("SomeCredential")));
+        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(List.of("SomeCredential")), null);
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithMeta("c", Constants.FORMAT_VC_SD_JWT, meta)), null);
 
@@ -795,7 +795,7 @@ class DcqlQueryValidatorTest {
     @Test
     void shouldPass_whenVcSdJwtHasVctValues() {
         // FORMAT_VC_SD_JWT with valid vctValues — must not throw
-        CredentialMetaDto meta = new CredentialMetaDto(List.of("https://example.com/SomeCredential"), null);
+        CredentialMetaDto meta = new CredentialMetaDto(List.of("https://example.com/SomeCredential"), null, null);
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithMeta("c", Constants.FORMAT_VC_SD_JWT, meta)), null)));
     }
@@ -804,7 +804,7 @@ class DcqlQueryValidatorTest {
     void shouldPass_whenClaimPathContainsValidLong() {
         // Long within valid range (0 to Integer.MAX_VALUE) — hits element instanceof Long success branch
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, Arrays.asList(5L), null));
+                new ClaimQueryDto(null, Arrays.asList(5L), null, null));
         assertDoesNotThrow(() -> validator.validate(
                 new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null)));
     }
@@ -813,7 +813,7 @@ class DcqlQueryValidatorTest {
     void shouldFail_whenClaimPathContainsNegativeLong() {
         // Negative Long — hits value < 0 branch on the Long type path
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto(null, Arrays.asList(-1L), null));
+                new ClaimQueryDto(null, Arrays.asList(-1L), null, null));
         DCQLQueryDto query = new DCQLQueryDto(List.of(credWithClaims("c", claims, null)), null);
 
         VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
@@ -822,10 +822,78 @@ class DcqlQueryValidatorTest {
     }
 
     @Test
+    void shouldPass_whenMsoMdocQueryNamesDoctypeAndElement() {
+        CredentialMetaDto meta = new CredentialMetaDto(null, null, "org.iso.18013.5.1.mDL");
+        List<ClaimQueryDto> claims = List.of(
+                new ClaimQueryDto("family_name", List.of("org.iso.18013.5.1", "family_name"), null, true),
+                new ClaimQueryDto("portrait", List.of("org.iso.18013.5.1", "portrait"), null, false));
+        CredentialQueryDto credential = new CredentialQueryDto(
+                "mdl", Constants.FORMAT_MSO_MDOC, meta, true, false, claims, null);
+
+        assertDoesNotThrow(() -> validator.validate(new DCQLQueryDto(List.of(credential), null)));
+        assertEquals(Boolean.TRUE, claims.get(0).getIntentToRetain());
+        assertEquals(Boolean.FALSE, claims.get(1).getIntentToRetain());
+    }
+
+    @Test
+    void shouldFail_whenMsoMdocOmitsDocumentType() {
+        CredentialMetaDto meta = new CredentialMetaDto(null, null, "  ");
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("mdl", Constants.FORMAT_MSO_MDOC, meta)), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_META_INVALID, ex.getErrorCode());
+        assertEquals("Document type is required", ex.getMessage());
+    }
+
+    @Test
+    void shouldFail_whenMsoMdocCarriesAnotherFormatsMetadata() {
+        CredentialMetaDto meta = new CredentialMetaDto(
+                List.of("https://example.com/SomeCredential"), null, "org.iso.18013.5.1.mDL");
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("mdl", Constants.FORMAT_MSO_MDOC, meta)), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_META_NOT_MATCHING_FORMAT, ex.getErrorCode());
+    }
+
+    @Test
+    void shouldFail_whenOtherFormatCarriesDocumentType() {
+        CredentialMetaDto meta = new CredentialMetaDto(null, List.of(List.of("SomeCredential")), "org.iso.18013.5.1.mDL");
+        DCQLQueryDto query = new DCQLQueryDto(
+                List.of(credWithMeta("c", Constants.FORMAT_LDP_VC, meta)), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_META_NOT_MATCHING_FORMAT, ex.getErrorCode());
+    }
+
+    @Test
+    void shouldFail_whenMsoMdocElementPathIsNotNamespaceAndName() {
+        CredentialMetaDto meta = new CredentialMetaDto(null, null, "org.iso.18013.5.1.mDL");
+        List<ClaimQueryDto> claims = List.of(
+                new ClaimQueryDto(null, Arrays.asList("org.iso.18013.5.1", null), null, null));
+        CredentialQueryDto credential = new CredentialQueryDto(
+                "mdl", Constants.FORMAT_MSO_MDOC, meta, true, false, claims, null);
+        DCQLQueryDto query = new DCQLQueryDto(List.of(credential), null);
+
+        VPRequestValidationException ex = assertThrows(VPRequestValidationException.class,
+                () -> validator.validate(query));
+
+        assertEquals(ErrorCode.DCQL_CLAIM_PATH_INVALID, ex.getErrorCode());
+        assertEquals("Invalid element reference: [\"org.iso.18013.5.1\", null]", ex.getMessage());
+    }
+
+    @Test
     void shouldFail_whenClaimIdIsBlankAndClaimSetsPresent() {
         // Blank (not null) claim ID when claimSets is present — hits isBlank() branch in validateClaimIds
         List<ClaimQueryDto> claims = List.of(
-                new ClaimQueryDto("   ", List.of("given_name"), null));
+                new ClaimQueryDto("   ", List.of("given_name"), null, null));
         DCQLQueryDto query = new DCQLQueryDto(
                 List.of(credWithClaims("c", claims, List.of(List.of("claim1")))), null);
 

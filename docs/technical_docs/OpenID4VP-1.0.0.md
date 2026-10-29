@@ -8,6 +8,7 @@ Inji Verify supports the [OpenID for Verifiable Presentations v1.0](https://open
 | SD-JWT VC | [draft-10 (`dc+sd-jwt`)](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-sd-jwt-vc-10) |
 | SD-JWT VC (legacy) | [draft-04 (`vc+sd-jwt`)](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-sd-jwt-vc-04) |
 | W3C Verifiable Credentials | JSON-LD (`ldp_vc`) |
+| ISO mdoc | `mso_mdoc` (ISO/IEC 18013-5 / 23220) |
 
 Full API reference: [Inji Verify API documentation](https://mosip.stoplight.io/docs/inji-verify)
 
@@ -55,7 +56,7 @@ Each entry in `credentials` supports:
 | Field | Description |
 |---|---|
 | `id` | Unique identifier for this credential query (alphanumeric, `_`, `-`) |
-| `format` | VC format: `ldp_vc`, `dc+sd-jwt`, `vc+sd-jwt`, etc. |
+| `format` | VC format: `ldp_vc`, `dc+sd-jwt`, `vc+sd-jwt`, or `mso_mdoc` |
 | `meta` | Format-specific type constraints (see below) |
 | `claims` | List of specific claim paths to request from the credential |
 | `claim_sets` | Alternative sets of claims — wallet must satisfy at least one set |
@@ -79,6 +80,7 @@ Set `require_cryptographic_holder_binding: false` only when issuing or verifying
 |---|---|---|
 | `type_values` | `ldp_vc` | Array of required `type` arrays. Each inner array is an AND condition; outer array is OR. |
 | `vct_values` | `dc+sd-jwt`, `vc+sd-jwt` | Array of acceptable `vct` (Verifiable Credential Type) strings. |
+| `doctype_value` | `mso_mdoc` | Required document type, for example `org.iso.18013.5.1.mDL`. Must not be combined with `vct_values` or `type_values`. |
 
 ### `credential_sets`
 
@@ -119,6 +121,35 @@ Here the wallet can satisfy the request with either the `id_card` or the `passpo
   ["age_over_18"]
 ]
 ```
+
+### Requesting an ISO mdoc (`mso_mdoc`)
+
+An `mso_mdoc` credential uses the same DCQL query and the same authorization request as the other formats. OpenID4VP 1.0 Appendix B.2 adds three rules:
+
+- `meta.doctype_value` is required. `vct_values` and `type_values` are rejected on this format, and `doctype_value` is rejected on the others.
+- Each claim `path` is exactly two strings: the namespace, then the element identifier. A wildcard, an index, or any other length is rejected as `Invalid element reference: …`.
+- `intent_to_retain` is an optional boolean on a claim. It is copied into the authorization request so the wallet can ask for consent. It is never used to accept or reject what the wallet returns.
+
+The request uses the same response modes as the other formats. `direct_post` is the wallet HTTP submission, and `dc_api` is the Digital Credentials API route. The selected mode is stored on the request and copied into the authorization request.
+
+Signed requests advertise the format in `client_metadata.vp_formats_supported.mso_mdoc`, alongside the existing formats:
+
+- `issuerauth_alg_values`: `-9` (ESP256) and `-7` (ES256)
+- `deviceauth_alg_values`: `-9`, `-7`, and `-65537` (HMAC 256/256 with ECDH on P-256, the ISO 18013-5 device MAC)
+
+```json
+{
+  "id": "mdl",
+  "format": "mso_mdoc",
+  "meta": { "doctype_value": "org.iso.18013.5.1.mDL" },
+  "claims": [
+    { "path": ["org.iso.18013.5.1", "family_name"] },
+    { "path": ["org.iso.18013.5.1", "portrait"], "intent_to_retain": true }
+  ]
+}
+```
+
+By-reference delivery (`decentralized_identifier:` or `x509_san_dns:`) puts this query, the response mode, and `client_metadata` in the signed request JWT fetched from `requestUri`. By-value delivery returns the same query and `responseMode` in `authorizationDetails`.
 
 ### Full Example
 

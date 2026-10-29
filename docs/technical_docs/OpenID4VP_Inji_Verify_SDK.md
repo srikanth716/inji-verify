@@ -473,6 +473,24 @@ Each credential entry in `dcqlQuery` accepts a `require_cryptographic_holder_bin
 - **`ldp_vc`**: when `true`, the wallet submits a JSON-LD VP with a `proof` field. When `false`, a bare VC is accepted.
 - **`dc+sd-jwt` / `vc+sd-jwt`**: when `true`, a Key Binding JWT (KB-JWT) is required. The KB-JWT payload must contain all four fields: `aud`, `nonce`, `iat`, `sd_hash`. When `false`, KB-JWT validation is skipped.
 
+### Requesting an ISO mdoc (`mso_mdoc`)
+
+Use format `mso_mdoc` with `meta.doctype_value` and claim paths of exactly two strings (`[namespace, element]`). Optional `intent_to_retain` on a claim is forwarded to the wallet and is never used to accept or reject the response. Signed requests advertise `client_metadata.vp_formats_supported.mso_mdoc` with COSE alg lists (`issuerauth_alg_values` `-9`/`-7`, `deviceauth_alg_values` `-9`/`-7`/`-65537`). See [OpenID4VP — Online Credential Sharing](OpenID4VP-1.0.0.md#requesting-an-iso-mdoc-mso_mdoc).
+
+```tsx
+dcqlQuery={{
+  credentials: [{
+    id: "mdl",
+    format: "mso_mdoc",
+    meta: { doctype_value: "org.iso.18013.5.1.mDL" },
+    claims: [
+      { id: "family_name", path: ["org.iso.18013.5.1", "family_name"] },
+      { id: "portrait", path: ["org.iso.18013.5.1", "portrait"], intent_to_retain: true }
+    ]
+  }]
+}}
+```
+
 **Example — disable holder binding for a specific credential:**
 
 ```tsx

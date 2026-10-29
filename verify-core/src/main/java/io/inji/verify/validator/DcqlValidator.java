@@ -33,7 +33,8 @@ public class DcqlValidator {
     private static final Set<String> SUPPORTED_FORMATS = Set.of(
             Constants.FORMAT_DC_SD_JWT,
             Constants.FORMAT_VC_SD_JWT,
-            Constants.FORMAT_LDP_VC
+            Constants.FORMAT_LDP_VC,
+            Constants.FORMAT_MSO_MDOC
     );
 
     private static boolean isSdJwtFormat(String format) {
@@ -158,6 +159,10 @@ public class DcqlValidator {
         if (credential.getClaims() == null) {
             return;
         }
+        if (Constants.FORMAT_MSO_MDOC.equals(credential.getFormat())) {
+            validateMsoMdocClaimPaths(credential);
+            return;
+        }
         Set<List<Object>> seenPaths = new HashSet<>();
         for (ClaimQueryDto claim : credential.getClaims()) {
             for (Object element : claim.getPath()) {
@@ -200,19 +205,87 @@ public class DcqlValidator {
         switch (credential.getFormat()) {
             case Constants.FORMAT_DC_SD_JWT:
             case Constants.FORMAT_VC_SD_JWT:
-                if (meta.getTypeValues() != null) {
+                if (meta.getTypeValues() != null || meta.getDoctypeValue() != null) {
                     throw new VPRequestValidationException(
                             ErrorCode.DCQL_META_NOT_MATCHING_FORMAT);
                 }
                 break;
 
             case Constants.FORMAT_LDP_VC:
-                if (meta.getVctValues() != null) {
+                if (meta.getVctValues() != null || meta.getDoctypeValue() != null) {
                     throw new VPRequestValidationException(
                             ErrorCode.DCQL_META_NOT_MATCHING_FORMAT);
                 }
                 break;
+
+            case Constants.FORMAT_MSO_MDOC:
+                if (meta.getVctValues() != null || meta.getTypeValues() != null) {
+                    throw new VPRequestValidationException(
+                            ErrorCode.DCQL_META_NOT_MATCHING_FORMAT);
+                }
+                if (meta.getDoctypeValue() == null || meta.getDoctypeValue().isBlank()) {
+                    throw new VPRequestValidationException(
+                            ErrorCode.DCQL_META_INVALID, "Document type is required");
+                }
+                break;
+            default:
+                break;
         }
+    }
+
+    /**
+     * OpenID4VP 1.0 section 7.2: an mdoc claims path is exactly two strings,
+     * the namespace and then the data element identifier. Wildcards and indexes are rejected.
+     * {@code intent_to_retain} is not read here; it is not a match condition.
+     */
+    private static void validateMsoMdocClaimPaths(CredentialQueryDto credential) {
+        Set<List<Object>> seenPaths = new HashSet<>();
+        boolean hasClaimSets = credential.getClaimSets() != null && !credential.getClaimSets().isEmpty();
+        for (ClaimQueryDto claim : credential.getClaims()) {
+            List<Object> path = claim.getPath();
+            if (!isMsoMdocElementPath(path)) {
+                throw new VPRequestValidationException(
+                        ErrorCode.DCQL_CLAIM_PATH_INVALID,
+                        "Invalid element reference: " + formatElementReference(path));
+            }
+            if (!hasClaimSets && !seenPaths.add(path)) {
+                throw new VPRequestValidationException(ErrorCode.DCQL_DUPLICATE_CLAIM_PATH);
+            } else {
+                seenPaths.add(path);
+            }
+        }
+    }
+
+    private static boolean isMsoMdocElementPath(List<Object> path) {
+        if (path == null || path.size() != 2) {
+            return false;
+        }
+        return isNonBlankString(path.get(0)) && isNonBlankString(path.get(1));
+    }
+
+    private static boolean isNonBlankString(Object value) {
+        return value instanceof String text && !text.isBlank();
+    }
+
+    private static String formatElementReference(List<Object> path) {
+        if (path == null) {
+            return "null";
+        }
+        StringBuilder reference = new StringBuilder("[");
+        for (int i = 0; i < path.size(); i++) {
+            if (i > 0) {
+                reference.append(", ");
+            }
+            Object element = path.get(i);
+            if (element == null) {
+                reference.append("null");
+            } else if (element instanceof String) {
+                reference.append('"').append(element).append('"');
+            } else {
+                reference.append(element);
+            }
+        }
+        return reference.append(']').toString();
     }
 
     private static void validateMetaValues(CredentialMetaDto meta) {

@@ -8,6 +8,9 @@ import io.inji.verify.dto.authorizationrequest.AuthorizationRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestCreateDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestResponseDto;
 import io.inji.verify.dto.authorizationrequest.VPRequestStatusDto;
+import io.inji.verify.dto.dcql.ClaimQueryDto;
+import io.inji.verify.dto.dcql.CredentialMetaDto;
+import io.inji.verify.dto.dcql.CredentialQueryDto;
 import io.inji.verify.dto.dcql.DCQLQueryDto;
 import io.inji.verify.enums.ErrorCode;
 import io.inji.verify.exception.VPRequestNotFoundException;
@@ -1243,5 +1246,70 @@ class VerifiablePresentationRequestServiceImplTest {
         assertNotNull(responseDto.getAuthorizationDetails());
         assertFalse(responseDto.getAuthorizationDetails().isResponseCodeValidationRequired());
         assertTrue(responseDto.getExpiresAt() > Instant.now().toEpochMilli());
+    }
+
+    @Test
+    void should_createMsoMdocRequest_when_responseModeIsDirectPost() throws Exception {
+        clearInvocations(mockAuthorizationRequestCreateResponseRepository);
+        when(mockAuthorizationRequestCreateResponseRepository.save(any(AuthorizationRequestCreateResponse.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        VPRequestCreateDto dto = new VPRequestCreateDto(
+                "test_client_id",
+                "tx-mdoc",
+                "nonce-value-123456",
+                msoMdocQuery(),
+                false,
+                Constants.RESPONSE_MODE_DIRECT_POST);
+
+        VPRequestResponseDto response = service.createAuthorizationRequest(dto, Optional.empty());
+
+        assertEquals(Constants.RESPONSE_MODE_DIRECT_POST, response.getAuthorizationDetails().getResponseMode());
+        assertTrue(response.getAuthorizationDetails().getResponseUri().endsWith(Constants.VP_DIRECT_POST_SUBMISSION_URI));
+        ArgumentCaptor<AuthorizationRequestCreateResponse> captor =
+                ArgumentCaptor.forClass(AuthorizationRequestCreateResponse.class);
+        verify(mockAuthorizationRequestCreateResponseRepository).save(captor.capture());
+        assertEquals(Constants.RESPONSE_MODE_DIRECT_POST,
+                captor.getValue().getAuthorizationDetails().getResponseMode());
+    }
+
+    @Test
+    void should_advertiseMsoMdocAndCarryTheQuery_when_requestIsSigned() throws Exception {
+        String requestId = "req_mdoc";
+        String did = "decentralized_identifier:did:example:verifier";
+        AuthorizationRequestResponseDto authzDto = new AuthorizationRequestResponseDto(
+                did, msoMdocQuery(), null, "nonce-value-123456",
+                "https://verify.example.com/v1/verify" + Constants.VP_DIRECT_POST_SUBMISSION_URI,
+                false, false, Constants.RESPONSE_MODE_DIRECT_POST, null);
+        when(mockAuthorizationRequestCreateResponseRepository.findById(requestId))
+                .thenReturn(Optional.of(new AuthorizationRequestCreateResponse(
+                        requestId, "tx-mdoc", authzDto, Instant.now().toEpochMilli() + 5000)));
+        when(mockKeyManagementService.getKeyPair()).thenReturn(new OctetKeyPairGenerator(Curve.Ed25519).generate());
+
+        String payload = SignedJWT.parse(service.getVPRequestJwt(requestId)).getJWTClaimsSet().toString();
+
+        assertTrue(payload.contains("\"response_mode\":\"direct_post\""));
+        assertTrue(payload.contains("\"format\":\"mso_mdoc\""));
+        assertTrue(payload.contains("\"doctype_value\":\"org.iso.18013.5.1.mDL\""));
+        assertTrue(payload.contains("\"intent_to_retain\":true"));
+        assertTrue(payload.contains("\"mso_mdoc\""));
+        assertTrue(payload.contains("\"issuerauth_alg_values\""));
+        assertTrue(payload.contains("\"deviceauth_alg_values\""));
+        assertTrue(payload.contains(String.valueOf(Constants.COSE_ALG_DEVICE_MAC_P256)));
+    }
+
+    private static DCQLQueryDto msoMdocQuery() {
+        return new DCQLQueryDto(List.of(new CredentialQueryDto(
+                "mdl",
+                Constants.FORMAT_MSO_MDOC,
+                new CredentialMetaDto(null, null, "org.iso.18013.5.1.mDL"),
+                true,
+                false,
+                List.of(new ClaimQueryDto(
+                        "family_name",
+                        List.of("org.iso.18013.5.1", "family_name"),
+                        null,
+                        true)),
+                null)), null);
     }
 }

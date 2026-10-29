@@ -6,7 +6,9 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ClaimQueryDtoTest {
 
@@ -29,5 +31,21 @@ class ClaimQueryDtoTest {
                 ClaimQueryDto.class);
 
         assertNull(claim.getValues());
+    }
+
+    @Test
+    void roundTripsIntentToRetainAndOmitsItWhenAbsent() throws Exception {
+        ClaimQueryDto retained = MAPPER.readValue(
+                "{\"path\":[\"org.iso.18013.5.1\",\"portrait\"],\"intent_to_retain\":true}",
+                ClaimQueryDto.class);
+
+        assertEquals(Boolean.TRUE, retained.getIntentToRetain());
+        assertTrue(MAPPER.writeValueAsString(retained).contains("\"intent_to_retain\":true"));
+
+        ClaimQueryDto plain = MAPPER.readValue(
+                "{\"path\":[\"org.iso.18013.5.1\",\"family_name\"]}",
+                ClaimQueryDto.class);
+        assertNull(plain.getIntentToRetain());
+        assertFalse(MAPPER.writeValueAsString(plain).contains("intent_to_retain"));
     }
 }
