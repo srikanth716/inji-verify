@@ -137,6 +137,41 @@
           }
         ]
       }
+    },
+    {
+      "logo": "/assets/cert.png",
+      "name": "Mobile Driving Licence",
+      "clientIdPrefix": "decentralized_identifier",
+      "purpose": "Relying party is requesting your ISO mdoc mobile driving licence for identity verification",
+      "dcqlQuery": {
+        "credentials": [
+          {
+            "id": "mdl",
+            "format": "mso_mdoc",
+            "meta": {
+              "doctype_value": "org.iso.18013.5.1.mDL"
+            },
+            "claims": [
+              {
+                "id": "family_name",
+                "path": ["org.iso.18013.5.1", "family_name"]
+              },
+              {
+                "id": "given_name",
+                "path": ["org.iso.18013.5.1", "given_name"]
+              },
+              {
+                "id": "birth_date",
+                "path": ["org.iso.18013.5.1", "birth_date"]
+              },
+              {
+                "id": "document_number",
+                "path": ["org.iso.18013.5.1", "document_number"]
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "VCRenderOrders": {

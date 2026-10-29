@@ -86,6 +86,7 @@ export interface claim {
   dcqlQuery: DcqlQuery;
   purpose?: string;
   clientIdScheme?: string;
+  clientIdPrefix?: string;
 }
 
 interface InputDescriptor {
