@@ -7,7 +7,7 @@ For integration instructions, see [README.md](./README.md).
 
 ## Prerequisites
 
-- Node 18+
+- Node 22+
 - npm 9+
 - React 18 (peer dependency — installed automatically for tests, not for builds)
 

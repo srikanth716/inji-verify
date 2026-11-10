@@ -16,13 +16,13 @@ React/TypeScript frontend for verifying Verifiable Credentials via QR code scan/
 
 Prerequisites:
 
-- **Node 18**
+- **Node 22**
 
   Can be installed using [nvm](https://github.com/nvm-sh/nvm). Run following commands to install node
 
   ```shell
   $ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-  $ nvm install 18
+  $ nvm install 22
   ```
 
 - **Docker**

@@ -6,7 +6,7 @@ This file provides guidance for AI coding assistants working with code in this r
 
 Inji Verify is a web application for verifying Verifiable Credentials (VCs) via QR code scan/upload and the OpenID4VP protocol. The repo contains three independently deployable components:
 
-- **`verify-ui/`** — React/TypeScript frontend (Node 18)
+- **`verify-ui/`** — React/TypeScript frontend (Node 22)
 - **`verify-service/`** — Spring Boot 3.4.10 backend (Java 21, Maven)
 - **`inji-verify-sdk/`** — React component library published as `@injistack/react-inji-verify-sdk`
 

@@ -5,7 +5,7 @@ Inji Verify is a web application for verifying Verifiable Credentials (VCs) via 
 
 The repository contains three independently deployable components:
 
-- **`verify-ui/`** — React/TypeScript frontend (Node 18)
+- **`verify-ui/`** — React/TypeScript frontend (Node 22)
 - **`verify-service/`** — Spring Boot backend (Java 21, Maven), built on the domain logic in `verify-core/`
 - **`inji-verify-sdk/`** — React component library (`@injistack/react-inji-verify-sdk`)
 
@@ -24,13 +24,13 @@ This document contains the following sections:
 
 Prerequisites (per component):
 
-- **verify-ui / inji-verify-sdk** — Node 18
+- **verify-ui / inji-verify-sdk** — Node 22
 
   Can be installed using [nvm](https://github.com/nvm-sh/nvm):
 
   ```shell
   $ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-  $ nvm install 18
+  $ nvm install 22
   ```
 
 - **verify-service** — Java 21
